@@ -1,15 +1,17 @@
-import { AnimatePresence, motion } from 'motion/react';
-import React from 'react';
-import { TabType } from '../App';
-import { LiveMarketsTab } from './tabs/LiveMarketsTab';
-import { AIAgentsTab } from './tabs/AIAgentsTab';
-import { WorkflowsTab } from './tabs/WorkflowsTab';
-import { AutoTradingTab } from './tabs/AutoTradingTab';
-import { MarketResearchTab } from './tabs/MarketResearchTab';
-import { ChartAnalysisTab } from './tabs/ChartAnalysisTab';
-import { HistoryTab } from './tabs/HistoryTab';
-import { LibraryTab } from './tabs/LibraryTab';
-import { DashboardTab } from './tabs/DashboardTab';
+import { AnimatePresence, motion } from "motion/react";
+import React from "react";
+import { TabType } from "../App";
+import { LiveMarketsTab } from "./tabs/LiveMarketsTab";
+import { AIAgentsTab } from "./tabs/AIAgentsTab";
+import { WorkflowsTab } from "./tabs/WorkflowsTab";
+import { AutoTradingTab } from "./tabs/AutoTradingTab";
+import { MarketResearchTab } from "./tabs/MarketResearchTab";
+import { ChartAnalysisTab } from "./tabs/ChartAnalysisTab";
+import { HistoryTab } from "./tabs/HistoryTab";
+import { LibraryTab } from "./tabs/LibraryTab";
+import { DashboardTab } from "./tabs/DashboardTab";
+import { RiskCenterTab } from "./tabs/RiskCenterTab";
+import { SimulationEngineTab } from "./tabs/SimulationEngineTab";
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
   return (
@@ -22,20 +24,24 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
       <div className="flex-1 overflow-y-auto w-full relative z-10 no-scrollbar pb-10 scroll-smooth">
         <div className="max-w-[1400px] mx-auto px-8 pt-[4vh]">
           <AnimatePresence mode="wait">
-            {activeTab === 'Dashboard' ? (
+            {activeTab === "Dashboard" ? (
               <DashboardTab />
-            ) : activeTab === 'Markets' ? (
+            ) : activeTab === "Markets" ? (
               <LiveMarketsTab />
-            ) : activeTab === 'AI Command Center' ? (
+            ) : activeTab === "AI Command Center" ? (
               <AIAgentsTab />
-            ) : activeTab === 'Strategy Lab' ? (
+            ) : activeTab === "Strategy Lab" ? (
               <WorkflowsTab />
-            ) : activeTab === 'Trade Execution' ? (
+            ) : activeTab === "Trade Execution" ? (
               <AutoTradingTab />
-            ) : activeTab === 'Analytics' ? (
+            ) : activeTab === "Analytics" ? (
               <MarketResearchTab />
-            ) : activeTab === 'Memory Vault' ? (
+            ) : activeTab === "Memory Vault" ? (
               <HistoryTab />
+            ) : activeTab === "Risk Engine" ? (
+              <RiskCenterTab />
+            ) : activeTab === "Simulation Engine" ? (
+              <SimulationEngineTab />
             ) : (
               <motion.div
                 key="clean-slate"
@@ -47,10 +53,17 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
               >
                 <div className="text-center">
                   <div className="w-16 h-16 bg-[#111] rounded-full mx-auto mb-6 flex items-center justify-center border border-[#333]">
-                    <div className="w-8 h-8 rounded-full border-t-2 border-r-2 border-[#0ea5e9] animate-spin opacity-80" style={{ animationDuration: '2s' }}></div>
+                    <div
+                      className="w-8 h-8 rounded-full border-t-2 border-r-2 border-[#0ea5e9] animate-spin opacity-80"
+                      style={{ animationDuration: "2s" }}
+                    ></div>
                   </div>
-                  <h2 className="text-2xl font-semibold text-white mb-2">{activeTab}</h2>
-                  <p className="text-gray-500 font-mono text-sm tracking-wide">Module initialization sequence pending...</p>
+                  <h2 className="text-2xl font-semibold text-white mb-2">
+                    {activeTab}
+                  </h2>
+                  <p className="text-gray-500 font-mono text-sm tracking-wide">
+                    Module initialization sequence pending...
+                  </p>
                 </div>
               </motion.div>
             )}
