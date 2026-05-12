@@ -12,35 +12,47 @@ import { LibraryTab } from "./tabs/LibraryTab";
 import { DashboardTab } from "./tabs/DashboardTab";
 import { RiskCenterTab } from "./tabs/RiskCenterTab";
 import { SimulationEngineTab } from "./tabs/SimulationEngineTab";
+import { useMarketRegime } from "../contexts/MarketRegimeContext";
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
+  const { regime } = useMarketRegime();
+
+  const getGlowClasses = () => {
+    switch (regime) {
+      case "bull": return "from-[#0ea5e9]/15 via-[#00f0ff]/5";
+      case "bear": return "from-[#ff4500]/15 via-[#ff4500]/5";
+      case "volatile": return "from-[#facc15]/15 via-[#facc15]/5 animate-pulse";
+      case "neutral": default: return "from-gray-500/10 via-transparent";
+    }
+  };
+
   return (
     <main className="flex-1 relative overflow-hidden bg-[#020202] flex flex-col">
       {/* Main Glow Background */}
-      <div className="absolute top-[-30%] left-1/2 -translate-x-1/2 w-[80%] h-[80%] bg-gradient-to-b from-[#0ea5e9]/10 via-[#00f0ff]/5 to-transparent rounded-full blur-[160px] pointer-events-none"></div>
+      <div className={`absolute top-[-30%] left-1/2 -translate-x-1/2 w-[80%] h-[80%] bg-gradient-to-b to-transparent rounded-full blur-[160px] pointer-events-none transition-colors duration-1000 ${getGlowClasses()}`}></div>
 
       {/* Header Removed */}
 
       <div className="flex-1 overflow-y-auto w-full relative z-10 no-scrollbar pb-10 scroll-smooth">
         <div className="max-w-[1400px] mx-auto px-8 pt-[4vh]">
           <AnimatePresence mode="wait">
-            {activeTab === "Dashboard" ? (
+            {activeTab === "Command Center" ? (
               <DashboardTab />
-            ) : activeTab === "Markets" ? (
+            ) : activeTab === "Market Intelligence" ? (
               <LiveMarketsTab />
-            ) : activeTab === "AI Command Center" ? (
+            ) : activeTab === "Multi-Agent Protocol" ? (
               <AIAgentsTab />
-            ) : activeTab === "Strategy Lab" ? (
+            ) : activeTab === "Strategy Engine" ? (
               <WorkflowsTab />
-            ) : activeTab === "Trade Execution" ? (
+            ) : activeTab === "Autonomous Execution" ? (
               <AutoTradingTab />
-            ) : activeTab === "Analytics" ? (
+            ) : activeTab === "Technical Engine" ? (
               <MarketResearchTab />
-            ) : activeTab === "Memory Vault" ? (
+            ) : activeTab === "Agent Memory" ? (
               <HistoryTab />
-            ) : activeTab === "Risk Engine" ? (
+            ) : activeTab === "Risk Management" ? (
               <RiskCenterTab />
-            ) : activeTab === "Simulation Engine" ? (
+            ) : activeTab === "Backtesting Engine" ? (
               <SimulationEngineTab />
             ) : (
               <motion.div

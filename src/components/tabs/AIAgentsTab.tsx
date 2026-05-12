@@ -174,29 +174,28 @@ export function AIAgentsTab() {
               </div>
 
               <div className="w-full mt-1">
-                <div className="flex justify-between items-center text-[10px] font-mono text-gray-400 mb-1.5">
-                  <span>Confidence</span>
-                  <span className="text-white font-bold">
-                    {agent.confidence}%
-                  </span>
-                </div>
-                <div className="w-full h-1 bg-[#111] rounded-full overflow-hidden mb-3">
-                  <div
-                    className="h-full shadow-[0_0_8px_currentColor]"
-                    style={{
-                      width: `${agent.confidence}%`,
-                      backgroundColor: agent.color,
-                      color: agent.color,
-                    }}
-                  ></div>
-                </div>
-                <div className="flex justify-between items-start text-[10px] font-mono text-gray-400 bg-[#0a0a0a] p-2 rounded-sm border border-[#1a1a1a]">
-                  <span className="uppercase font-bold tracking-widest">
-                    Focus:
-                  </span>
-                  <span className="text-right text-gray-300 w-2/3 leading-tight truncate">
-                    {agent.focus}
-                  </span>
+                <div className="flex justify-between items-center bg-[#0a0a0a] p-2 rounded-sm border border-[#1a1a1a] mb-2">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] uppercase font-bold tracking-widest text-gray-500">Neural Sync</span>
+                    <span className="text-[10px] font-mono text-gray-300 w-32 leading-tight truncate">
+                      {agent.focus}
+                    </span>
+                  </div>
+                  <div className="shrink-0 flex items-center justify-center">
+                    <AIConfidenceRing 
+                      confidence={agent.confidence} 
+                      size={28} 
+                      theme={
+                        agent.color === "#39ff14"
+                          ? "green"
+                          : agent.color === "#00f0ff"
+                            ? "cyan"
+                            : agent.color === "#a855f7"
+                              ? "purple"
+                              : "amber"
+                      }
+                    />
+                  </div>
                 </div>
               </div>
             </button>

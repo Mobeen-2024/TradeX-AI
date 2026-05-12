@@ -35,10 +35,10 @@ export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setAc
         <div className="mb-6">
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3">Core Operations</h3>
           <ul className="space-y-[2px]">
-            <NavItem icon={<LayoutDashboard className="w-3.5 h-3.5" />} label="Dashboard" active={activeTab === 'Dashboard'} onClick={() => setActiveTab('Dashboard')} />
-            <NavItem icon={<Activity className="w-3.5 h-3.5" />} label="Markets" active={activeTab === 'Markets'} onClick={() => setActiveTab('Markets')} />
-            <NavItem icon={<Cpu className="w-3.5 h-3.5" />} label="AI Command Center" active={activeTab === 'AI Command Center'} onClick={() => setActiveTab('AI Command Center')} />
-            <NavItem icon={<Zap className="w-3.5 h-3.5" />} label="Trade Execution" active={activeTab === 'Trade Execution'} onClick={() => setActiveTab('Trade Execution')} />
+            <NavItem icon={<LayoutDashboard className="w-3.5 h-3.5" />} label="Command Center" active={activeTab === 'Command Center'} onClick={() => setActiveTab('Command Center')} />
+            <NavItem icon={<Activity className="w-3.5 h-3.5" />} label="Market Intelligence" active={activeTab === 'Market Intelligence'} onClick={() => setActiveTab('Market Intelligence')} />
+            <NavItem icon={<Cpu className="w-3.5 h-3.5" />} label="Multi-Agent Protocol" active={activeTab === 'Multi-Agent Protocol'} onClick={() => setActiveTab('Multi-Agent Protocol')} />
+            <NavItem icon={<Zap className="w-3.5 h-3.5" />} label="Autonomous Execution" active={activeTab === 'Autonomous Execution'} onClick={() => setActiveTab('Autonomous Execution')} />
           </ul>
         </div>
 
@@ -46,8 +46,8 @@ export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setAc
         <div className="mb-6">
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3">Portfolio & Risk</h3>
           <ul className="space-y-[2px]">
-            <NavItem icon={<Wallet className="w-3.5 h-3.5" />} label="Portfolio" active={activeTab === 'Portfolio'} onClick={() => setActiveTab('Portfolio')} />
-            <NavItem icon={<Shield className="w-3.5 h-3.5" />} label="Risk Engine" active={activeTab === 'Risk Engine'} onClick={() => setActiveTab('Risk Engine')} />
+            <NavItem icon={<Wallet className="w-3.5 h-3.5" />} label="Alpha Generation" active={activeTab === 'Alpha Generation'} onClick={() => setActiveTab('Alpha Generation')} />
+            <NavItem icon={<Shield className="w-3.5 h-3.5" />} label="Risk Management" active={activeTab === 'Risk Management'} onClick={() => setActiveTab('Risk Management')} />
           </ul>
         </div>
 
@@ -55,10 +55,10 @@ export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setAc
         <div className="mb-6">
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3">Intelligence & Experimentation</h3>
           <ul className="space-y-[2px]">
-            <NavItem icon={<Boxes className="w-3.5 h-3.5" />} label="Strategy Lab" active={activeTab === 'Strategy Lab'} onClick={() => setActiveTab('Strategy Lab')} />
-            <NavItem icon={<Database className="w-3.5 h-3.5" />} label="Memory Vault" active={activeTab === 'Memory Vault'} onClick={() => setActiveTab('Memory Vault')} />
-            <NavItem icon={<LineChart className="w-3.5 h-3.5" />} label="Analytics" active={activeTab === 'Analytics'} onClick={() => setActiveTab('Analytics')} />
-            <NavItem icon={<TestTube className="w-3.5 h-3.5" />} label="Simulation Engine" active={activeTab === 'Simulation Engine'} onClick={() => setActiveTab('Simulation Engine')} />
+            <NavItem icon={<Boxes className="w-3.5 h-3.5" />} label="Strategy Engine" active={activeTab === 'Strategy Engine'} onClick={() => setActiveTab('Strategy Engine')} />
+            <NavItem icon={<Database className="w-3.5 h-3.5" />} label="Agent Memory" active={activeTab === 'Agent Memory'} onClick={() => setActiveTab('Agent Memory')} />
+            <NavItem icon={<LineChart className="w-3.5 h-3.5" />} label="Technical Engine" active={activeTab === 'Technical Engine'} onClick={() => setActiveTab('Technical Engine')} />
+            <NavItem icon={<TestTube className="w-3.5 h-3.5" />} label="Backtesting Engine" active={activeTab === 'Backtesting Engine'} onClick={() => setActiveTab('Backtesting Engine')} />
           </ul>
         </div>
 
@@ -66,8 +66,8 @@ export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setAc
         <div className="mb-8">
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3">System</h3>
           <ul className="space-y-[2px]">
-            <NavItem icon={<Terminal className="w-3.5 h-3.5" />} label="System Logs" active={activeTab === 'System Logs'} onClick={() => setActiveTab('System Logs')} />
-            <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="Settings" active={activeTab === 'Settings'} onClick={() => setActiveTab('Settings')} />
+            <NavItem icon={<Terminal className="w-3.5 h-3.5" />} label="System Telemetry" active={activeTab === 'System Telemetry'} onClick={() => setActiveTab('System Telemetry')} />
+            <NavItem icon={<Settings className="w-3.5 h-3.5" />} label="System Configuration" active={activeTab === 'System Configuration'} onClick={() => setActiveTab('System Configuration')} />
           </ul>
         </div>
       </div>

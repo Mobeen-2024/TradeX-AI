@@ -6,8 +6,10 @@ export function AIVoiceAssistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [conversation, setConversation] = useState<
-    { role: "user" | "ai"; text: string }[]
+    { role: "user" | "ai"; text: string; action?: string }[]
   >([{ role: "ai", text: "System ready. How can I assist you?" }]);
+
+  const [overrideActive, setOverrideActive] = useState(false);
 
   const handleMicClick = () => {
     if (!isListening) {
@@ -26,6 +28,7 @@ export function AIVoiceAssistant() {
             {
               role: "ai",
               text: "Risk exceeded volatility threshold during low liquidity conditions.",
+              action: "override",
             },
           ]);
         }, 800);
@@ -97,16 +100,29 @@ export function AIVoiceAssistant() {
                   className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <div
-                    className={`max-w-[85%] rounded p-3 ${
+                    className={`max-w-[85%] rounded p-3 flex flex-col gap-2 ${
                       msg.role === "user"
                         ? "bg-[#111] border border-[#333] text-gray-300 rounded-tr-none"
                         : "bg-[#a855f7]/10 border border-[#a855f7]/30 text-[#a855f7] rounded-tl-none"
                     }`}
                   >
-                    {msg.role === "ai" && (
-                      <Volume2 className="w-3 h-3 mb-1 opacity-50" />
+                    <div>
+                      {msg.role === "ai" && (
+                        <Volume2 className="w-3 h-3 mb-1 opacity-50 inline-block mr-2" />
+                      )}
+                      {msg.text}
+                    </div>
+                    {msg.action === "override" && (
+                      <div className="mt-2 pt-2 border-t border-[#a855f7]/20 flex justify-end">
+                        <button 
+                         onClick={() => setOverrideActive(true)}
+                         disabled={overrideActive}
+                         className={`text-[9px] uppercase tracking-widest font-bold px-2 py-1 rounded border transition-colors ${overrideActive ? "bg-[#39ff14]/10 border-[#39ff14]/30 text-[#39ff14]" : "bg-[#ff4500]/10 border-[#ff4500]/30 text-[#ff4500] hover:bg-[#ff4500]/20"}`}
+                        >
+                          {overrideActive ? "Override Executed" : "Execute Override"}
+                        </button>
+                      </div>
                     )}
-                    {msg.text}
                   </div>
                 </motion.div>
               ))}

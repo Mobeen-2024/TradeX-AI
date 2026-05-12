@@ -14,21 +14,21 @@ import { useState } from "react";
 import { useMarketRegime } from "./contexts/MarketRegimeContext";
 
 export type TabType =
-  | "Dashboard"
-  | "Markets"
-  | "AI Command Center"
-  | "Trade Execution"
-  | "Portfolio"
-  | "Risk Engine"
-  | "Strategy Lab"
-  | "Memory Vault"
-  | "Analytics"
-  | "Simulation Engine"
-  | "System Logs"
-  | "Settings";
+  | "Command Center"
+  | "Market Intelligence"
+  | "Multi-Agent Protocol"
+  | "Autonomous Execution"
+  | "Alpha Generation"
+  | "Risk Management"
+  | "Strategy Engine"
+  | "Agent Memory"
+  | "Technical Engine"
+  | "Backtesting Engine"
+  | "System Telemetry"
+  | "System Configuration";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("Dashboard");
+  const [activeTab, setActiveTab] = useState<TabType>("Command Center");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { regime } = useMarketRegime();
 
