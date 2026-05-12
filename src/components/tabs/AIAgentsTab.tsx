@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Cpu, BrainCircuit, Activity, ShieldAlert, GitMerge, ChevronRight, Lock, Eye, AlertCircle, Terminal, Command } from 'lucide-react';
+import { Cpu, BrainCircuit, Activity, ShieldAlert, GitMerge, Terminal, Zap, CheckCircle2, AlertTriangle, Eye, Command, Clock, Network } from 'lucide-react';
 
 export function AIAgentsTab() {
-  const [selectedAgent, setSelectedAgent] = useState<'Quant-v4' | 'Risk-Guardian' | 'Alpha-Seeker'>('Quant-v4');
+  const [selectedAgent, setSelectedAgent] = useState<'Director' | 'Quant-v4' | 'Risk-Guardian' | 'Alpha-Seeker'>('Director');
 
   return (
     <motion.div 
@@ -12,187 +12,225 @@ export function AIAgentsTab() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
       transition={{ duration: 0.4 }}
-      className="flex flex-col min-h-full py-8 w-full font-mono"
+      className="flex flex-col min-h-full py-8 w-full font-mono gap-6"
     >
-      <div className="flex justify-between items-end mb-8 border-b border-[#1a1a1a] pb-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3 font-sans">
-            <BrainCircuit className="w-8 h-8 text-[#00f0ff]" />
-            AI Agent Fleet
-          </h1>
-          <p className="text-gray-500 text-xs mt-2 uppercase tracking-widest">Autonomous Trading Orchestration & Logic</p>
+      {/* HEADER / AI GLOBAL STATUS */}
+      <div className="bg-[#050505] border border-[#1a1a1a] p-5 rounded-sm relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-[0_0_40px_rgba(0,240,255,0.02)]">
+        <div className="absolute top-0 left-0 w-1 h-full bg-[#00f0ff] shadow-[0_0_20px_#00f0ff]"></div>
+        
+        <div className="pl-4">
+           <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-3 font-sans mb-1">
+             <BrainCircuit className="w-8 h-8 text-[#00f0ff]" />
+             AI Command Center
+           </h1>
+           <p className="text-gray-500 text-xs uppercase tracking-widest flex items-center gap-2">
+             <span className="w-2 h-2 rounded-full bg-[#39ff14] animate-pulse"></span>
+             System Online &middot; Autonomous Mode Engaged
+           </p>
         </div>
-        <div className="flex gap-2">
-          {['Quant-v4', 'Risk-Guardian', 'Alpha-Seeker'].map((agent) => (
-            <button 
-              key={agent}
-              onClick={() => setSelectedAgent(agent as any)}
-              className={`px-4 py-2 rounded-sm text-xs font-bold uppercase transition-all ${selectedAgent === agent ? 'bg-[#00f0ff]/10 text-[#00f0ff] border border-[#00f0ff]/50' : 'bg-[#0a0a0a] text-gray-500 border border-[#222] hover:border-[#333]'}`}
-            >
-              {agent}
-            </button>
+
+        <div className="flex gap-6 pr-4">
+           <div className="flex flex-col">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5"><Activity className="w-3 h-3 text-[#0ea5e9]" /> System Load</span>
+              <span className="text-white font-mono text-xl">24<span className="text-gray-500 text-sm">%</span></span>
+           </div>
+           <div className="w-px h-10 bg-[#1a1a1a]"></div>
+           <div className="flex flex-col">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5"><Zap className="w-3 h-3 text-[#facc15]" /> Latency</span>
+              <span className="text-white font-mono text-xl">12<span className="text-gray-500 text-sm">ms</span></span>
+           </div>
+           <div className="w-px h-10 bg-[#1a1a1a]"></div>
+           <div className="flex flex-col">
+              <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5"><Network className="w-3 h-3 text-[#a855f7]" /> Active Tasks</span>
+              <span className="text-white font-mono text-xl">1,432</span>
+           </div>
+        </div>
+      </div>
+
+      {/* MIDDLE SECTION: AGENTS & THINKING PANEL */}
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        
+        {/* AGENTS LIST (Left Col) */}
+        <div className="col-span-1 xl:col-span-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between mb-2">
+             <h3 className="text-[#0ea5e9] font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+               <Cpu className="w-4 h-4" />
+               Agent Subsystems
+             </h3>
+             <span className="text-[9px] bg-[#111] text-gray-500 px-2 py-0.5 rounded border border-[#222]">4 ONLINE</span>
+          </div>
+
+          {[
+            { id: 'Director', name: 'Master Director', role: 'Orchestration', status: 'Active', color: '#00f0ff' },
+            { id: 'Quant-v4', name: 'Quant Engine v4', role: 'Data & Signals', status: 'Processing', color: '#a855f7' },
+            { id: 'Risk-Guardian', name: 'Risk Guardian', role: 'Constraints', status: 'Monitoring', color: '#facc15' },
+            { id: 'Alpha-Seeker', name: 'Alpha Seeker', role: 'Execution', status: 'Idle', color: '#39ff14' },
+          ].map((agent) => (
+             <button 
+               key={agent.id}
+               onClick={() => setSelectedAgent(agent.id as any)}
+               className={`group flex items-center justify-between p-4 rounded-sm border transition-all text-left ${selectedAgent === agent.id ? `bg-[${agent.color}]/5 border-[${agent.color}]/30` : 'bg-[#050505] border-[#1a1a1a] hover:border-[#333]'}`}
+               style={{ borderLeftColor: selectedAgent === agent.id ? agent.color : undefined, borderLeftWidth: selectedAgent === agent.id ? '4px' : '1px' }}
+             >
+                <div>
+                   <h4 className="text-gray-200 text-sm font-bold font-sans group-hover:text-white transition-colors">{agent.name}</h4>
+                   <span className="text-[10px] text-gray-500 uppercase tracking-widest">{agent.role}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                   <div className="relative flex h-2 w-2">
+                     {agent.status === 'Processing' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ backgroundColor: agent.color }}></span>}
+                     <span className="relative inline-flex rounded-full h-2 w-2" style={{ backgroundColor: agent.color }}></span>
+                   </div>
+                   <span className="text-[9px] uppercase tracking-widest" style={{ color: agent.color }}>{agent.status}</span>
+                </div>
+             </button>
           ))}
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Agent State & Transparency */}
-        <div className="col-span-1 lg:col-span-2 flex flex-col gap-6">
-          
-          {/* Active Reasoning Box */}
-          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-[#00f0ff]/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-[#00f0ff]/10 transition-colors duration-1000 hidden"></div>
-            
-            <h3 className="text-[#00f0ff] font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Eye className="w-4 h-4" />
-              Active System Reasoning
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="border border-[#1a1a1a] bg-[#0a0a0a] rounded-sm p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
-                     <Command className="w-3.5 h-3.5 text-[#00f0ff]" />
-                     Intent Evaluator
-                  </span>
-                  <span className="text-[#39ff14] text-xs font-bold bg-[#39ff14]/10 px-2 py-0.5 rounded border border-[#39ff14]/20">88% CONFIDENCE</span>
-                </div>
-                <p className="text-sm text-gray-300 leading-relaxed font-sans">
-                  Analyzing multi-timeframe divergence on BTC/USDT. Institutional limit orders stacking at $64,150. Volume nodes support local bottom.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="border border-[#1a1a1a] bg-[#0a0a0a] rounded-lg p-3">
-                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-2">Risk Check</span>
-                   <div className="flex items-center gap-2 text-sm">
-                     <ShieldAlert className="w-4 h-4 text-[#ff4500]" />
-                     <span className="text-gray-300">Expected Drawdown: <span className="text-[#ff4500]">1.2%</span></span>
-                   </div>
-                </div>
-                <div className="border border-[#1a1a1a] bg-[#0a0a0a] rounded-lg p-3">
-                   <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-2">Decision</span>
-                   <div className="flex items-center gap-2 text-sm">
-                     <GitMerge className="w-4 h-4 text-[#39ff14]" />
-                     <span className="text-gray-300">Action: <span className="text-[#39ff14] font-bold">DEPLOY LONG</span></span>
-                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Neural Adaptation / Learning Matrix */}
-          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 relative overflow-hidden flex-1">
-             <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-[#1a1a1a] pb-3">
-              <Cpu className="w-4 h-4 text-[#a855f7]" />
-              Strategy Adaptation Matrix
-            </h3>
-
-            <div className="flex items-center gap-8 px-4 h-32 relative">
-               {/* Animated Connection Lines */}
-               <div className="absolute top-1/2 left-0 w-full h-[1px] bg-[#1a1a1a] -translate-y-1/2 flex">
-                 <div className="h-full bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent w-1/2 opacity-60"></div>
-               </div>
-
-               {/* Nodes */}
-               <div className="relative z-10 flex flex-col items-center gap-2">
-                 <div className="w-12 h-12 rounded-full bg-[#0a0a0a] border-2 border-[#1a1a1a] flex items-center justify-center relative shadow-[0_0_20px_rgba(0,0,0,1)]">
-                    <Activity className="w-5 h-5 text-gray-500" />
-                 </div>
-                 <span className="text-[9px] uppercase tracking-widest text-gray-500 block text-center min-w-[80px]">Ingest Data</span>
-               </div>
+        {/* AI THINKING PANEL (Right Col) */}
+        <div className="col-span-1 xl:col-span-8 flex flex-col">
+           <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 relative overflow-hidden flex-1 shadow-2xl flex flex-col h-[400px]">
+             
+             {/* Dynamic background based on selected agent */}
+             <div className={`absolute top-0 right-0 w-96 h-96 blur-[120px] rounded-full pointer-events-none opacity-10 transition-colors duration-1000 ${selectedAgent === 'Director' ? 'bg-[#00f0ff]' : selectedAgent === 'Quant-v4' ? 'bg-[#a855f7]' : selectedAgent === 'Risk-Guardian' ? 'bg-[#facc15]' : 'bg-[#39ff14]'}`}></div>
+             
+             <div className="flex justify-between items-center mb-6 border-b border-[#1a1a1a] pb-4 sticky z-10">
+               <h3 className="text-gray-300 font-bold text-sm uppercase tracking-widest flex items-center gap-3">
+                 <Eye className="w-5 h-5 text-current" style={{ color: selectedAgent === 'Director' ? '#00f0ff' : selectedAgent === 'Quant-v4' ? '#a855f7' : selectedAgent === 'Risk-Guardian' ? '#facc15' : '#39ff14' }} />
+                 Internal Reasoning — {selectedAgent}
+               </h3>
                
-               <div className="relative z-10 flex flex-col items-center gap-2">
-                 <div className="w-12 h-12 rounded-full bg-[#0ea5e9]/10 border-2 border-[#0ea5e9]/30 flex items-center justify-center relative shadow-[0_0_20px_rgba(14,165,233,0.1)]">
-                    <BrainCircuit className="w-5 h-5 text-[#0ea5e9]" />
-
-                 </div>
-                 <span className="text-[9px] uppercase tracking-widest text-[#0ea5e9] block text-center min-w-[80px]">Model Evaluation</span>
+               <div className="flex items-center gap-3 text-[10px] font-bold text-gray-500 uppercase">
+                  <span>Confidence</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-16 h-1 bg-[#111] rounded-full overflow-hidden">
+                      <div className="h-full w-[94%]" style={{ backgroundColor: selectedAgent === 'Director' ? '#00f0ff' : selectedAgent === 'Quant-v4' ? '#a855f7' : selectedAgent === 'Risk-Guardian' ? '#facc15' : '#39ff14' }}></div>
+                    </div>
+                    <span>94%</span>
+                  </div>
                </div>
+             </div>
 
-               <div className="relative z-10 flex flex-col items-center gap-2">
-                 <div className="w-12 h-12 rounded-full bg-[#84cc16]/10 border-2 border-[#84cc16]/30 flex items-center justify-center relative shadow-[0_0_20px_rgba(132,204,22,0.1)]">
-                    <GitMerge className="w-5 h-5 text-[#84cc16]" />
-                 </div>
-                 <span className="text-[9px] uppercase tracking-widest text-[#84cc16] block text-center min-w-[80px]">Adjust Weights</span>
-               </div>
-            </div>
+             {/* Reasoning Stream Container */}
+             <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4">
+                
+                {/* Simulated Reasoning Blocks based on agent */}
+                <AnimatePresence mode="popLayout">
+                  <motion.div
+                    key={`${selectedAgent}-block1`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="border-l-2 pl-4 py-1"
+                    style={{ borderLeftColor: '#333' }}
+                  >
+                    <div className="text-[10px] text-gray-500 mb-1">00:00.012</div>
+                    <div className="text-gray-300">
+                      {selectedAgent === 'Director' && 'Synthesizing inputs from Quant-v4 and Risk-Guardian... Market regime identified as Mean-Reverting. Volatility contraction detected.'}
+                      {selectedAgent === 'Quant-v4' && 'Scanning order books across Binance, Bybit, Coinbase. High frequency iceberg orders detected at $64,150.'}
+                      {selectedAgent === 'Risk-Guardian' && 'Calculating global drawdown exposure. Current portfolio VAR (Value at Risk) is 0.8%. Within acceptable limits.'}
+                      {selectedAgent === 'Alpha-Seeker' && 'Awaiting prime entry condition. Limit targets staging...'}
+                    </div>
+                  </motion.div>
 
-            <div className="mt-4 bg-[#0a0a0a] border border-[#1a1a1a] rounded p-3 text-[11px] text-gray-400">
-              <span className="text-[#a855f7] font-bold mr-2">LOG:</span>
-              Detected volatility compression in 5m timeframe. Adapting local scalping parameters: tightening stop-loss by 0.15% to defend capital against sudden breakout.
-            </div>
-          </div>
-        </div>
+                  <motion.div
+                    key={`${selectedAgent}-block2`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="border-l-2 pl-4 py-1 mt-4"
+                    style={{ borderLeftColor: '#333' }}
+                  >
+                    <div className="text-[10px] text-gray-500 mb-1">00:00.045</div>
+                    <div className="text-gray-300">
+                      {selectedAgent === 'Director' && 'Divergence identified between Spot volume and Perps open interest. Probability of fakeout: High. Directing Alpha-Seeker to hold execution.'}
+                      {selectedAgent === 'Quant-v4' && 'Generating probability matrix for next 15-minute candle. 68% chance of downward sweep. Feeding to Master Director.'}
+                      {selectedAgent === 'Risk-Guardian' && 'Simulating stress test for $2,000 flash crash. Liquidation distance is safe. Margin requirement optimal.'}
+                      {selectedAgent === 'Alpha-Seeker' && 'Adjusting entry bids to match Quant-v4 sweep prediction. New bids placed down to $63,800.'}
+                    </div>
+                  </motion.div>
 
-        {/* Right Column: Constraints & History */}
-        <div className="col-span-1 flex flex-col gap-6">
-           <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 border-t-[3px] border-t-[#ff4500]">
-             <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-[#ff4500]" />
-              Rejected Trades Tracker
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="group cursor-pointer">
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-gray-300 font-bold">SHORT ETH/USDT</span>
-                  <span className="text-[#ff4500]">Blocked</span>
-                </div>
-                <p className="text-[10px] text-gray-500 border-l border-[#ff4500]/50 pl-2 ml-1 transition-all group-hover:text-gray-400 group-hover:border-[#ff4500]">
-                  Reason: Macro correlation divergence. BTC is trending upwards while ETH shows weakness. Risk engine blocked short due to systemic upward drag probability (82%).
-                </p>
-              </div>
-              <div className="w-full h-[1px] bg-[#1a1a1a]"></div>
-              <div className="group cursor-pointer">
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="text-gray-300 font-bold">LONG SOL/USDT</span>
-                  <span className="text-[#ff4500]">Blocked</span>
-                </div>
-                <p className="text-[10px] text-gray-500 border-l border-[#ff4500]/50 pl-2 ml-1 transition-all group-hover:text-gray-400 group-hover:border-[#ff4500]">
-                  Reason: Portfolio margin utilization exceeds 85% threshold. Trade rejected by strict risk constraint layer.
-                </p>
-              </div>
-            </div>
-           </div>
+                  <motion.div
+                    key={`${selectedAgent}-block3`}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                    className="border-l-2 pl-4 py-2 mt-4 bg-[#111]/50 border border-[#222]"
+                    style={{ borderLeftColor: selectedAgent === 'Director' ? '#00f0ff' : selectedAgent === 'Quant-v4' ? '#a855f7' : selectedAgent === 'Risk-Guardian' ? '#facc15' : '#39ff14' }}
+                  >
+                    <div className="text-[10px] flex items-center gap-2 mb-1">
+                       <Command className="w-3 h-3" style={{ color: selectedAgent === 'Director' ? '#00f0ff' : selectedAgent === 'Quant-v4' ? '#a855f7' : selectedAgent === 'Risk-Guardian' ? '#facc15' : '#39ff14' }} />
+                       <span style={{ color: selectedAgent === 'Director' ? '#00f0ff' : selectedAgent === 'Quant-v4' ? '#a855f7' : selectedAgent === 'Risk-Guardian' ? '#facc15' : '#39ff14' }}>OUTPUT CONCLUSION</span>
+                    </div>
+                    <div className="text-white font-bold tracking-wide">
+                      {selectedAgent === 'Director' && 'RESOLUTION: DELAY LONG. Await downward liquidation sweep and reassess.'}
+                      {selectedAgent === 'Quant-v4' && 'SIGNAL VERIFIED: Bearish trap forming. Confidence: 94%.'}
+                      {selectedAgent === 'Risk-Guardian' && 'CLEARANCE GRANTED: All risk parameters green for execution when prompted.'}
+                      {selectedAgent === 'Alpha-Seeker' && 'ORDERS RESTING: Sniper bounds configured.'}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
 
-           <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col">
-              <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-gray-600" />
-                Immutable Rules
-              </h3>
-
-              <ul className="space-y-4 flex-1">
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-500 mt-1.5"></div>
-                  <div>
-                    <span className="text-xs text-gray-200 block mb-0.5">Maximum Drawdown Limit</span>
-                    <span className="text-[10px] text-gray-500">Hard stop at 1.5% per session.</span>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-500 mt-1.5"></div>
-                  <div>
-                    <span className="text-xs text-gray-200 block mb-0.5">Latency Threshold</span>
-                    <span className="text-[10px] text-gray-500">Abort execution if API &gt; 50ms.</span>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-500 mt-1.5"></div>
-                  <div>
-                    <span className="text-xs text-gray-200 block mb-0.5">No Naked Options</span>
-                    <span className="text-[10px] text-gray-500">Agent must hedge delta exposure.</span>
-                  </div>
-                </li>
-              </ul>
-              
-              <button className="w-full py-2 bg-[#0a0a0a] border border-[#1a1a1a] hover:border-[#333] hover:text-white transition-colors text-xs text-gray-400 rounded flex items-center justify-center gap-2 mt-4 font-bold uppercase tracking-widest cursor-pointer">
-                Modify Constraints
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+             </div>
            </div>
         </div>
       </div>
+
+      {/* BOTTOM SECTION: DECISION FLOW TIMELINE */}
+      <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 relative">
+         <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-[#1a1a1a] pb-4">
+           <Clock className="w-4 h-4 text-gray-400" />
+           Agent Decision Pipeline (Last 60s)
+         </h3>
+
+         <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-[#333] before:to-transparent pt-4">
+            
+            {/* Timeline Item 1 */}
+            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#00f0ff]/20 text-[#00f0ff] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(0,240,255,0.5)]">
+                <BrainCircuit className="w-3 h-3" />
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
+                <div className="flex items-center justify-between space-x-2 mb-1">
+                  <div className="font-bold text-gray-200 text-sm">Director Consensus Reached</div>
+                  <time className="text-[10px] text-[#00f0ff]">Just now</time>
+                </div>
+                <div className="text-gray-500 text-xs">Aborted immediate market buy. Instructed Alpha-Seeker to place laddered limit bids to capture pending liquidity sweep.</div>
+              </div>
+            </div>
+
+            {/* Timeline Item 2 */}
+            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#facc15]/20 text-[#facc15] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(250,204,21,0.5)]">
+                <ShieldAlert className="w-3 h-3" />
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
+                <div className="flex items-center justify-between space-x-2 mb-1">
+                  <div className="font-bold text-gray-200 text-sm">Risk Guardian Intervention</div>
+                  <time className="text-[10px] text-gray-600">12s ago</time>
+                </div>
+                <div className="text-gray-500 text-xs text-right">Flagged proposed market entry due to slippage risk on thin order book slice. Suggested limits instead.</div>
+              </div>
+            </div>
+
+            {/* Timeline Item 3 */}
+            <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+              <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#a855f7]/20 text-[#a855f7] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(168,85,247,0.5)]">
+                <Activity className="w-3 h-3" />
+              </div>
+              <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
+                <div className="flex items-center justify-between space-x-2 mb-1">
+                  <div className="font-bold text-gray-200 text-sm">Quant Engine Pattern Match</div>
+                  <time className="text-[10px] text-gray-600">45s ago</time>
+                </div>
+                <div className="text-gray-500 text-xs">Detected Wyckoff Spring pattern formation on 15m timeframe across BTC/USDT pairs. High probability of mean reversion.</div>
+              </div>
+            </div>
+
+         </div>
+      </div>
+
     </motion.div>
   );
 }
+

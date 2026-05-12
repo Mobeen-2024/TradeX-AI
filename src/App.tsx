@@ -7,12 +7,18 @@ import { Sidebar } from './components/Sidebar';
 import { MainContent } from './components/MainContent';
 import { TopIntelligenceBar } from './components/TopIntelligenceBar';
 import { BottomSystemTerminal } from './components/BottomSystemTerminal';
+import { AuthFlow } from './components/auth/AuthFlow';
 import { useState } from 'react';
 
 export type TabType = 'Dashboard' | 'Markets' | 'AI Command Center' | 'Trade Execution' | 'Portfolio' | 'Risk Engine' | 'Strategy Lab' | 'Memory Vault' | 'Analytics' | 'Simulation Engine' | 'System Logs' | 'Settings';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('Dashboard');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  if (!isAuthenticated) {
+    return <AuthFlow onAuthenticate={() => setIsAuthenticated(true)} />;
+  }
 
   return (
     <div className="min-h-[100dvh] bg-[#000] flex flex-col selection:bg-[#00f0ff]/30 overflow-hidden text-white font-sans">

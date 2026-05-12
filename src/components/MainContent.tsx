@@ -9,6 +9,7 @@ import { MarketResearchTab } from './tabs/MarketResearchTab';
 import { ChartAnalysisTab } from './tabs/ChartAnalysisTab';
 import { HistoryTab } from './tabs/HistoryTab';
 import { LibraryTab } from './tabs/LibraryTab';
+import { DashboardTab } from './tabs/DashboardTab';
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
   return (
@@ -21,7 +22,9 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
       <div className="flex-1 overflow-y-auto w-full relative z-10 no-scrollbar pb-10 scroll-smooth">
         <div className="max-w-[1400px] mx-auto px-8 pt-[4vh]">
           <AnimatePresence mode="wait">
-            {activeTab === 'Markets' ? (
+            {activeTab === 'Dashboard' ? (
+              <DashboardTab />
+            ) : activeTab === 'Markets' ? (
               <LiveMarketsTab />
             ) : activeTab === 'AI Command Center' ? (
               <AIAgentsTab />

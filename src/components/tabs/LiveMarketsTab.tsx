@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { LineChart, Activity, Zap, ShieldAlert, Cpu, Eye, ArrowUpRight, ArrowDownRight, Radio, Terminal } from 'lucide-react';
+import { Radio, ArrowUpRight, ShieldAlert, Activity, Cpu, Eye, BarChart2 } from 'lucide-react';
+import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries } from 'lightweight-charts';
 
 function ExecutionLog() {
   const [logs, setLogs] = useState<string[]>([]);
@@ -13,30 +14,20 @@ function ExecutionLog() {
       "RISK_ENGINE: CHECKING MARGIN ALLOCATION. NORMAL.",
       "AGENT: DETECTED SPOOFING ALGORITHM ON L2 ASK MATRIX.",
       "SYSTEM: RECALIBRATING MICRO-TREND THRESHOLDS...",
-      "EXECUTION: DYNAMIC HEDGE DEPLOYED (H-ID: x88B1).",
-      "AGENT: LIQUIDITY VACUUM IDENTIFIED BELOW $64,150.",
-      "RISK_ENGINE: EXPOSURE DELTA ADJUSTED -> 0.4.",
     ];
     let i = 0;
     const interval = setInterval(() => {
-      setLogs(prev => [...prev, messages[i % messages.length]]);
+      setLogs(prev => [...prev.slice(-4), messages[i % messages.length]]);
       i++;
     }, 2500);
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [logs]);
-
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden h-[160px] flex flex-col font-mono text-[10px] leading-tight">
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#00f0ff] to-transparent opacity-30"></div>
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight">
       <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
-        <Terminal className="w-3.5 h-3.5 text-[#00f0ff]" />
-        Tactical Execution Feed
+        <Activity className="w-3.5 h-3.5 text-[#00f0ff]" />
+        Execution Feed
       </h3>
       <div ref={scrollRef} className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1.5 scroll-smooth">
         {logs.map((log, i) => (
@@ -45,13 +36,225 @@ function ExecutionLog() {
             <span className={
               log.startsWith('AGENT:') ? 'text-[#0ea5e9]' :
               log.startsWith('RISK_ENGINE:') ? 'text-[#84cc16]' :
-              log.startsWith('EXECUTION:') ? 'text-[#ff4500]' :
               'text-gray-400'
             }>{log}</span>
           </div>
         ))}
       </div>
-      <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-[#050505] to-transparent pointer-events-none"></div>
+    </div>
+  );
+}
+
+function MarketChart() {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+
+  useEffect(() => {
+    if (!chartContainerRef.current) return;
+
+    const handleResize = () => {
+      if (chartRef.current && chartContainerRef.current) {
+        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: '#050505' },
+        textColor: '#666',
+      },
+      grid: {
+        vertLines: { color: '#111' },
+        horzLines: { color: '#111' },
+      },
+      timeScale: {
+        timeVisible: true,
+        secondsVisible: false,
+        borderColor: '#1a1a1a',
+      },
+      rightPriceScale: {
+        borderColor: '#1a1a1a',
+      },
+      crosshair: {
+        mode: 1,
+        vertLine: {
+          color: '#0ea5e9',
+          labelBackgroundColor: '#0ea5e9',
+        },
+        horzLine: {
+          color: '#0ea5e9',
+          labelBackgroundColor: '#0ea5e9',
+        },
+      },
+    });
+
+    chartRef.current = chart;
+
+    const candlestickSeries = chart.addSeries(CandlestickSeries, {
+      upColor: '#39ff14',
+      downColor: '#ff4500',
+      borderVisible: false,
+      wickUpColor: '#39ff14',
+      wickDownColor: '#ff4500',
+    });
+
+    candlestickSeriesRef.current = candlestickSeries;
+
+    // Generate initial dummy data
+    const initialData = [];
+    let currentTime = Math.floor(Date.now() / 1000) - 86400 * 30; // 30 days ago
+    let lastClose = 60000;
+
+    for (let i = 0; i < 100; i++) {
+        const open = lastClose;
+        const close = open + (Math.random() - 0.5) * 1000;
+        const high = Math.max(open, close) + Math.random() * 500;
+        const low = Math.min(open, close) - Math.random() * 500;
+        
+        initialData.push({
+            time: currentTime as any,
+            open,
+            high,
+            low,
+            close,
+        });
+
+        lastClose = close;
+        currentTime += 86400; // Next day
+    }
+
+    candlestickSeries.setData(initialData);
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, []);
+
+  return <div ref={chartContainerRef} className="w-full h-[400px]" />;
+}
+
+function TradeExecutionPanel() {
+  const [side, setSide] = useState<'buy' | 'sell'>('buy');
+  const [orderType, setOrderType] = useState('limit');
+  const [size, setSize] = useState('1.5');
+  const [price, setPrice] = useState('64200.5');
+
+  return (
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-full font-sans shadow-2xl relative overflow-hidden max-h-[900px]">
+      {/* Decorative background glow */}
+      <div className={`absolute -top-20 -right-20 w-40 h-40 blur-[80px] rounded-full pointer-events-none opacity-20 ${side === 'buy' ? 'bg-[#39ff14]' : 'bg-[#ff4500]'}`}></div>
+
+      <div className="flex border border-[#222] rounded-sm overflow-hidden mb-5 sticky z-10 shrink-0 bg-[#0a0a0a]">
+        <button 
+          onClick={() => setSide('buy')}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all border-r border-[#222] ${side === 'buy' ? 'bg-[#39ff14]/10 text-[#39ff14] shadow-[inset_0_-2px_0_#39ff14]' : 'text-gray-500 hover:bg-white/5'}`}>
+          Buy / Long
+        </button>
+        <button 
+          onClick={() => setSide('sell')}
+          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all ${side === 'sell' ? 'bg-[#ff4500]/10 text-[#ff4500] shadow-[inset_0_-2px_0_#ff4500]' : 'text-gray-500 hover:bg-white/5'}`}>
+          Sell / Short
+        </button>
+      </div>
+
+      <div className="flex gap-2 mb-5">
+        {['limit', 'market', 'stop'].map(t => (
+          <button 
+            key={t}
+            onClick={() => setOrderType(t)}
+            className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all shadow-none ${orderType === t ? 'bg-[#1a1a1a] text-white border border-[#333]' : 'bg-transparent text-gray-500 border border-transparent hover:bg-[#111]'}`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-4 flex-1 overflow-y-auto no-scrollbar pr-1 pb-4">
+        {/* Price & Size */}
+        <div className="space-y-4">
+          <div>
+            <div className="flex justify-between text-xs font-mono mb-1.5">
+              <span className="text-gray-500">Order Price (USDT)</span>
+              <span className="text-gray-300">~ $64,200.50</span>
+            </div>
+            <div className="relative group">
+              <input type="text" value={price} onChange={e => setPrice(e.target.value)} className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors" disabled={orderType==='market'} />
+              {orderType === 'market' && <div className="absolute inset-0 bg-[#000]/50 flex items-center px-3 text-sm text-gray-500 font-mono">Market Price</div>}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between text-xs font-mono mb-1.5">
+              <span className="text-gray-500">Position Size (BTC)</span>
+              <span className="text-gray-300 flex items-center gap-1">Max: 4.25</span>
+            </div>
+            <div className="relative">
+              <input type="text" value={size} onChange={e => setSize(e.target.value)} className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors" />
+            </div>
+            <div className="flex gap-1 mt-2">
+              {[25, 50, 75, 100].map(pct => (
+                 <button key={pct} className="flex-1 bg-[#111] hover:bg-[#1a1a1a] text-gray-400 py-1 text-[10px] font-mono rounded-sm border border-[#222] transition-colors">{pct}%</button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-[#1a1a1a] my-4"></div>
+
+        {/* AI & Risk Metrics */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center group">
+            <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5 text-[#00f0ff]"/> AI Confidence</span>
+            <div className="flex items-center gap-2">
+              <div className="w-16 h-1 bg-[#111] rounded-full overflow-hidden">
+                <div className="h-full bg-[#00f0ff] w-[88%] shadow-[0_0_8px_rgba(0,240,255,0.8)]"></div>
+              </div>
+              <span className="text-[#00f0ff] font-mono text-xs font-bold">88%</span>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center bg-[#facc15]/5 border border-[#facc15]/10 p-2 rounded-sm">
+            <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-1.5"><ShieldAlert className="w-3.5 h-3.5 text-[#facc15]"/> Risk Score</span>
+            <span className="text-[#facc15] font-mono text-xs font-bold border border-[#facc15]/20 bg-[#facc15]/10 px-1.5 py-0.5 rounded-sm">MED (4.2)</span>
+          </div>
+        </div>
+
+        <div className="h-px bg-[#1a1a1a] my-4"></div>
+
+        {/* TP / SL */}
+        <div className="grid grid-cols-2 gap-3 mb-2">
+          <div>
+             <div className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mb-1.5">Take Profit</div>
+             <input type="text" placeholder="Optional" className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#39ff14]/50" />
+          </div>
+          <div>
+             <div className="text-[10px] uppercase tracking-widest font-bold text-gray-500 mb-1.5">Stop Loss</div>
+             <input type="text" placeholder="Optional" className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#ff4500]/50" />
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="bg-[#111] p-3 rounded-sm border border-[#222] space-y-2 mt-4 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-transparent to-[#1a1a1a] pointer-events-none"></div>
+           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
+             <span>Required Margin</span>
+             <span className="text-white font-bold">~ $9,630.07</span>
+           </div>
+           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
+             <span>Estimated Fee</span>
+             <span className="text-white font-bold">~ $1.92</span>
+           </div>
+        </div>
+      </div>
+
+      <button className={`w-full py-3.5 rounded-sm font-bold tracking-widest uppercase text-sm mt-4 hover:brightness-110 transition-all flex items-center justify-center gap-2 relative overflow-hidden group shrink-0 ${side === 'buy' ? 'bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.15)]' : 'bg-[#ff4500] text-white shadow-[0_0_15px_rgba(255,69,0,0.15)]'}`}>
+        <div className="absolute inset-0 w-[150%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+        {side === 'buy' ? 'Execute Long' : 'Execute Short'}
+      </button>
     </div>
   );
 }
@@ -60,14 +263,14 @@ export function LiveMarketsTab() {
   const [dataStream, setDataStream] = useState<number[]>(Array(50).fill(64200));
 
   useEffect(() => {
-    // Simulate high-frequency data stream
+    // Simulate high-frequency data stream for small updates
     const interval = setInterval(() => {
       setDataStream(prev => {
         const last = prev[prev.length - 1];
         const change = (Math.random() - 0.5) * 50;
         return [...prev.slice(1), last + change];
       });
-    }, 100);
+    }, 500);
     return () => clearInterval(interval);
   }, []);
 
@@ -80,7 +283,6 @@ export function LiveMarketsTab() {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="flex flex-col min-h-full pb-10 w-full"
     >
-      {/* Top Header / Market Status */}
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#1a1a1a]">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white mb-1 flex items-center gap-3">
@@ -103,17 +305,12 @@ export function LiveMarketsTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         
-        {/* Main Chart Area (Spans 3 cols) */}
-        <div className="col-span-1 lg:col-span-3 flex flex-col gap-6">
-          
-          {/* Main Price Action Canvas Component */}
-          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 relative overflow-hidden shadow-none">
-            <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:20px_20px] opacity-10"></div>
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#00f0ff]/5 blur-[120px] rounded-full pointer-events-none hidden"></div>
-            
-            <div className="relative z-10 flex justify-between items-start mb-6">
+        {/* Main Chart Area (Spans 7 cols) */}
+        <div className="col-span-1 xl:col-span-7 flex flex-col gap-6">
+          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col">
+            <div className="flex justify-between items-start mb-6">
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <h2 className="text-2xl font-bold text-white tracking-tight">BTC/USDT-PERP</h2>
@@ -128,137 +325,99 @@ export function LiveMarketsTab() {
               
               <div className="flex gap-2">
                 {['1m', '5m', '15m', '1H', '4H', '1D'].map((time) => (
-                  <button key={time} className={`px-4 py-1.5 rounded-sm text-xs font-bold cursor-pointer transition-all ${time === '1m' ? 'bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/30' : 'bg-[#0a0a0a] text-gray-500 hover:text-gray-300 border border-[#222]'}`}>
+                  <button key={time} className={`px-4 py-1.5 rounded-sm text-xs font-bold cursor-pointer transition-all ${time === '1D' ? 'bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/30' : 'bg-[#0a0a0a] text-gray-500 hover:text-gray-300 border border-[#222]'}`}>
                     {time}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Fake Chart Area */}
-            <div className="h-[380px] w-full border border-[#1a1a1a] rounded-sm bg-[#0a0a0a] relative flex flex-col items-center justify-center overflow-hidden">
-               {/* Trend Line (Fake SVG) */}
-               <svg className="absolute w-full h-full preserve-3d" viewBox="0 0 1000 400" preserveAspectRatio="none">
-                 <defs>
-                    <linearGradient id="glowLine" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="transparent" />
-                      <stop offset="50%" stopColor="#00f0ff" />
-                      <stop offset="100%" stopColor="#84cc16" />
-                    </linearGradient>
-                    <linearGradient id="fadeBottom" x1="0" y1="0" x2="0" y2="1">
-                       <stop offset="0%" stopColor="#00f0ff" stopOpacity="0.2"/>
-                       <stop offset="100%" stopColor="#000" stopOpacity="0"/>
-                    </linearGradient>
-                 </defs>
-                 
-                 <path 
-                   d={`M 0,300 ${dataStream.map((val, i) => `L ${i * (1000 / 50)},${400 - ((val - 64000) / 400) * 400}`).join(' ')}`}
-                   fill="none"
-                   stroke="url(#glowLine)"
-                   strokeWidth="3"
-                   className="transition-all duration-75"
-                 />
-                 <path 
-                   d={`M 0,400 L 0,300 ${dataStream.map((val, i) => `L ${i * (1000 / 50)},${400 - ((val - 64000) / 400) * 400}`).join(' ')} L 1000,400 Z`}
-                   fill="url(#fadeBottom)"
-                   className="transition-all duration-75"
-                 />
-                 
-                 {/* Current Price Dot */}
-                 <circle cx="1000" cy={400 - ((dataStream[dataStream.length - 1] - 64000) / 400) * 400} r="6" fill="#39ff14" />
-               </svg>
+            {/* TradingView / lightweight-charts Instance */}
+            <div className="w-full border border-[#1a1a1a] rounded-sm bg-[#050505] relative flex flex-col pt-1">
+               <MarketChart />
                
-               {/* Vertical grid lines overlay */}
-               <div className="absolute inset-0 flex justify-between px-10 pointer-events-none opacity-20">
-                 {[...Array(6)].map((_, i) => (
-                   <div key={i} className="w-[1px] h-full bg-[#00f0ff] mix-blend-screen"></div>
-                 ))}
-               </div>
-            </div>
-            
-            {/* AI Agent Analysis Banner */}
-            <div className="mt-4 bg-[#ff4500]/5 border border-[#ff4500]/20 rounded-sm p-3 flex items-start gap-4">
-               <div className="w-8 h-8 rounded-sm bg-[#ff4500]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                 <ShieldAlert className="w-4 h-4 text-[#ff4500]" />
-               </div>
-               <div>
-                  <h4 className="text-[#ff4500] font-bold text-sm tracking-wide flex items-center gap-2">
-                    Critical Liquidity Zone Approaching
-                    <span className="text-[10px] bg-[#ff4500] text-black px-1.5 py-0.5 rounded font-black uppercase">Alpha Signal</span>
-                  </h4>
-                  <p className="text-[#ff4500]/70 text-xs mt-1 leading-relaxed">
-                    Agent 'Quant-v4' detected anomalous high-density ask walls at $64,350. Order flow imbalance suggests a 78% probability of rejection. Algorithm adjusting risk parameters from 1.5 to 0.8 automatically.
-                  </p>
+               {/* AI Trend Detection Overlay (Floating) */}
+               <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-[#39ff14]/30 rounded-lg p-3 w-64 shadow-xl z-20">
+                 <h4 className="flex items-center gap-2 text-[#39ff14] font-mono font-bold text-[10px] uppercase mb-2">
+                   <ShieldAlert className="w-3.5 h-3.5" /> Trend Divergence
+                 </h4>
+                 <p className="text-gray-300 text-xs leading-relaxed font-sans">
+                   Bullish divergence forming on 4H OBV indicator. Institutional accumulation detected.
+                 </p>
                </div>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            {/* Volume Delta Analysis */}
-            <div className="bg-[#050505] border border-[#1a1a1a] rounded-3xl p-5 relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-[#0ea5e9] to-transparent opacity-50"></div>
-              <h3 className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-[#0ea5e9]" />
-                Cumulative Volume Delta
-              </h3>
-              <div className="flex items-end gap-2 h-24 mb-2">
-                {[...Array(20)].map((_, i) => {
-                  const isPositive = Math.random() > 0.4;
-                  const height = Math.random() * 100;
-                  return (
-                     <div key={i} className="flex-1 rounded-t-sm flex items-end justify-center group relative h-full">
-                       <div 
-                         className={`w-full rounded-sm transition-all duration-300 ${isPositive ? 'bg-[#39ff14] shadow-[0_0_8px_rgba(57,255,20,0.3)]' : 'bg-[#ff4500] shadow-[0_0_8px_rgba(255,69,0,0.3)]'}`} 
-                         style={{ height: `${height}%` }}
-                       ></div>
-                     </div>
-                  );
-                })}
-              </div>
+            {/* Liquidity Heatmap */}
+            <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-[200px]">
+               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <Activity className="w-4 h-4 text-[#a855f7]" />
+                 Liquidity Heatmap
+               </h3>
+               <div className="flex-1 w-full flex flex-col gap-1 relative overflow-hidden">
+                 {/* Simulated Heatmap Blocks */}
+                 {[...Array(6)].map((_, r) => (
+                    <div key={r} className="flex gap-1 flex-1">
+                      {[...Array(12)].map((_, c) => {
+                         const intensity = Math.random();
+                         let color = 'bg-[#111]';
+                         if (intensity > 0.8) color = 'bg-[#ff4500]';
+                         else if (intensity > 0.6) color = 'bg-[#facc15]';
+                         else if (intensity > 0.4) color = 'bg-[#00f0ff]';
+                         return <div key={c} className={`flex-1 rounded-sm opacity-80 ${color}`}></div>;
+                      })}
+                    </div>
+                 ))}
+                 {/* Overlay Text */}
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <span className="bg-black/80 px-3 py-1 font-mono text-xs text-white border border-[#222] rounded shadow-lg backdrop-blur">Concentration at $64,800</span>
+                 </div>
+               </div>
             </div>
 
-            {/* AI Decision Confidence */}
-            <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 relative overflow-hidden">
-               <div className="absolute bottom-0 right-0 w-32 h-32 bg-[#84cc16]/5 blur-[50px] rounded-full hidden"></div>
-               <h3 className="text-gray-400 font-bold text-[11px] uppercase tracking-widest mb-4 flex items-center gap-2">
-                 <Cpu className="w-4 h-4 text-[#84cc16]" />
-                 AI Model Confidence
+            {/* Volatility Meter */}
+            <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-[200px]">
+               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+                 <Cpu className="w-4 h-4 text-[#ff00f0]" />
+                 Implied Volatility
                </h3>
-               <div className="flex items-center justify-center p-2 mt-4 relative">
-                  <svg className="w-24 h-24 transform -rotate-90">
-                    <circle cx="48" cy="48" r="40" stroke="#111" strokeWidth="8" fill="none" />
-                    <circle cx="48" cy="48" r="40" stroke="#84cc16" strokeWidth="8" fill="none" strokeDasharray="251.2" strokeDashoffset="45" strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                     <span className="text-2xl font-bold text-white tracking-tighter">82<span className="text-sm text-gray-400">%</span></span>
-                     <span className="text-[#84cc16] text-[10px] font-bold uppercase tracking-widest mt-0.5">Strong</span>
+               <div className="flex-1 flex flex-col justify-center items-center relative">
+                  <div className="flex items-center gap-4 w-full px-6">
+                    <div className="text-gray-500 font-mono text-xs">Low</div>
+                    <div className="flex-1 h-3 bg-[#111] rounded-full overflow-hidden relative shadow-inner">
+                      <div className="absolute top-0 left-0 h-full w-[78%] bg-gradient-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full"></div>
+                    </div>
+                    <div className="text-gray-500 font-mono text-xs">High</div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <span className="text-3xl font-bold font-sans text-white tracking-tight">78.4</span>
+                    <span className="text-gray-500 font-mono text-[10px] ml-1">IV Rank</span>
                   </div>
                </div>
             </div>
           </div>
-          
-          <ExecutionLog />
         </div>
 
-        {/* Right Sidebar: Order Book & Trades (Spans 1 col) */}
-        <div className="col-span-1 flex flex-col gap-6">
-          <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col overflow-hidden relative shadow-none">
+        {/* Order Book & Execution Log (Spans 2 cols) */}
+        <div className="col-span-1 xl:col-span-2 flex flex-col gap-6">
+          <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col relative overflow-hidden shadow-none max-h-[600px]">
              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a1a1a]">
-               <h3 className="text-gray-400 font-bold text-[11px] uppercase tracking-widest flex items-center gap-2">
+               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
                  <Eye className="w-4 h-4 text-[#00f0ff]" />
-                 L2 Market Depth
+                 L2 Order Book
                </h3>
              </div>
              
-             {/* Dynamic Asks (Radiant Coral/Red) */}
-             <div className="flex-1 flex flex-col-reverse justify-end gap-[2px] font-mono text-[11px] overflow-hidden">
-               {[...Array(14)].map((_, i) => {
+             {/* Asks (Red) */}
+             <div className="flex-1 flex flex-col-reverse justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
+               {[...Array(18)].map((_, i) => {
                  const price = (64200 + i * 1.5).toFixed(1);
                  const size = (Math.random() * 5).toFixed(3);
                  const sum = (Math.random() * 100).toFixed(1);
                  const depth = Math.random() * 100;
                  return (
-                   <div key={`ask-${i}`} className="flex justify-between relative py-1 px-1 group cursor-pointer">
+                   <div key={`ask-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5">
                      <div className="absolute top-0 right-0 h-full bg-[#ff4500]/15" style={{ width: `${depth}%`}}></div>
                      <span className="text-[#ff4500] relative z-10 font-bold">{price}</span>
                      <span className="text-gray-400 relative z-10">{size}</span>
@@ -269,20 +428,20 @@ export function LiveMarketsTab() {
              </div>
              
              {/* Spread Display */}
-             <div className="py-3 my-2 border-y border-[#222] flex justify-between items-center text-sm font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)]">
-               <span className="text-[#39ff14] flex items-center"><ArrowUpRight className="w-4 h-4 mr-1"/> 64,198.5</span>
-               <span className="text-[#00f0ff] text-xs">Spread: 1.5</span>
+             <div className="py-2 border-y border-[#222] my-1 flex justify-between items-center text-xs font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
+               <span className="text-[#39ff14] flex items-center"><ArrowUpRight className="w-3.5 h-3.5 mr-1"/> 64,198.5</span>
+               <span className="text-[#00f0ff] text-[10px]">Spread: 1.5</span>
              </div>
 
-             {/* Dynamic Bids (Sky Blue/Teal/Lime) */}
-             <div className="flex-1 flex flex-col gap-[2px] font-mono text-[11px] overflow-hidden">
-               {[...Array(14)].map((_, i) => {
+             {/* Bids (Green/Teal) */}
+             <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
+               {[...Array(18)].map((_, i) => {
                  const price = (64197 - i * 1.5).toFixed(1);
                  const size = (Math.random() * 5).toFixed(3);
                  const sum = (Math.random() * 100).toFixed(1);
                  const depth = Math.random() * 100;
                  return (
-                   <div key={`bid-${i}`} className="flex justify-between relative py-1 px-1 group cursor-pointer">
+                   <div key={`bid-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5">
                      <div className="absolute top-0 right-0 h-full bg-[#00f0ff]/10" style={{ width: `${depth}%`}}></div>
                      <span className="text-[#0ea5e9] relative z-10 font-bold">{price}</span>
                      <span className="text-gray-400 relative z-10">{size}</span>
@@ -292,9 +451,17 @@ export function LiveMarketsTab() {
                })}
              </div>
           </div>
+          
+          <ExecutionLog />
+        </div>
+
+        {/* Trade Execution Panel (Spans 3 cols) */}
+        <div className="col-span-1 xl:col-span-3">
+          <TradeExecutionPanel />
         </div>
 
       </div>
     </motion.div>
   );
 }
+
