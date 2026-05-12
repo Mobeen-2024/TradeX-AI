@@ -76,7 +76,7 @@ function ExecutionLog() {
   );
 }
 
-function MarketChart() {
+function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -88,6 +88,30 @@ function MarketChart() {
     theme: "green" as "green" | "cyan" | "orange",
     label: "Predictive State Active"
   });
+
+  const [toggles, setToggles] = useState({
+    sniping: false,
+    orderbook: false,
+    volume: true
+  });
+
+  const getBinanceInterval = (tf: string) => {
+    if (tf.endsWith('H')) return tf.replace('H', 'h');
+    if (tf.endsWith('D')) return tf.replace('D', 'd');
+    if (tf.endsWith('W')) return tf.replace('W', 'w');
+    return tf; // 1m, 3m, 5m, 15m, 30m, 1M
+  };
+
+  const getTimeframeSeconds = (tf: string) => {
+    const value = parseInt(tf);
+    const unit = tf.slice(-1);
+    if (unit === 'm') return value * 60;
+    if (unit === 'H' || unit === 'h') return value * 3600;
+    if (unit === 'D' || unit === 'd') return value * 86400;
+    if (unit === 'W' || unit === 'w') return value * 86400 * 7;
+    if (unit === 'M') return value * 86400 * 30;
+    return 60;
+  };
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -176,10 +200,16 @@ function MarketChart() {
       crosshairMarkerVisible: false,
     });
 
+    const binanceInterval = getBinanceInterval(activeTimeframe);
+    const intervalSeconds = getTimeframeSeconds(activeTimeframe);
+    let aborted = false;
+    let activeWs: WebSocket | null = null;
+
     // Load Real Historical Data
-    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=100')
+    fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${binanceInterval}&limit=100`)
       .then(res => res.json())
       .then(data => {
+        if (aborted) return;
         if (!candlestickSeriesRef.current || !chartRef.current) return;
         
         const historicalData = data.map((d: any) => ({
@@ -207,7 +237,7 @@ function MarketChart() {
         const insights = [
           {
             title: "Volatility Expansion",
-            desc: "Bollinger Bands widening on 1m. Expecting sharp directional move within minutes.",
+            desc: `Bollinger Bands widening on ${activeTimeframe}. Expecting sharp directional move soon.`,
             confidence: 85,
             theme: "cyan" as const,
             label: "Pattern Detected"
@@ -228,7 +258,7 @@ function MarketChart() {
           },
           {
             title: "Momentum Alignment",
-            desc: "1m, 5m, and 15m all showing bullish confluence. Micro trend intact.",
+            desc: "Multiple timeframes showing bullish confluence. Micro trend intact.",
             confidence: 98,
             theme: "green" as const,
             label: "Micro Bullish"
@@ -237,10 +267,11 @@ function MarketChart() {
 
         let lastKnownTime = historicalData.length > 0 ? historicalData[historicalData.length - 1].time : 0;
 
-        // Connect to Real-Time WebSocket for 1m klines
-        const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@kline_1m");
+        // Connect to Real-Time WebSocket
+        activeWs = new WebSocket(`wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`);
         
-        ws.onmessage = (event) => {
+        activeWs.onmessage = (event) => {
+          if (aborted) return;
           if (!candlestickSeriesRef.current) return;
           try {
             const message = JSON.parse(event.data);
@@ -286,7 +317,7 @@ function MarketChart() {
                 const maxHigh = Math.max(...recentData.map((d: any) => d.high), rtHigh);
                 
                 const srTimeStart = recentData[0].time as number;
-                const srTimeEnd = rtTime + 600; // project 10 mins into future
+                const srTimeEnd = rtTime + (intervalSeconds * 10); // project into future
                 
                 supportSeries.setData([
                     { time: srTimeStart as any, value: minLow },
@@ -305,7 +336,7 @@ function MarketChart() {
             let pVal = rtClose;
             const aiOptimism = Math.random() > 0.5 ? 1 : -1;
             for (let j = 1; j <= 10; j++) {
-                pTime += 60; // 1m intervals
+                pTime += intervalSeconds;
                 pVal += aiOptimism * 10 + (Math.random() * 20 - 5);
                 predictionData.push({ time: pTime as any, value: pVal });
             }
@@ -317,20 +348,18 @@ function MarketChart() {
              console.error("Kline ws error", e);
           }
         };
-
-        // Attach ws to window or ref to close it
-        (chartContainerRef.current as any).ws = ws;
       })
       .catch((err: any) => console.error("Error fetching binance klines", err));
 
     return () => {
-      if(chartContainerRef.current && (chartContainerRef.current as any).ws) {
-          (chartContainerRef.current as any).ws.close();
+      aborted = true;
+      if(activeWs) {
+          activeWs.close();
       }
       resizeObserver.disconnect();
       chart.remove();
     };
-  }, []);
+  }, [activeTimeframe]);
 
   return (
     <div className="relative w-full h-[407px] ml-0">
@@ -381,19 +410,28 @@ function MarketChart() {
         </motion.div>
         
         <div className="bg-[#050505]/60 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto self-end flex gap-2">
-           <button className="p-1.5 hover:bg-[#00f0ff]/20 rounded-lg text-gray-400 hover:text-[#00f0ff] transition-colors tooltip-trigger relative group">
+           <button 
+             onClick={() => setToggles(p => ({ ...p, sniping: !p.sniping }))}
+             className={`p-1.5 rounded-lg transition-colors tooltip-trigger relative group ${toggles.sniping ? 'bg-[#00f0ff]/20 text-[#00f0ff]' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+           >
              <Crosshair className="w-4 h-4" />
              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 border border-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono whitespace-nowrap pointer-events-none text-white">
                 Auto-target Sniping
              </div>
            </button>
-           <button className="p-1.5 hover:bg-[#00f0ff]/20 rounded-lg text-gray-400 hover:text-[#00f0ff] transition-colors tooltip-trigger relative group">
+           <button 
+             onClick={() => setToggles(p => ({ ...p, orderbook: !p.orderbook }))}
+             className={`p-1.5 rounded-lg transition-colors tooltip-trigger relative group ${toggles.orderbook ? 'bg-[#00f0ff]/20 text-[#00f0ff]' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+           >
              <Layers className="w-4 h-4" />
              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 border border-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono whitespace-nowrap pointer-events-none text-white">
                 Overlay Order Book
              </div>
            </button>
-           <button className="p-1.5 hover:bg-[#00f0ff]/20 rounded-lg text-gray-400 hover:text-[#00f0ff] transition-colors tooltip-trigger relative group">
+           <button 
+             onClick={() => setToggles(p => ({ ...p, volume: !p.volume }))}
+             className={`p-1.5 rounded-lg transition-colors tooltip-trigger relative group ${toggles.volume ? 'bg-[#00f0ff]/20 text-[#00f0ff]' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'}`}
+           >
              <BarChart2 className="w-4 h-4" />
              <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 border border-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono whitespace-nowrap pointer-events-none text-white">
                 Volume Profile
@@ -410,6 +448,27 @@ function TradeExecutionPanel() {
   const [orderType, setOrderType] = useState("limit");
   const [size, setSize] = useState("1.5");
   const [price, setPrice] = useState("64200.5");
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [executionResult, setExecutionResult] = useState<string | null>(null);
+
+  const maxPosition = 4.25;
+
+  const handleSizePercent = (pct: number) => {
+    setSize(((maxPosition * pct) / 100).toFixed(4));
+  };
+
+  const handleExecute = () => {
+    setIsExecuting(true);
+    setExecutionResult(null);
+    setTimeout(() => {
+      setIsExecuting(false);
+      setExecutionResult(`[SUCCESS] ${side.toUpperCase()} ${size} BTC @ ${orderType === 'market' ? 'Market' : price}`);
+      setTimeout(() => setExecutionResult(null), 3000);
+    }, 1500);
+  };
+
+  const requiredMargin = (parseFloat(size || "0") * parseFloat(price || "0") * 0.1).toFixed(2);
+  const estFee = (parseFloat(size || "0") * parseFloat(price || "0") * 0.0002).toFixed(2);
 
   return (
     <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-full font-sans shadow-2xl relative overflow-hidden max-h-[900px]">
@@ -455,11 +514,11 @@ function TradeExecutionPanel() {
             </div>
             <div className="relative group">
               <input
-                type="text"
+                type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors"
-                disabled={orderType === "market"}
+                disabled={orderType === "market" || isExecuting}
               />
               {orderType === "market" && (
                 <div className="absolute inset-0 bg-[#000]/50 flex items-center px-3 text-sm text-gray-500 font-mono">
@@ -473,21 +532,24 @@ function TradeExecutionPanel() {
             <div className="flex justify-between text-xs font-mono mb-1.5">
               <span className="text-gray-500">Position Size (BTC)</span>
               <span className="text-gray-300 flex items-center gap-1">
-                Max: 4.25
+                Max: {maxPosition.toFixed(2)}
               </span>
             </div>
             <div className="relative">
               <input
-                type="text"
+                type="number"
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
                 className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors"
+                disabled={isExecuting}
               />
             </div>
             <div className="flex gap-1 mt-2">
               {[25, 50, 75, 100].map((pct) => (
                 <button
                   key={pct}
+                  onClick={() => handleSizePercent(pct)}
+                  disabled={isExecuting}
                   className="flex-1 bg-[#111] hover:bg-[#1a1a1a] text-gray-400 py-1 text-[10px] font-mono rounded-sm border border-[#222] transition-colors"
                 >
                   {pct}%
@@ -533,8 +595,9 @@ function TradeExecutionPanel() {
               Take Profit
             </div>
             <input
-              type="text"
+              type="number"
               placeholder="Optional"
+              disabled={isExecuting}
               className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#39ff14]/50"
             />
           </div>
@@ -543,8 +606,9 @@ function TradeExecutionPanel() {
               Stop Loss
             </div>
             <input
-              type="text"
+              type="number"
               placeholder="Optional"
+              disabled={isExecuting}
               className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#ff4500]/50"
             />
           </div>
@@ -555,20 +619,31 @@ function TradeExecutionPanel() {
           <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-transparent to-[#1a1a1a] pointer-events-none"></div>
           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
             <span>Required Margin</span>
-            <span className="text-white font-bold">~ $9,630.07</span>
+            <span className="text-white font-bold">~ ${isNaN(Number(requiredMargin)) ? "0.00" : requiredMargin}</span>
           </div>
           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
             <span>Estimated Fee</span>
-            <span className="text-white font-bold">~ $1.92</span>
+            <span className="text-white font-bold">~ ${isNaN(Number(estFee)) ? "0.00" : estFee}</span>
           </div>
         </div>
       </div>
 
       <button
-        className={`w-full py-3.5 rounded-sm font-bold tracking-widest uppercase text-sm mt-4 hover:brightness-110 transition-all flex items-center justify-center gap-2 relative overflow-hidden group shrink-0 ${side === "buy" ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.15)]" : "bg-[#ff4500] text-white shadow-[0_0_15px_rgba(255,69,0,0.15)]"}`}
+        onClick={handleExecute}
+        disabled={isExecuting}
+        className={`w-full py-3.5 rounded-sm font-bold tracking-widest uppercase text-sm mt-4 transition-all flex items-center justify-center gap-2 relative overflow-hidden group shrink-0 ${isExecuting ? "bg-gray-600 text-gray-300" : side === "buy" ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.15)] hover:brightness-110" : "bg-[#ff4500] text-white shadow-[0_0_15px_rgba(255,69,0,0.15)] hover:brightness-110"}`}
       >
-        <div className="absolute inset-0 w-[150%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
-        {side === "buy" ? "Execute Long" : "Execute Short"}
+        {!isExecuting && (
+          <div className="absolute inset-0 w-[150%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+        )}
+        {executionResult ? (
+          <span className="text-xs">{executionResult}</span>
+        ) : isExecuting ? (
+          <div className="flex items-center gap-2">
+            <span className="block w-4 h-4 rounded-full border-2 border-t-transparent border-current animate-spin"></span>
+            Executing...
+          </div>
+        ) : side === "buy" ? "Execute Long" : "Execute Short"}
       </button>
     </div>
   );
@@ -579,6 +654,10 @@ export function LiveMarketsTab() {
   const [priceStats, setPriceStats] = useState({ changePercent: 2.14, isPositive: true });
   const [activeTimeframe, setActiveTimeframe] = useState("1D");
   const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
+  const [ivRank, setIvRank] = useState(78.4);
+  const [heatmapBlocks, setHeatmapBlocks] = useState<number[][]>(() => 
+    Array(6).fill(0).map(() => Array(10).fill(0).map(() => Math.random()))
+  );
 
   useEffect(() => {
     const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
@@ -603,8 +682,22 @@ export function LiveMarketsTab() {
       }
     };
 
+    const ivInterval = setInterval(() => {
+      setIvRank((prev) => {
+        const newValue = prev + (Math.random() - 0.5) * 5;
+        return Math.max(0, Math.min(100, newValue));
+      });
+      setHeatmapBlocks((prev) => 
+        prev.map(row => row.map(val => {
+          const change = (Math.random() - 0.5) * 0.3;
+          return Math.max(0, Math.min(1, val + change));
+        }))
+      );
+    }, 2000);
+
     return () => {
       ws.close();
+      clearInterval(ivInterval);
     };
   }, []);
 
@@ -762,7 +855,7 @@ export function LiveMarketsTab() {
             <div className="w-full border border-white/5 rounded-xl bg-[#030303]/80 relative flex flex-col pt-1 shadow-inner overflow-hidden flex-1">
               {/* Subtle inner glow for the chart container */}
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0ea5e9]/[0.02] pointer-events-none"></div>
-              <MarketChart />
+              <MarketChart activeTimeframe={activeTimeframe} />
             </div>
           </div>
 
@@ -777,11 +870,10 @@ export function LiveMarketsTab() {
               </h3>
               <div className="flex-1 w-full flex flex-col gap-1 relative overflow-hidden rounded-lg z-10">
                 {/* Simulated Heatmap Blocks */}
-                {[...Array(6)].map((_, r) => (
+                {heatmapBlocks.map((row, r) => (
                   <div key={r} className="flex gap-1 flex-1">
-                    {[...Array(12)].map((_, c) => {
-                      const intensity = Math.random();
-                      let color = "bg-[#111]";
+                    {row.map((intensity, c) => {
+                      let color = "bg-[#111] shadow-none";
                       if (intensity > 0.8) color = "bg-[#ff4500] shadow-[0_0_8px_rgba(255,69,0,0.5)]";
                       else if (intensity > 0.6) color = "bg-[#facc15] shadow-[0_0_8px_rgba(250,204,21,0.3)]";
                       else if (intensity > 0.4) color = "bg-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.3)]";
@@ -814,13 +906,16 @@ export function LiveMarketsTab() {
                 <div className="flex items-center gap-4 w-full px-6">
                   <div className="text-gray-500 font-mono text-[10px] uppercase tracking-widest font-bold">Low</div>
                   <div className="flex-1 h-2.5 bg-[#0a0a0a] rounded-full overflow-hidden relative shadow-inner border border-white/5">
-                    <div className="absolute top-0 left-0 h-full w-[78%] bg-gradient-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full shadow-[0_0_10px_rgba(255,69,0,0.5)]"></div>
+                    <div 
+                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full shadow-[0_0_10px_rgba(255,69,0,0.5)] transition-all duration-1000 ease-out"
+                      style={{ width: `${ivRank}%` }}
+                    ></div>
                   </div>
                   <div className="text-gray-500 font-mono text-[10px] uppercase tracking-widest font-bold">High</div>
                 </div>
                 <div className="mt-5 text-center flex flex-col items-center">
-                  <span className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 tracking-tight drop-shadow-sm">
-                    78.4
+                  <span className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 tracking-tight drop-shadow-sm transition-all duration-500">
+                    {ivRank.toFixed(1)}
                   </span>
                   <span className="text-[#ff00f0] font-mono text-[9px] uppercase tracking-widest mt-1 border border-[#ff00f0]/30 bg-[#ff00f0]/10 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(255,0,240,0.2)]">
                     IV Rank
