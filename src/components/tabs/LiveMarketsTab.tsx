@@ -17,6 +17,8 @@ import {
   IChartApi,
   ISeriesApi,
   CandlestickSeries,
+  LineSeries,
+  createSeriesMarkers,
 } from "lightweight-charts";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 
@@ -111,10 +113,12 @@ function MarketChart() {
         vertLine: {
           color: "#0ea5e9",
           labelBackgroundColor: "#0ea5e9",
+          style: 3, // dashed
         },
         horzLine: {
           color: "#0ea5e9",
           labelBackgroundColor: "#0ea5e9",
+          style: 3, // dashed
         },
       },
     });
@@ -131,16 +135,49 @@ function MarketChart() {
 
     candlestickSeriesRef.current = candlestickSeries;
 
+    // AI Prediction Series (Line)
+    const predictionSeries = chart.addSeries(LineSeries, {
+      color: '#00f0ff',
+      lineWidth: 2,
+      lineStyle: 3, // Dashed line for prediction
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    // Support/Resistance Series (Line)
+    const supportSeries = chart.addSeries(LineSeries, {
+      color: '#39ff14',
+      lineWidth: 1,
+      lineType: 0,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+
+    const resistanceSeries = chart.addSeries(LineSeries, {
+      color: '#ff4500',
+      lineWidth: 1,
+      lineType: 0,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      crosshairMarkerVisible: false,
+    });
+
     // Generate initial dummy data
     const initialData = [];
-    let currentTime = Math.floor(Date.now() / 1000) - 86400 * 30; // 30 days ago
-    let lastClose = 60000;
+    let currentTime = Math.floor(Date.now() / 1000) - 86400 * 100; // 100 days ago
+    let lastClose = 50000;
+
+    const markers: any[] = [];
 
     for (let i = 0; i < 100; i++) {
+        // Build an uptrend then downtrend
       const open = lastClose;
-      const close = open + (Math.random() - 0.5) * 1000;
-      const high = Math.max(open, close) + Math.random() * 500;
-      const low = Math.min(open, close) - Math.random() * 500;
+      const trend = Math.sin(i / 15) * 500;
+      const close = open + trend + (Math.random() - 0.5) * 1500;
+      const high = Math.max(open, close) + Math.random() * 800;
+      const low = Math.min(open, close) - Math.random() * 800;
 
       initialData.push({
         time: currentTime as any,
@@ -150,11 +187,57 @@ function MarketChart() {
         close,
       });
 
+      // Add AI Markers randomly
+      if (i === 20) {
+          markers.push({ time: currentTime, position: 'belowBar', color: '#00f0ff', shape: 'arrowUp', text: 'AI Accumulation Zone', size: 1.5 });
+      } else if (i === 50) {
+          markers.push({ time: currentTime, position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', text: 'AI Distribution Detected', size: 1.5 });
+      } else if (i === 80) {
+          markers.push({ time: currentTime, position: 'belowBar', color: '#39ff14', shape: 'circle', text: 'Bullish Divergence', size: 1.5 });
+      }
+
       lastClose = close;
       currentTime += 86400; // Next day
     }
 
     candlestickSeries.setData(initialData);
+    
+    // Add Markers to Candlestick Series
+    createSeriesMarkers(candlestickSeries, markers);
+
+    // Add Prediction line for the future
+    const lastDataPoint = initialData[initialData.length - 1];
+    const predictionData = [];
+    let predTime = (lastDataPoint.time as number);
+    let predVal = lastDataPoint.close;
+    
+    predictionData.push({ time: predTime as any, value: predVal });
+    for(let j=1; j<=10; j++) {
+        predTime += 86400;
+        predVal += 200 + (Math.random() * 300); // Upward bias
+        predictionData.push({ time: predTime as any, value: predVal});
+    }
+    predictionSeries.setData(predictionData);
+
+    // Support and Resistance logic
+    const supportData = [];
+    const resistanceData = [];
+    const minLow = Math.min(...initialData.map(d => d.low));
+    const maxHigh = Math.max(...initialData.map(d => d.high));
+
+    // Fill S/R lines across the timeframe
+    for (const dp of initialData) {
+        supportData.push({ time: dp.time, value: minLow + 1000 });
+        resistanceData.push({ time: dp.time, value: maxHigh - 1000 });
+    }
+    // Also extend to prediction
+    for (let i = 1; i < predictionData.length; i++) {
+        const dp = predictionData[i];
+        supportData.push({ time: dp.time, value: minLow + 1000 });
+        resistanceData.push({ time: dp.time, value: maxHigh - 1000 });
+    }
+    supportSeries.setData(supportData);
+    resistanceSeries.setData(resistanceData);
 
     window.addEventListener("resize", handleResize);
 
@@ -164,7 +247,26 @@ function MarketChart() {
     };
   }, []);
 
-  return <div ref={chartContainerRef} className="w-full h-[400px]" />;
+  return (
+    <div className="relative w-full h-[400px]">
+      <div ref={chartContainerRef} className="w-full h-full" />
+      {/* Legend / Overlay info */}
+      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[10px] uppercase tracking-widest">
+         <div className="flex items-center gap-2 text-[#00f0ff]">
+            <div className="w-4 border-b-2 border-dashed border-[#00f0ff]"></div>
+            AI Trajectory Forecast
+         </div>
+         <div className="flex items-center gap-2 text-[#ff4500]">
+            <div className="w-4 border-b-2 border-[#ff4500]"></div>
+            AI Resistance Zone
+         </div>
+         <div className="flex items-center gap-2 text-[#39ff14]">
+            <div className="w-4 border-b-2 border-[#39ff14]"></div>
+            AI Support Zone
+         </div>
+      </div>
+    </div>
+  );
 }
 
 function TradeExecutionPanel() {
@@ -411,15 +513,31 @@ export function LiveMarketsTab() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                {["1m", "5m", "15m", "1H", "4H", "1D"].map((time) => (
-                  <button
-                    key={time}
-                    className={`px-4 py-1.5 rounded-sm text-xs font-bold cursor-pointer transition-all ${time === "1D" ? "bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/30" : "bg-[#0a0a0a] text-gray-500 hover:text-gray-300 border border-[#222]"}`}
-                  >
-                    {time}
-                  </button>
-                ))}
+              <div className="flex justify-between items-center w-full">
+                <div className="flex gap-2">
+                  {["1m", "5m", "15m", "1H", "4H", "1D"].map((time) => (
+                    <button
+                      key={time}
+                      className={`px-4 py-1.5 rounded-sm text-xs font-bold cursor-pointer transition-all ${time === "1D" ? "bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/30" : "bg-[#0a0a0a] text-gray-500 hover:text-gray-300 border border-[#222]"}`}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+                <div className="hidden md:flex gap-4">
+                  <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5 rounded border border-[#222]">
+                    <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">1H</span>
+                    <span className="text-[#39ff14] text-xs font-bold">Bullish</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5 rounded border border-[#222]">
+                    <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">4H</span>
+                    <span className="text-[#39ff14] text-xs font-bold">Bullish</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5 rounded border border-[#222]">
+                    <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">1D</span>
+                    <span className="text-[#facc15] text-xs font-bold">Neutral</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -430,15 +548,18 @@ export function LiveMarketsTab() {
               {/* Floating Toolbars and AI Reasoning Panels (Glassmorphism) */}
               <div className="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none z-20">
                 <div className="bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl p-4 w-72 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto">
-                  <h4 className="flex items-center gap-2 text-[#39ff14] font-mono font-bold text-[10px] uppercase mb-2">
-                    <ShieldAlert className="w-3.5 h-3.5" /> Trend Divergence
-                  </h4>
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="flex items-center gap-2 text-[#39ff14] font-mono font-bold text-[10px] uppercase">
+                      <ShieldAlert className="w-3.5 h-3.5" /> Trend Divergence
+                    </h4>
+                    <AIConfidenceRing confidence={92} size={32} theme="green" />
+                  </div>
                   <p className="text-gray-300 text-xs leading-relaxed font-sans mb-3">
                     Bullish divergence forming on 4H OBV indicator. Institutional
                     accumulation detected.
                   </p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] uppercase tracking-widest font-bold bg-[#39ff14]/10 text-[#39ff14] px-1.5 py-0.5 rounded border border-[#39ff14]/20">AI Confidence: 92%</span>
+                    <span className="text-[9px] uppercase tracking-widest font-bold bg-[#39ff14]/10 text-[#39ff14] px-1.5 py-0.5 rounded border border-[#39ff14]/20">Predictive State Active</span>
                   </div>
                 </div>
                 
