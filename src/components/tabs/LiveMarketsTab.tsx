@@ -80,6 +80,14 @@ function MarketChart() {
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
 
+  const [aiInsight, setAiInsight] = useState({
+    title: "Trend Divergence",
+    desc: "Bullish divergence forming on 4H OBV indicator. Institutional accumulation detected.",
+    confidence: 92,
+    theme: "green" as "green" | "cyan" | "orange",
+    label: "Predictive State Active"
+  });
+
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -93,7 +101,7 @@ function MarketChart() {
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: "#050505" },
+        background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#666",
       },
       grid: {
@@ -203,11 +211,11 @@ function MarketChart() {
     candlestickSeries.setData(initialData);
     
     // Add Markers to Candlestick Series
-    createSeriesMarkers(candlestickSeries, markers);
+    const markerPlugin = createSeriesMarkers(candlestickSeries, markers);
 
     // Add Prediction line for the future
     const lastDataPoint = initialData[initialData.length - 1];
-    const predictionData = [];
+    let predictionData: any[] = [];
     let predTime = (lastDataPoint.time as number);
     let predVal = lastDataPoint.close;
     
@@ -220,28 +228,137 @@ function MarketChart() {
     predictionSeries.setData(predictionData);
 
     // Support and Resistance logic
-    const supportData = [];
-    const resistanceData = [];
-    const minLow = Math.min(...initialData.map(d => d.low));
-    const maxHigh = Math.max(...initialData.map(d => d.high));
+    let supportData: any[] = [];
+    let resistanceData: any[] = [];
+    let minLow = Math.min(...initialData.map(d => d.low));
+    let maxHigh = Math.max(...initialData.map(d => d.high));
 
     // Fill S/R lines across the timeframe
     for (const dp of initialData) {
         supportData.push({ time: dp.time, value: minLow + 1000 });
         resistanceData.push({ time: dp.time, value: maxHigh - 1000 });
     }
+    
+    const initialSupportData = [...supportData];
+    const initialResistanceData = [...resistanceData];
+
     // Also extend to prediction
     for (let i = 1; i < predictionData.length; i++) {
         const dp = predictionData[i];
-        supportData.push({ time: dp.time, value: minLow + 1000 });
-        resistanceData.push({ time: dp.time, value: maxHigh - 1000 });
+        initialSupportData.push({ time: dp.time, value: minLow + 1000 });
+        initialResistanceData.push({ time: dp.time, value: maxHigh - 1000 });
     }
-    supportSeries.setData(supportData);
-    resistanceSeries.setData(resistanceData);
+    supportSeries.setData(initialSupportData);
+    resistanceSeries.setData(initialResistanceData);
 
     window.addEventListener("resize", handleResize);
 
+    // REAL-TIME UPDATES (AI ADAPTIVE SIMULATION)
+    let rtTime = currentTime;
+    let rtClose = lastClose;
+    let tickCount = 0;
+
+    const insights = [
+      {
+        title: "Volatility Expansion",
+        desc: "Bollinger Bands widening on 15m. Expecting sharp directional move within 4 hours.",
+        confidence: 85,
+        theme: "cyan" as const,
+        label: "Pattern Detected"
+      },
+      {
+        title: "Liquidity Sweep",
+        desc: "Order book shows large bids pulling. Price action sweeps local lows, indicating potential reversal.",
+        confidence: 94,
+        theme: "green" as const,
+        label: "AI Recommendation: LONG"
+      },
+      {
+        title: "Bearish Order Block",
+        desc: "Price approached crucial supply zone. Large volume node resistance at $65,100.",
+        confidence: 76,
+        theme: "orange" as const,
+        label: "High Risk Area"
+      },
+      {
+        title: "Multi-Timeframe Alignment",
+        desc: "1D, 4H, and 1H all showing bullish confluence. Macro trend intact.",
+        confidence: 98,
+        theme: "green" as const,
+        label: "Macro Bullish"
+      }
+    ];
+
+    const interval = setInterval(() => {
+        rtTime += 86400; // adding day for the sake of chart timeframe visibility, can be minute
+        
+        const open = rtClose;
+        const trend = Math.sin(tickCount / 5) * 300 + (Math.random() - 0.4) * 400;
+        rtClose = open + trend;
+        const high = Math.max(open, rtClose) + Math.random() * 600;
+        const low = Math.min(open, rtClose) - Math.random() * 600;
+
+        const newDataPoint = { time: rtTime as any, open, high, low, close: rtClose };
+        candlestickSeries.update(newDataPoint);
+
+        // Update Markers Randomly based on AI patterns
+        if (tickCount % 12 === 0) {
+            markers.push({
+                time: rtTime,
+                position: tickCount % 24 === 0 ? 'aboveBar' : 'belowBar',
+                color: tickCount % 24 === 0 ? '#ff4500' : '#39ff14',
+                shape: tickCount % 24 === 0 ? 'arrowDown' : 'circle',
+                text: tickCount % 24 === 0 ? 'Micro Resistance' : 'Micro Support',
+                size: 1.0
+            });
+            // Keep array size manageable
+            if (markers.length > 20) markers.shift();
+            markerPlugin.setMarkers(markers);
+            
+            // Randomly update insight
+            setAiInsight(insights[Math.floor(Math.random() * insights.length)]);
+        }
+
+        // Adaptive Prediction Line Recalculation
+        predictionData = [{ time: rtTime as any, value: rtClose }];
+        let pTime = rtTime;
+        let pVal = rtClose;
+        const aiOptimism = Math.random() > 0.5 ? 1 : -1;
+        for (let j = 1; j <= 10; j++) {
+            pTime += 86400;
+            pVal += aiOptimism * 100 + (Math.random() * 200 - 50);
+            predictionData.push({ time: pTime as any, value: pVal });
+        }
+        // Since prediction goes into the future, we need to completely replace data 
+        predictionSeries.setData(predictionData);
+
+        // Adaptive S/R calculation based on last 50 points
+        // Simplified for simulation: just track overall min/max
+        minLow = Math.min(minLow, low);
+        maxHigh = Math.max(maxHigh, high);
+
+        // We append the single S/R point and recreate the future projection
+        supportData.push({ time: rtTime as any, value: minLow + 1000 });
+        resistanceData.push({ time: rtTime as any, value: maxHigh - 1000 });
+
+        // Build a fresh S/R dataset that includes history + new future prediction
+        const newSupportData = [...supportData];
+        const newResistanceData = [...resistanceData];
+
+        for (let i = 1; i < predictionData.length; i++) {
+            const dp = predictionData[i];
+            newSupportData.push({ time: dp.time as any, value: minLow + 1000 });
+            newResistanceData.push({ time: dp.time as any, value: maxHigh - 1000 });
+        }
+
+        supportSeries.setData(newSupportData);
+        resistanceSeries.setData(newResistanceData);
+
+        tickCount++;
+    }, 2000);
+
     return () => {
+      clearInterval(interval);
       window.removeEventListener("resize", handleResize);
       chart.remove();
     };
@@ -249,9 +366,9 @@ function MarketChart() {
 
   return (
     <div className="relative w-full h-[400px]">
-      <div ref={chartContainerRef} className="w-full h-full" />
+      <div ref={chartContainerRef} className="w-full h-full absolute inset-0" />
       {/* Legend / Overlay info */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[10px] uppercase tracking-widest">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[10px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded">
          <div className="flex items-center gap-2 text-[#00f0ff]">
             <div className="w-4 border-b-2 border-dashed border-[#00f0ff]"></div>
             AI Trajectory Forecast
@@ -264,6 +381,57 @@ function MarketChart() {
             <div className="w-4 border-b-2 border-[#39ff14]"></div>
             AI Support Zone
          </div>
+      </div>
+
+      {/* Floating Toolbars and AI Reasoning Panels (Glassmorphism) */}
+      <div className="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none z-20">
+        <motion.div 
+          key={aiInsight.title}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="bg-[#050505]/60 backdrop-blur-xl border border-white/10 rounded-xl p-4 w-72 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto relative overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#00f0ff]/5 blur-[30px] rounded-full pointer-events-none"></div>
+          <div className="flex justify-between items-start mb-2 relative z-10">
+            <h4 className={`flex items-center gap-2 font-mono font-bold text-[10px] uppercase ${aiInsight.theme === 'green' ? 'text-[#39ff14]' : aiInsight.theme === 'cyan' ? 'text-[#00f0ff]' : 'text-[#ff4500]'}`}>
+              <ShieldAlert className="w-3.5 h-3.5" /> {aiInsight.title}
+            </h4>
+            <AIConfidenceRing confidence={aiInsight.confidence} size={32} theme={aiInsight.theme} />
+          </div>
+          <p className="text-gray-300 text-xs leading-relaxed font-sans mb-3 relative z-10">
+            {aiInsight.desc}
+          </p>
+          <div className="flex items-center gap-2 relative z-10">
+            <span className={`text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded border ${
+              aiInsight.theme === 'green' ? 'bg-[#39ff14]/10 text-[#39ff14] border-[#39ff14]/20' : 
+              aiInsight.theme === 'cyan' ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/20' : 
+              'bg-[#ff4500]/10 text-[#ff4500] border-[#ff4500]/20'
+            }`}>
+              {aiInsight.label}
+            </span>
+          </div>
+        </motion.div>
+        
+        <div className="bg-[#050505]/60 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto self-end flex gap-2">
+           <button className="p-1.5 hover:bg-[#00f0ff]/20 rounded-lg text-gray-400 hover:text-[#00f0ff] transition-colors tooltip-trigger relative group">
+             <Crosshair className="w-4 h-4" />
+             <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 border border-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono whitespace-nowrap pointer-events-none text-white">
+                Auto-target Sniping
+             </div>
+           </button>
+           <button className="p-1.5 hover:bg-[#00f0ff]/20 rounded-lg text-gray-400 hover:text-[#00f0ff] transition-colors tooltip-trigger relative group">
+             <Layers className="w-4 h-4" />
+             <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 border border-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono whitespace-nowrap pointer-events-none text-white">
+                Overlay Order Book
+             </div>
+           </button>
+           <button className="p-1.5 hover:bg-[#00f0ff]/20 rounded-lg text-gray-400 hover:text-[#00f0ff] transition-colors tooltip-trigger relative group">
+             <BarChart2 className="w-4 h-4" />
+             <div className="absolute right-full mr-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-black/90 border border-white/10 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-mono whitespace-nowrap pointer-events-none text-white">
+                Volume Profile
+             </div>
+           </button>
+        </div>
       </div>
     </div>
   );
@@ -462,30 +630,54 @@ export function LiveMarketsTab() {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="flex flex-col min-h-full pb-10 w-full"
     >
-      <div className="flex items-center justify-between mb-8 pb-4 border-b border-[#1a1a1a]">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white mb-1 flex items-center gap-3">
-            <Radio className="w-6 h-6 text-[#0ea5e9]" />
-            Live Market Feed
-          </h1>
-          <p className="text-gray-400 text-sm font-mono tracking-wide">
-            AI-DRIVEN HIGH-FREQUENCY PIPELINE
-          </p>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 p-6 bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
+        {/* Decorative background glow */}
+        <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#0ea5e9]/10 blur-[50px] rounded-full pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#39ff14]/5 to-transparent pointer-events-none"></div>
+
+        <div className="relative z-10 w-full md:w-auto">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.2)]">
+              <Radio className="w-5 h-5 text-[#0ea5e9] animate-pulse" />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+              Live Market Feed
+            </h1>
+          </div>
+          <div className="flex items-center gap-3 pl-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse shadow-[0_0_8px_#39ff14]"></div>
+            <p className="text-gray-400 text-xs font-mono tracking-widest uppercase">
+              AI-Driven High-Frequency Pipeline
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto bg-black/40 md:bg-transparent p-4 md:p-0 rounded-xl md:rounded-none border md:border-none border-white/5">
+          <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
+            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
+              Data Pipeline Info
+            </span>
+            <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#facc15] rounded-full"></span>
+                <span className="text-gray-300 font-mono text-xs md:text-sm">WebSockets</span>
+            </div>
+          </div>
+          <div className="hidden md:block h-10 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+          <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
+            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
               Latency
             </span>
-            <span className="text-[#39ff14] font-mono text-sm">2.4ms</span>
+            <span className="text-[#39ff14] font-mono text-xs md:text-sm drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]">2.4ms</span>
           </div>
-          <div className="h-8 w-[1px] bg-[#1a1a1a]"></div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+          <div className="hidden md:block h-10 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+          <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
+            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
               Network
             </span>
-            <span className="text-[#00f0ff] font-mono text-sm">Connected</span>
+            <div className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full shadow-[0_0_8px_#00f0ff]"></span>
+                <span className="text-[#00f0ff] font-mono text-xs md:text-sm drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">Connected</span>
+            </div>
           </div>
         </div>
       </div>
@@ -544,34 +736,6 @@ export function LiveMarketsTab() {
             {/* TradingView / lightweight-charts Instance */}
             <div className="w-full border border-[#1a1a1a] rounded-sm bg-[#050505] relative flex flex-col pt-1">
               <MarketChart />
-
-              {/* Floating Toolbars and AI Reasoning Panels (Glassmorphism) */}
-              <div className="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none z-20">
-                <div className="bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl p-4 w-72 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="flex items-center gap-2 text-[#39ff14] font-mono font-bold text-[10px] uppercase">
-                      <ShieldAlert className="w-3.5 h-3.5" /> Trend Divergence
-                    </h4>
-                    <AIConfidenceRing confidence={92} size={32} theme="green" />
-                  </div>
-                  <p className="text-gray-300 text-xs leading-relaxed font-sans mb-3">
-                    Bullish divergence forming on 4H OBV indicator. Institutional
-                    accumulation detected.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] uppercase tracking-widest font-bold bg-[#39ff14]/10 text-[#39ff14] px-1.5 py-0.5 rounded border border-[#39ff14]/20">Predictive State Active</span>
-                  </div>
-                </div>
-                
-                <div className="bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto self-end flex gap-2">
-                   <button className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
-                     <Crosshair className="w-4 h-4" />
-                   </button>
-                   <button className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
-                     <Layers className="w-4 h-4" />
-                   </button>
-                </div>
-              </div>
             </div>
           </div>
 
