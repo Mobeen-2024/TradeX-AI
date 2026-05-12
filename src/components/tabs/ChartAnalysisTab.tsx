@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Image as ImageIcon, Maximize2, Crosshair, Layers, Save, SlidersHorizontal, MousePointer2 } from 'lucide-react';
+import { Image as ImageIcon, Maximize2, Crosshair, Layers, Save, SlidersHorizontal, MousePointer2, ShieldAlert } from 'lucide-react';
 
 export function ChartAnalysisTab() {
   return (
@@ -119,8 +119,16 @@ export function ChartAnalysisTab() {
               </div>
               
               {/* AI Overlay Element */}
-              <div className="absolute top-[30%] left-[40%] bg-[#84cc16]/10 border border-[#84cc16]/30 px-2 py-1 rounded text-[#84cc16] text-[10px] font-bold shadow-lg backdrop-blur-md">
-                Orderblock Detected
+              <div className="absolute top-[30%] left-[40%] bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl p-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto w-64">
+                <div className="flex items-center gap-2 text-[#84cc16] font-mono font-bold text-[10px] uppercase mb-2">
+                  <ShieldAlert className="w-3.5 h-3.5" /> Orderblock Detected
+                </div>
+                <div className="text-gray-300 text-xs leading-relaxed font-sans mb-3">
+                  High-probability mitigation block aligned with 4H fair value gap.
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] uppercase tracking-widest font-bold bg-[#84cc16]/10 text-[#84cc16] px-1.5 py-0.5 rounded border border-[#84cc16]/20">Volume Confirm: 88%</span>
+                </div>
               </div>
            </div>
         </div>

@@ -8,6 +8,8 @@ import {
   Cpu,
   Eye,
   BarChart2,
+  Crosshair,
+  Layers,
 } from "lucide-react";
 import {
   createChart,
@@ -425,15 +427,29 @@ export function LiveMarketsTab() {
             <div className="w-full border border-[#1a1a1a] rounded-sm bg-[#050505] relative flex flex-col pt-1">
               <MarketChart />
 
-              {/* AI Trend Detection Overlay (Floating) */}
-              <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md border border-[#39ff14]/30 rounded-lg p-3 w-64 shadow-xl z-20">
-                <h4 className="flex items-center gap-2 text-[#39ff14] font-mono font-bold text-[10px] uppercase mb-2">
-                  <ShieldAlert className="w-3.5 h-3.5" /> Trend Divergence
-                </h4>
-                <p className="text-gray-300 text-xs leading-relaxed font-sans">
-                  Bullish divergence forming on 4H OBV indicator. Institutional
-                  accumulation detected.
-                </p>
+              {/* Floating Toolbars and AI Reasoning Panels (Glassmorphism) */}
+              <div className="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none z-20">
+                <div className="bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl p-4 w-72 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto">
+                  <h4 className="flex items-center gap-2 text-[#39ff14] font-mono font-bold text-[10px] uppercase mb-2">
+                    <ShieldAlert className="w-3.5 h-3.5" /> Trend Divergence
+                  </h4>
+                  <p className="text-gray-300 text-xs leading-relaxed font-sans mb-3">
+                    Bullish divergence forming on 4H OBV indicator. Institutional
+                    accumulation detected.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] uppercase tracking-widest font-bold bg-[#39ff14]/10 text-[#39ff14] px-1.5 py-0.5 rounded border border-[#39ff14]/20">AI Confidence: 92%</span>
+                  </div>
+                </div>
+                
+                <div className="bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto self-end flex gap-2">
+                   <button className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
+                     <Crosshair className="w-4 h-4" />
+                   </button>
+                   <button className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
+                     <Layers className="w-4 h-4" />
+                   </button>
+                </div>
               </div>
             </div>
           </div>
