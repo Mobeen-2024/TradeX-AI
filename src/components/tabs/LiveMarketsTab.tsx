@@ -365,10 +365,10 @@ function MarketChart() {
   }, []);
 
   return (
-    <div className="relative w-full h-[400px]">
+    <div className="relative w-full h-[407px] ml-0">
       <div ref={chartContainerRef} className="w-full h-full absolute inset-0" />
       {/* Legend / Overlay info */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[10px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[9px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded w-[170px] font-bold leading-[11px]">
          <div className="flex items-center gap-2 text-[#00f0ff]">
             <div className="w-4 border-b-2 border-dashed border-[#00f0ff]"></div>
             AI Trajectory Forecast
@@ -628,55 +628,77 @@ export function LiveMarketsTab() {
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="flex flex-col min-h-full pb-10 w-full"
+      className="flex flex-col min-h-full pb-10 w-full pt-[2.5px]"
     >
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8 p-6 bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-2xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4 p-4 bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
         {/* Decorative background glow */}
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#0ea5e9]/10 blur-[50px] rounded-full pointer-events-none"></div>
         <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#39ff14]/5 to-transparent pointer-events-none"></div>
 
-        <div className="relative z-10 w-full md:w-auto">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.2)]">
-              <Radio className="w-5 h-5 text-[#0ea5e9] animate-pulse" />
+        <div className="flex flex-col xl:flex-row xl:items-center gap-4 relative z-10 w-full md:w-auto">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-8 h-8 rounded-lg bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.2)]">
+                <Radio className="w-4 h-4 text-[#0ea5e9] animate-pulse" />
+              </div>
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                Live Market Feed
+              </h1>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-              Live Market Feed
-            </h1>
+            <div className="flex items-center gap-2 pl-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse shadow-[0_0_8px_#39ff14]"></div>
+              <p className="text-gray-400 text-[10px] font-mono tracking-widest uppercase">
+                AI-Driven High-Frequency Pipeline
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-3 pl-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse shadow-[0_0_8px_#39ff14]"></div>
-            <p className="text-gray-400 text-xs font-mono tracking-widest uppercase">
-              AI-Driven High-Frequency Pipeline
-            </p>
+          
+          <div className="hidden xl:block h-10 w-[1px] bg-gradient-to-b from-transparent via-white/15 to-transparent"></div>
+          
+          <div className="flex flex-col items-start xl:items-start xl:pl-2">
+            <div className="flex items-center gap-2 mb-0.5">
+              <h2 className="text-base font-bold text-white tracking-tight">
+                BTC/USDT-PERP
+              </h2>
+              <span className="px-1.5 py-0.5 rounded bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 text-[9px] font-mono font-bold leading-none">
+                LONG
+              </span>
+            </div>
+            <div className="font-mono text-xl text-white font-medium flex items-center gap-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+              <span className="text-gray-500 text-base">$</span>
+              {dataStream[dataStream.length - 1].toFixed(1)}
+              <span className="text-[#39ff14] text-xs flex items-center">
+                <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> 2.14%
+              </span>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-6 relative z-10 w-full md:w-auto bg-black/40 md:bg-transparent p-4 md:p-0 rounded-xl md:rounded-none border md:border-none border-white/5">
+        <div className="flex flex-wrap md:flex-nowrap items-center gap-3 md:gap-5 relative z-10 w-full md:w-auto bg-black/40 md:bg-transparent p-3 md:p-0 rounded-lg md:rounded-none border md:border-none border-white/5">
           <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
-            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
+            <span className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">
               Data Pipeline Info
             </span>
-            <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#facc15] rounded-full"></span>
-                <span className="text-gray-300 font-mono text-xs md:text-sm">WebSockets</span>
+            <div className="flex items-center gap-1.5">
+                <span className="w-1 h-1 bg-[#facc15] rounded-full"></span>
+                <span className="text-gray-300 font-mono text-[10px] md:text-xs leading-none">WebSockets</span>
             </div>
           </div>
-          <div className="hidden md:block h-10 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+          <div className="hidden md:block h-6 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
           <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
-            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
+            <span className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">
               Latency
             </span>
-            <span className="text-[#39ff14] font-mono text-xs md:text-sm drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]">2.4ms</span>
+            <span className="text-[#39ff14] font-mono text-[10px] md:text-xs leading-none drop-shadow-[0_0_8px_rgba(57,255,20,0.5)]">2.4ms</span>
           </div>
-          <div className="hidden md:block h-10 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
+          <div className="hidden md:block h-6 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
           <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
-            <span className="text-[9px] md:text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-1">
+            <span className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">
               Network
             </span>
-            <div className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-[#00f0ff] rounded-full shadow-[0_0_8px_#00f0ff]"></span>
-                <span className="text-[#00f0ff] font-mono text-xs md:text-sm drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">Connected</span>
+            <div className="flex items-center gap-1.5">
+                <span className="w-1 h-1 bg-[#00f0ff] rounded-full shadow-[0_0_8px_#00f0ff]"></span>
+                <span className="text-[#00f0ff] font-mono text-[10px] md:text-xs leading-none drop-shadow-[0_0_8px_rgba(0,240,255,0.5)]">Connected</span>
             </div>
           </div>
         </div>
@@ -686,26 +708,7 @@ export function LiveMarketsTab() {
         {/* Main Chart Area (Spans 7 cols) */}
         <div className="col-span-1 xl:col-span-7 flex flex-col gap-6">
           <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h2 className="text-2xl font-bold text-white tracking-tight">
-                    BTC/USDT-PERP
-                  </h2>
-                  <span className="px-2 py-0.5 rounded-full bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 text-xs font-mono font-bold">
-                    LONG
-                  </span>
-                </div>
-                <div className="font-mono text-4xl text-white font-medium flex items-center gap-2">
-                  <span className="text-gray-500 text-2xl">$</span>
-                  {dataStream[dataStream.length - 1].toFixed(1)}
-                  <span className="text-[#39ff14] text-lg flex items-center mb-1">
-                    <ArrowUpRight className="w-5 h-5 stroke-[3]" /> 2.14%
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center w-full">
+            <div className="flex justify-between items-center w-full mb-6 relative z-10">
                 <div className="flex gap-2">
                   {["1m", "5m", "15m", "1H", "4H", "1D"].map((time) => (
                     <button
@@ -731,7 +734,6 @@ export function LiveMarketsTab() {
                   </div>
                 </div>
               </div>
-            </div>
 
             {/* TradingView / lightweight-charts Instance */}
             <div className="w-full border border-[#1a1a1a] rounded-sm bg-[#050505] relative flex flex-col pt-1">
