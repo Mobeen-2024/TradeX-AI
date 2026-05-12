@@ -164,21 +164,35 @@ export function AIAgentsTab() {
             </span>
           </div>
 
-          {agentsData.map((agent) => (
-            <button
-              key={agent.id}
-              onClick={() => setSelectedAgentId(agent.id)}
-              className={`group flex flex-col p-4 rounded-sm border transition-all text-left w-full ${selectedAgentId === agent.id ? "bg-white/5 border-white/20" : "bg-[#050505] border-[#1a1a1a] hover:border-[#333]"}`}
-              style={{
-                borderLeftColor:
-                  selectedAgentId === agent.id ? agent.color : undefined,
-                borderLeftWidth: selectedAgentId === agent.id ? "4px" : "1px",
-                backgroundColor:
-                  selectedAgentId === agent.id ? `${agent.color}0a` : undefined,
-                borderColor:
-                  selectedAgentId === agent.id ? `${agent.color}40` : undefined,
-              }}
-            >
+          <motion.div
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.1 }
+              }
+            }}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col gap-4"
+          >
+            {agentsData.map((agent) => (
+              <motion.button
+                key={agent.id}
+                onClick={() => setSelectedAgentId(agent.id)}
+                variants={{
+                  hidden: { opacity: 0, x: -20 },
+                  show: { opacity: 1, x: 0 }
+                }}
+                animate={{
+                  borderLeftWidth: selectedAgentId === agent.id ? "4px" : "1px",
+                  borderLeftColor: selectedAgentId === agent.id ? agent.color : "rgba(26,26,26,1)",
+                  borderColor: selectedAgentId === agent.id ? `${agent.color}40` : "rgba(26,26,26,1)",
+                  backgroundColor: selectedAgentId === agent.id ? `${agent.color}10` : "rgba(5,5,5,1)",
+                }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="group flex flex-col p-4 rounded-sm border text-left w-full hover:border-[#333]"
+              >
               <div className="flex items-center justify-between w-full mb-3">
                 <div>
                   <h4 className="text-gray-200 text-sm font-bold font-sans group-hover:text-white transition-colors">
@@ -235,8 +249,9 @@ export function AIAgentsTab() {
                   </div>
                 </div>
               </div>
-            </button>
+            </motion.button>
           ))}
+          </motion.div>
         </div>
 
         {/* AI THINKING PANEL (Right Col) */}

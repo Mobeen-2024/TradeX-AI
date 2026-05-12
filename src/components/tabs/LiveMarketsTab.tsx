@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Radio,
   ArrowUpRight,
@@ -10,6 +10,7 @@ import {
   BarChart2,
   Crosshair,
   Layers,
+  ChevronDown,
 } from "lucide-react";
 import {
   createChart,
@@ -91,13 +92,16 @@ function MarketChart() {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const handleResize = () => {
+    const resizeObserver = new ResizeObserver(() => {
       if (chartRef.current && chartContainerRef.current) {
         chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight,
         });
       }
-    };
+    });
+
+    resizeObserver.observe(chartContainerRef.current);
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -231,6 +235,8 @@ function MarketChart() {
           }
         ];
 
+        let lastKnownTime = historicalData.length > 0 ? historicalData[historicalData.length - 1].time : 0;
+
         // Connect to Real-Time WebSocket for 1m klines
         const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@kline_1m");
         
@@ -240,7 +246,11 @@ function MarketChart() {
             const message = JSON.parse(event.data);
             if (!message.k) return;
             const kline = message.k;
-            const rtTime = kline.t / 1000;
+            const rtTime = Math.floor(kline.t / 1000);
+            
+            if (rtTime < lastKnownTime) return;
+            lastKnownTime = rtTime;
+
             const rtClose = parseFloat(kline.c);
             const rtHigh = parseFloat(kline.h);
             const rtLow = parseFloat(kline.l);
@@ -313,13 +323,11 @@ function MarketChart() {
       })
       .catch((err: any) => console.error("Error fetching binance klines", err));
 
-    window.addEventListener("resize", handleResize);
-
     return () => {
       if(chartContainerRef.current && (chartContainerRef.current as any).ws) {
           (chartContainerRef.current as any).ws.close();
       }
-      window.removeEventListener("resize", handleResize);
+      resizeObserver.disconnect();
       chart.remove();
     };
   }, []);
@@ -569,6 +577,8 @@ function TradeExecutionPanel() {
 export function LiveMarketsTab() {
   const [dataStream, setDataStream] = useState<number[]>(Array(50).fill(64200));
   const [priceStats, setPriceStats] = useState({ changePercent: 2.14, isPositive: true });
+  const [activeTimeframe, setActiveTimeframe] = useState("1D");
+  const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
 
   useEffect(() => {
     const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
@@ -682,64 +692,103 @@ export function LiveMarketsTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 relative z-10">
         {/* Main Chart Area (Spans 7 cols) */}
         <div className="col-span-1 xl:col-span-7 flex flex-col gap-6">
-          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col">
+          <div className="bg-[#020202] border border-white/10 rounded-2xl p-6 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
+            {/* Glassmorphic/Cyberpunk decorative glow */}
+            <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-[#0ea5e9]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+            <div className="absolute -bottom-[20%] -left-[10%] w-[40%] h-[40%] bg-[#39ff14]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+            
             <div className="flex justify-between items-center w-full mb-6 relative z-10">
-                <div className="flex gap-2">
-                  {["1m", "5m", "15m", "1H", "4H", "1D"].map((time) => (
+                <div className="flex gap-2 bg-[#0a0a0a]/50 p-1.5 border border-white/5 rounded-lg backdrop-blur-md relative">
+                  {["15m", "1H", "1D"].map((time) => (
                     <button
                       key={time}
-                      className={`px-4 py-1.5 rounded-sm text-xs font-bold cursor-pointer transition-all ${time === "1D" ? "bg-[#0ea5e9]/10 text-[#0ea5e9] border border-[#0ea5e9]/30" : "bg-[#0a0a0a] text-gray-500 hover:text-gray-300 border border-[#222]"}`}
+                      onClick={() => setActiveTimeframe(time)}
+                      className={`px-4 py-1.5 rounded-md text-xs font-bold cursor-pointer transition-all duration-300 ${activeTimeframe === time ? "bg-[#0ea5e9]/20 text-[#0ea5e9] shadow-[0_0_15px_rgba(14,165,233,0.3)] ring-1 ring-[#0ea5e9]/50" : "bg-transparent text-gray-500 hover:text-gray-200 hover:bg-white/5"}`}
                     >
                       {time}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setIsTimeframeDropdownOpen(!isTimeframeDropdownOpen)}
+                    className="flex items-center justify-center px-2 py-1.5 rounded-md text-gray-500 hover:text-gray-200 hover:bg-white/5 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+
+                  <AnimatePresence>
+                    {isTimeframeDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="absolute top-full left-0 mt-2 w-[180px] bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#222] rounded-lg shadow-xl overflow-hidden z-50 grid grid-cols-3 gap-1 p-2"
+                      >
+                        {["1m", "3m", "5m", "30m", "2H", "4H", "12H", "1W", "1M"].map((time) => (
+                          <button
+                            key={time}
+                            onClick={() => {
+                              setActiveTimeframe(time);
+                              setIsTimeframeDropdownOpen(false);
+                            }}
+                            className={`px-2 py-1.5 rounded text-xs font-bold transition-colors ${activeTimeframe === time ? "bg-[#0ea5e9]/20 text-[#0ea5e9]" : "text-gray-500 hover:text-gray-200 hover:bg-white/5"}`}
+                          >
+                            {time}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-                <div className="hidden md:flex gap-4">
-                  <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5 rounded border border-[#222]">
+                <div className="hidden md:flex gap-3">
+                  <div className="flex items-center gap-2 bg-[#0a0a0a]/50 px-3.5 py-2 rounded-lg border border-white/5 backdrop-blur-md shadow-inner transition-colors hover:border-white/10">
                     <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">1H</span>
-                    <span className="text-[#39ff14] text-xs font-bold">Bullish</span>
+                    <span className="text-[#39ff14] text-xs font-bold drop-shadow-[0_0_5px_#39ff14]">Bullish</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5 rounded border border-[#222]">
+                  <div className="flex items-center gap-2 bg-[#0a0a0a]/50 px-3.5 py-2 rounded-lg border border-white/5 backdrop-blur-md shadow-inner transition-colors hover:border-white/10">
                     <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">4H</span>
-                    <span className="text-[#39ff14] text-xs font-bold">Bullish</span>
+                    <span className="text-[#39ff14] text-xs font-bold drop-shadow-[0_0_5px_#39ff14]">Bullish</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#111] px-3 py-1.5 rounded border border-[#222]">
+                  <div className="flex items-center gap-2 bg-[#0a0a0a]/50 px-3.5 py-2 rounded-lg border border-white/5 backdrop-blur-md shadow-inner transition-colors hover:border-white/10">
                     <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">1D</span>
-                    <span className="text-[#facc15] text-xs font-bold">Neutral</span>
+                    <span className="text-[#facc15] text-xs font-bold drop-shadow-[0_0_5px_#facc15]">Neutral</span>
                   </div>
                 </div>
               </div>
 
             {/* TradingView / lightweight-charts Instance */}
-            <div className="w-full border border-[#1a1a1a] rounded-sm bg-[#050505] relative flex flex-col pt-1">
+            <div className="w-full border border-white/5 rounded-xl bg-[#030303]/80 relative flex flex-col pt-1 shadow-inner overflow-hidden flex-1">
+              {/* Subtle inner glow for the chart container */}
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0ea5e9]/[0.02] pointer-events-none"></div>
               <MarketChart />
             </div>
           </div>
 
+
           <div className="grid grid-cols-2 gap-6">
             {/* Liquidity Heatmap */}
-            <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-[200px]">
-              <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div className="bg-[#020202] border border-white/10 rounded-2xl p-5 flex flex-col h-[200px] shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
+              <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[#a855f7]/5 blur-[60px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+              <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
                 <Activity className="w-4 h-4 text-[#a855f7]" />
                 Liquidity Heatmap
               </h3>
-              <div className="flex-1 w-full flex flex-col gap-1 relative overflow-hidden">
+              <div className="flex-1 w-full flex flex-col gap-1 relative overflow-hidden rounded-lg z-10">
                 {/* Simulated Heatmap Blocks */}
                 {[...Array(6)].map((_, r) => (
                   <div key={r} className="flex gap-1 flex-1">
                     {[...Array(12)].map((_, c) => {
                       const intensity = Math.random();
                       let color = "bg-[#111]";
-                      if (intensity > 0.8) color = "bg-[#ff4500]";
-                      else if (intensity > 0.6) color = "bg-[#facc15]";
-                      else if (intensity > 0.4) color = "bg-[#00f0ff]";
+                      if (intensity > 0.8) color = "bg-[#ff4500] shadow-[0_0_8px_rgba(255,69,0,0.5)]";
+                      else if (intensity > 0.6) color = "bg-[#facc15] shadow-[0_0_8px_rgba(250,204,21,0.3)]";
+                      else if (intensity > 0.4) color = "bg-[#00f0ff] shadow-[0_0_8px_rgba(0,240,255,0.3)]";
                       return (
                         <div
                           key={c}
-                          className={`flex-1 rounded-sm opacity-80 ${color}`}
+                          className={`flex-1 rounded-[2px] opacity-90 transition-colors duration-500 hover:opacity-100 ${color}`}
                         ></div>
                       );
                     })}
@@ -747,7 +796,7 @@ export function LiveMarketsTab() {
                 ))}
                 {/* Overlay Text */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="bg-black/80 px-3 py-1 font-mono text-xs text-white border border-[#222] rounded shadow-lg backdrop-blur">
+                  <span className="bg-[#050505]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold text-white border border-white/10 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
                     Concentration at $64,800
                   </span>
                 </div>
@@ -755,24 +804,25 @@ export function LiveMarketsTab() {
             </div>
 
             {/* Volatility Meter */}
-            <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-[200px]">
-              <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+            <div className="bg-[#020202] border border-white/10 rounded-2xl p-5 flex flex-col h-[200px] shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
+              <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[#ff00f0]/5 blur-[60px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+              <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
                 <Cpu className="w-4 h-4 text-[#ff00f0]" />
                 Implied Volatility
               </h3>
-              <div className="flex-1 flex flex-col justify-center items-center relative">
+              <div className="flex-1 flex flex-col justify-center items-center relative z-10">
                 <div className="flex items-center gap-4 w-full px-6">
-                  <div className="text-gray-500 font-mono text-xs">Low</div>
-                  <div className="flex-1 h-3 bg-[#111] rounded-full overflow-hidden relative shadow-inner">
-                    <div className="absolute top-0 left-0 h-full w-[78%] bg-gradient-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full"></div>
+                  <div className="text-gray-500 font-mono text-[10px] uppercase tracking-widest font-bold">Low</div>
+                  <div className="flex-1 h-2.5 bg-[#0a0a0a] rounded-full overflow-hidden relative shadow-inner border border-white/5">
+                    <div className="absolute top-0 left-0 h-full w-[78%] bg-gradient-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full shadow-[0_0_10px_rgba(255,69,0,0.5)]"></div>
                   </div>
-                  <div className="text-gray-500 font-mono text-xs">High</div>
+                  <div className="text-gray-500 font-mono text-[10px] uppercase tracking-widest font-bold">High</div>
                 </div>
-                <div className="mt-4 text-center">
-                  <span className="text-3xl font-bold font-sans text-white tracking-tight">
+                <div className="mt-5 text-center flex flex-col items-center">
+                  <span className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 tracking-tight drop-shadow-sm">
                     78.4
                   </span>
-                  <span className="text-gray-500 font-mono text-[10px] ml-1">
+                  <span className="text-[#ff00f0] font-mono text-[9px] uppercase tracking-widest mt-1 border border-[#ff00f0]/30 bg-[#ff00f0]/10 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(255,0,240,0.2)]">
                     IV Rank
                   </span>
                 </div>
