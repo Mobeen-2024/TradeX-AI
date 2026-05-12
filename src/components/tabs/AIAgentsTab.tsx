@@ -221,9 +221,9 @@ export function AIAgentsTab() {
                 Internal Reasoning — {selectedAgent.name}
               </h3>
 
-              <div className="flex items-center gap-3 text-[10px] font-bold text-gray-500 uppercase">
-                <span>Confidence</span>
-                <div className="flex items-center gap-1.5 ml-2">
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2">Confidence</span>
                   <AIConfidenceRing
                     confidence={selectedAgent.confidence}
                     size={44}
@@ -238,11 +238,18 @@ export function AIAgentsTab() {
                     }
                   />
                 </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2">Uncertainty</span>
+                  <div className="w-10 h-10 rounded-full border border-[#ff4500]/30 bg-[#ff4500]/5 flex items-center justify-center relative">
+                     <div className="absolute inset-0 rounded-full bg-[#ff4500]/10 animate-pulse"></div>
+                     <span className="text-xs font-bold text-[#ff4500]">{(100 - selectedAgent.confidence + Math.random() * 5).toFixed(1)}%</span>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Reasoning Stream Container */}
-            <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4">
+            <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4 mb-4">
               {/* Simulated Reasoning Blocks based on agent */}
               <AnimatePresence mode="popLayout">
                 <motion.div
@@ -320,6 +327,16 @@ export function AIAgentsTab() {
                   </div>
                 </motion.div>
               </AnimatePresence>
+            </div>
+            <div className="pt-4 border-t border-[#1a1a1a] flex justify-between items-center relative z-10 shrink-0">
+               <div className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
+                 <span className="w-2 h-2 rounded-full bg-[#39ff14] animate-pulse"></span>
+                 Agent Active
+               </div>
+               <button className="flex items-center gap-2 bg-[#ff4500]/10 hover:bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]/30 px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_10px_rgba(255,69,0,0.1)]">
+                  <ShieldAlert className="w-3 h-3" />
+                  Manual Override
+               </button>
             </div>
           </div>
         </div>

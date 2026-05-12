@@ -34,26 +34,26 @@ export function AIConfidenceRing({
     >
       {/* Background glow base */}
       <div
-        className="absolute inset-0 rounded-full blur-[20px] opacity-20 transition-opacity duration-1000 group-hover:opacity-40"
+        className="absolute inset-0 rounded-full blur-[20px] opacity-30 transition-opacity duration-1000 group-hover:opacity-60"
         style={{ backgroundColor: actualColor }}
       />
 
       {/* Neural pulse ripples */}
       <motion.div
-        className="absolute inset-0 rounded-full border border-current opacity-20"
-        style={{ color: actualColor }}
-        animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0, 0.2] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        className="absolute inset-0 rounded-full border-[2px] opacity-30"
+        style={{ color: actualColor, borderColor: actualColor, filter: `drop-shadow(0 0 10px ${actualColor})` }}
+        animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute inset-0 rounded-full border border-current opacity-10"
-        style={{ color: actualColor }}
-        animate={{ scale: [1, 1.4, 1], opacity: [0.1, 0, 0.1] }}
+        className="absolute inset-0 rounded-full border-[1px] opacity-20"
+        style={{ color: actualColor, borderColor: actualColor, filter: `drop-shadow(0 0 5px ${actualColor})` }}
+        animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
         transition={{
-          duration: 2,
-          delay: 0.5,
+          duration: 2.2,
+          delay: 0.3,
           repeat: Infinity,
-          ease: "linear",
+          ease: "easeInOut",
         }}
       />
 
