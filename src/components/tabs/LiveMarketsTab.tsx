@@ -172,193 +172,153 @@ function MarketChart() {
       crosshairMarkerVisible: false,
     });
 
-    // Generate initial dummy data
-    const initialData = [];
-    let currentTime = Math.floor(Date.now() / 1000) - 86400 * 100; // 100 days ago
-    let lastClose = 50000;
+    // Load Real Historical Data
+    fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=100')
+      .then(res => res.json())
+      .then(data => {
+        if (!candlestickSeriesRef.current || !chartRef.current) return;
+        
+        const historicalData = data.map((d: any) => ({
+          time: (d[0] / 1000),
+          open: parseFloat(d[1]),
+          high: parseFloat(d[2]),
+          low: parseFloat(d[3]),
+          close: parseFloat(d[4]),
+        }));
+        
+        candlestickSeriesRef.current.setData(historicalData as any);
 
-    const markers: any[] = [];
+        const markers: any[] = [];
+        let tickCount = 0;
+        
+        // Setup initial markers based on history
+        if (historicalData.length > 80) {
+            markers.push({ time: historicalData[20].time, position: 'belowBar', color: '#00f0ff', shape: 'arrowUp', text: 'AI Accumulation Zone', size: 1.5 });
+            markers.push({ time: historicalData[50].time, position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', text: 'AI Distribution Detected', size: 1.5 });
+            markers.push({ time: historicalData[80].time, position: 'belowBar', color: '#39ff14', shape: 'circle', text: 'Bullish Divergence', size: 1.5 });
+        }
+        
+        const markerPlugin = createSeriesMarkers(candlestickSeriesRef.current, markers);
+        
+        const insights = [
+          {
+            title: "Volatility Expansion",
+            desc: "Bollinger Bands widening on 1m. Expecting sharp directional move within minutes.",
+            confidence: 85,
+            theme: "cyan" as const,
+            label: "Pattern Detected"
+          },
+          {
+            title: "Liquidity Sweep",
+            desc: "Order book shows large bids pulling. Price action sweeps local lows, indicating potential reversal.",
+            confidence: 94,
+            theme: "green" as const,
+            label: "AI Recommendation: LONG"
+          },
+          {
+            title: "Bearish Order Block",
+            desc: "Price approached crucial supply zone. Large volume node resistance detected.",
+            confidence: 76,
+            theme: "orange" as const,
+            label: "High Risk Area"
+          },
+          {
+            title: "Momentum Alignment",
+            desc: "1m, 5m, and 15m all showing bullish confluence. Micro trend intact.",
+            confidence: 98,
+            theme: "green" as const,
+            label: "Micro Bullish"
+          }
+        ];
 
-    for (let i = 0; i < 100; i++) {
-        // Build an uptrend then downtrend
-      const open = lastClose;
-      const trend = Math.sin(i / 15) * 500;
-      const close = open + trend + (Math.random() - 0.5) * 1500;
-      const high = Math.max(open, close) + Math.random() * 800;
-      const low = Math.min(open, close) - Math.random() * 800;
+        // Connect to Real-Time WebSocket for 1m klines
+        const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@kline_1m");
+        
+        ws.onmessage = (event) => {
+          if (!candlestickSeriesRef.current) return;
+          try {
+            const message = JSON.parse(event.data);
+            if (!message.k) return;
+            const kline = message.k;
+            const rtTime = kline.t / 1000;
+            const rtClose = parseFloat(kline.c);
+            const rtHigh = parseFloat(kline.h);
+            const rtLow = parseFloat(kline.l);
+            
+            candlestickSeriesRef.current.update({
+              time: rtTime as any,
+              open: parseFloat(kline.o),
+              high: rtHigh,
+              low: rtLow,
+              close: rtClose,
+            });
 
-      initialData.push({
-        time: currentTime as any,
-        open,
-        high,
-        low,
-        close,
-      });
+            // Occasional AI simulated actions
+            if (tickCount > 0 && tickCount % 15 === 0) {
+              setAiInsight(insights[Math.floor(Math.random() * insights.length)]);
+              
+              markers.push({
+                  time: rtTime as any,
+                  position: tickCount % 30 === 0 ? 'aboveBar' : 'belowBar',
+                  color: tickCount % 30 === 0 ? '#ff4500' : '#39ff14',
+                  shape: tickCount % 30 === 0 ? 'arrowDown' : 'circle',
+                  text: tickCount % 30 === 0 ? 'Micro Resistance' : 'Micro Support',
+                  size: 1.0
+              });
+              if (markers.length > 20) markers.shift();
+              markerPlugin.setMarkers(markers);
+            }
 
-      // Add AI Markers randomly
-      if (i === 20) {
-          markers.push({ time: currentTime, position: 'belowBar', color: '#00f0ff', shape: 'arrowUp', text: 'AI Accumulation Zone', size: 1.5 });
-      } else if (i === 50) {
-          markers.push({ time: currentTime, position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', text: 'AI Distribution Detected', size: 1.5 });
-      } else if (i === 80) {
-          markers.push({ time: currentTime, position: 'belowBar', color: '#39ff14', shape: 'circle', text: 'Bullish Divergence', size: 1.5 });
-      }
+            // Adaptive Support/Resistance bounds
+            const recentData = historicalData.slice(-50);
+            if(recentData.length > 0) {
+                const minLow = Math.min(...recentData.map((d: any) => d.low), rtLow);
+                const maxHigh = Math.max(...recentData.map((d: any) => d.high), rtHigh);
+                
+                const srTimeStart = recentData[0].time as number;
+                const srTimeEnd = rtTime + 600; // project 10 mins into future
+                
+                supportSeries.setData([
+                    { time: srTimeStart as any, value: minLow },
+                    { time: srTimeEnd as any, value: minLow }
+                ]);
+                resistanceSeries.setData([
+                    { time: srTimeStart as any, value: maxHigh },
+                    { time: srTimeEnd as any, value: maxHigh }
+                ]);
+            }
+            
+            
+            // Adaptive Prediction Line Recalculation
+            let predictionData = [{ time: rtTime as any, value: rtClose }];
+            let pTime = rtTime;
+            let pVal = rtClose;
+            const aiOptimism = Math.random() > 0.5 ? 1 : -1;
+            for (let j = 1; j <= 10; j++) {
+                pTime += 60; // 1m intervals
+                pVal += aiOptimism * 10 + (Math.random() * 20 - 5);
+                predictionData.push({ time: pTime as any, value: pVal });
+            }
+            // Since prediction goes into the future, we need to completely replace data 
+            predictionSeries.setData(predictionData);
 
-      lastClose = close;
-      currentTime += 86400; // Next day
-    }
+            tickCount++;
+          } catch(e) {
+             console.error("Kline ws error", e);
+          }
+        };
 
-    candlestickSeries.setData(initialData);
-    
-    // Add Markers to Candlestick Series
-    const markerPlugin = createSeriesMarkers(candlestickSeries, markers);
-
-    // Add Prediction line for the future
-    const lastDataPoint = initialData[initialData.length - 1];
-    let predictionData: any[] = [];
-    let predTime = (lastDataPoint.time as number);
-    let predVal = lastDataPoint.close;
-    
-    predictionData.push({ time: predTime as any, value: predVal });
-    for(let j=1; j<=10; j++) {
-        predTime += 86400;
-        predVal += 200 + (Math.random() * 300); // Upward bias
-        predictionData.push({ time: predTime as any, value: predVal});
-    }
-    predictionSeries.setData(predictionData);
-
-    // Support and Resistance logic
-    let supportData: any[] = [];
-    let resistanceData: any[] = [];
-    let minLow = Math.min(...initialData.map(d => d.low));
-    let maxHigh = Math.max(...initialData.map(d => d.high));
-
-    // Fill S/R lines across the timeframe
-    for (const dp of initialData) {
-        supportData.push({ time: dp.time, value: minLow + 1000 });
-        resistanceData.push({ time: dp.time, value: maxHigh - 1000 });
-    }
-    
-    const initialSupportData = [...supportData];
-    const initialResistanceData = [...resistanceData];
-
-    // Also extend to prediction
-    for (let i = 1; i < predictionData.length; i++) {
-        const dp = predictionData[i];
-        initialSupportData.push({ time: dp.time, value: minLow + 1000 });
-        initialResistanceData.push({ time: dp.time, value: maxHigh - 1000 });
-    }
-    supportSeries.setData(initialSupportData);
-    resistanceSeries.setData(initialResistanceData);
+        // Attach ws to window or ref to close it
+        (chartContainerRef.current as any).ws = ws;
+      })
+      .catch((err: any) => console.error("Error fetching binance klines", err));
 
     window.addEventListener("resize", handleResize);
 
-    // REAL-TIME UPDATES (AI ADAPTIVE SIMULATION)
-    let rtTime = currentTime;
-    let rtClose = lastClose;
-    let tickCount = 0;
-
-    const insights = [
-      {
-        title: "Volatility Expansion",
-        desc: "Bollinger Bands widening on 15m. Expecting sharp directional move within 4 hours.",
-        confidence: 85,
-        theme: "cyan" as const,
-        label: "Pattern Detected"
-      },
-      {
-        title: "Liquidity Sweep",
-        desc: "Order book shows large bids pulling. Price action sweeps local lows, indicating potential reversal.",
-        confidence: 94,
-        theme: "green" as const,
-        label: "AI Recommendation: LONG"
-      },
-      {
-        title: "Bearish Order Block",
-        desc: "Price approached crucial supply zone. Large volume node resistance at $65,100.",
-        confidence: 76,
-        theme: "orange" as const,
-        label: "High Risk Area"
-      },
-      {
-        title: "Multi-Timeframe Alignment",
-        desc: "1D, 4H, and 1H all showing bullish confluence. Macro trend intact.",
-        confidence: 98,
-        theme: "green" as const,
-        label: "Macro Bullish"
-      }
-    ];
-
-    const interval = setInterval(() => {
-        rtTime += 86400; // adding day for the sake of chart timeframe visibility, can be minute
-        
-        const open = rtClose;
-        const trend = Math.sin(tickCount / 5) * 300 + (Math.random() - 0.4) * 400;
-        rtClose = open + trend;
-        const high = Math.max(open, rtClose) + Math.random() * 600;
-        const low = Math.min(open, rtClose) - Math.random() * 600;
-
-        const newDataPoint = { time: rtTime as any, open, high, low, close: rtClose };
-        candlestickSeries.update(newDataPoint);
-
-        // Update Markers Randomly based on AI patterns
-        if (tickCount % 12 === 0) {
-            markers.push({
-                time: rtTime,
-                position: tickCount % 24 === 0 ? 'aboveBar' : 'belowBar',
-                color: tickCount % 24 === 0 ? '#ff4500' : '#39ff14',
-                shape: tickCount % 24 === 0 ? 'arrowDown' : 'circle',
-                text: tickCount % 24 === 0 ? 'Micro Resistance' : 'Micro Support',
-                size: 1.0
-            });
-            // Keep array size manageable
-            if (markers.length > 20) markers.shift();
-            markerPlugin.setMarkers(markers);
-            
-            // Randomly update insight
-            setAiInsight(insights[Math.floor(Math.random() * insights.length)]);
-        }
-
-        // Adaptive Prediction Line Recalculation
-        predictionData = [{ time: rtTime as any, value: rtClose }];
-        let pTime = rtTime;
-        let pVal = rtClose;
-        const aiOptimism = Math.random() > 0.5 ? 1 : -1;
-        for (let j = 1; j <= 10; j++) {
-            pTime += 86400;
-            pVal += aiOptimism * 100 + (Math.random() * 200 - 50);
-            predictionData.push({ time: pTime as any, value: pVal });
-        }
-        // Since prediction goes into the future, we need to completely replace data 
-        predictionSeries.setData(predictionData);
-
-        // Adaptive S/R calculation based on last 50 points
-        // Simplified for simulation: just track overall min/max
-        minLow = Math.min(minLow, low);
-        maxHigh = Math.max(maxHigh, high);
-
-        // We append the single S/R point and recreate the future projection
-        supportData.push({ time: rtTime as any, value: minLow + 1000 });
-        resistanceData.push({ time: rtTime as any, value: maxHigh - 1000 });
-
-        // Build a fresh S/R dataset that includes history + new future prediction
-        const newSupportData = [...supportData];
-        const newResistanceData = [...resistanceData];
-
-        for (let i = 1; i < predictionData.length; i++) {
-            const dp = predictionData[i];
-            newSupportData.push({ time: dp.time as any, value: minLow + 1000 });
-            newResistanceData.push({ time: dp.time as any, value: maxHigh - 1000 });
-        }
-
-        supportSeries.setData(newSupportData);
-        resistanceSeries.setData(newResistanceData);
-
-        tickCount++;
-    }, 2000);
-
     return () => {
-      clearInterval(interval);
+      if(chartContainerRef.current && (chartContainerRef.current as any).ws) {
+          (chartContainerRef.current as any).ws.close();
+      }
       window.removeEventListener("resize", handleResize);
       chart.remove();
     };
@@ -608,17 +568,34 @@ function TradeExecutionPanel() {
 
 export function LiveMarketsTab() {
   const [dataStream, setDataStream] = useState<number[]>(Array(50).fill(64200));
+  const [priceStats, setPriceStats] = useState({ changePercent: 2.14, isPositive: true });
 
   useEffect(() => {
-    // Simulate high-frequency data stream for small updates
-    const interval = setInterval(() => {
-      setDataStream((prev) => {
-        const last = prev[prev.length - 1];
-        const change = (Math.random() - 0.5) * 50;
-        return [...prev.slice(1), last + change];
-      });
-    }, 500);
-    return () => clearInterval(interval);
+    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data && data.c) {
+          const currentPrice = parseFloat(data.c);
+          const changePercent = parseFloat(data.P);
+          
+          setDataStream((prev) => {
+            return [...prev.slice(1).length ? prev.slice(1) : Array(49).fill(currentPrice), currentPrice];
+          });
+          setPriceStats({
+            changePercent: Math.abs(changePercent),
+            isPositive: changePercent >= 0
+          });
+        }
+      } catch (e) {
+        console.error("Error parsing WebSocket data:", e);
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   return (
@@ -666,9 +643,10 @@ export function LiveMarketsTab() {
             </div>
             <div className="font-mono text-xl text-white font-medium flex items-center gap-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
               <span className="text-gray-500 text-base">$</span>
-              {dataStream[dataStream.length - 1].toFixed(1)}
-              <span className="text-[#39ff14] text-xs flex items-center">
-                <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> 2.14%
+              {dataStream[dataStream.length - 1].toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+              <span className={`text-xs flex items-center ${priceStats.isPositive ? 'text-[#39ff14]' : 'text-[#ff4500]'}`}>
+                {priceStats.isPositive ? <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" /> : <ArrowUpRight className="w-3.5 h-3.5 stroke-[3] rotate-90" />}
+                {priceStats.changePercent.toFixed(2)}%
               </span>
             </div>
           </div>

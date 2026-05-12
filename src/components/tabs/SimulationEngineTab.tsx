@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   TestTube,
   Play,
@@ -15,6 +15,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   GitBranch,
+  Settings2,
+  Zap,
 } from "lucide-react";
 import {
   AreaChart,
@@ -86,6 +88,31 @@ export function SimulationEngineTab() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(65);
   const [viewMode, setViewMode] = useState<"replay" | "compare">("compare");
+  
+  const [showConfig, setShowConfig] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizationProgress, setOptimizationProgress] = useState(0);
+
+  const [dateStart, setDateStart] = useState("2024-01-01");
+  const [dateEnd, setDateEnd] = useState("2024-01-14");
+  const [startingCapital, setStartingCapital] = useState("10000");
+  const [leverage, setLeverage] = useState("1x");
+  const [executionFee, setExecutionFee] = useState("0.02");
+
+  const runOptimization = () => {
+    setIsOptimizing(true);
+    setOptimizationProgress(0);
+    const interval = setInterval(() => {
+      setOptimizationProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsOptimizing(false);
+          return 100;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 200);
+  };
 
   const strategyA = {
     name: "Mean-Reversion v2.4",
@@ -124,6 +151,16 @@ export function SimulationEngineTab() {
           </p>
         </div>
         <div className="flex gap-4 items-center">
+          <button
+            onClick={() => setShowConfig(!showConfig)}
+            className={`p-2 rounded border transition-colors ${
+              showConfig
+                ? "bg-[#ff00f0]/20 border-[#ff00f0]/30 text-[#ff00f0]"
+                : "bg-[#050505] border-[#222] text-gray-400 hover:text-white"
+            }`}
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
           <div className="flex rounded-sm border border-[#222] bg-[#050505] p-1">
             <button
               onClick={() => setViewMode("replay")}
@@ -148,6 +185,107 @@ export function SimulationEngineTab() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showConfig && (
+          <motion.div
+            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+            animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-[#050505] border border-[#1a1a1a] rounded p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-gray-300 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
+                  <Settings2 className="w-4 h-4 text-gray-500" /> Backtest Parameters
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Date Range</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      value={dateStart}
+                      onChange={(e) => setDateStart(e.target.value)}
+                      className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50"
+                    />
+                    <span className="text-gray-600">-</span>
+                    <input
+                      type="date"
+                      value={dateEnd}
+                      onChange={(e) => setDateEnd(e.target.value)}
+                      className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Starting Capital (USD)</label>
+                  <input
+                    type="number"
+                    value={startingCapital}
+                    onChange={(e) => setStartingCapital(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Leverage</label>
+                  <select
+                    value={leverage}
+                    onChange={(e) => setLeverage(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50 appearance-none"
+                  >
+                    <option value="1x">1x (Spot)</option>
+                    <option value="2x">2x</option>
+                    <option value="5x">5x</option>
+                    <option value="10x">10x</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Execution Fee (%)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={executionFee}
+                    onChange={(e) => setExecutionFee(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50"
+                  />
+                </div>
+              </div>
+              <div className="pt-6 border-t border-[#1a1a1a] flex justify-between items-center">
+                <div className="flex-1 max-w-md">
+                  {isOptimizing ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-[10px] text-[#ff00f0] font-bold uppercase tracking-widest">
+                        <span>Optimizing parameters...</span>
+                        <span>{Math.floor(optimizationProgress)}%</span>
+                      </div>
+                      <div className="h-1 bg-[#111] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-[#ff00f0] transition-all duration-200"
+                          style={{ width: `${optimizationProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={runOptimization}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#ff00f0]/10 text-[#ff00f0] border border-[#ff00f0]/30 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#ff00f0]/20 transition-colors"
+                    >
+                      <Zap className="w-4 h-4" /> Run Parameter Optimization
+                    </button>
+                  )}
+                </div>
+                <button
+                  className="px-6 py-2 bg-white text-black rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors"
+                >
+                  Apply & Reload
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {viewMode === "replay" ? (
         <>

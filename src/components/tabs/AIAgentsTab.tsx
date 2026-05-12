@@ -14,10 +14,11 @@ import {
   Command,
   Clock,
   Network,
+  Waves,
 } from "lucide-react";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 
-const agentsData = [
+const INITIAL_AGENTS_DATA = [
   {
     id: "Director",
     name: "Master Director",
@@ -58,8 +59,44 @@ const agentsData = [
 
 export function AIAgentsTab() {
   const [selectedAgentId, setSelectedAgentId] =
-    useState<(typeof agentsData)[number]["id"]>("Director");
-  const selectedAgent = agentsData.find((a) => a.id === selectedAgentId)!;
+    useState<(typeof INITIAL_AGENTS_DATA)[number]["id"]>("Director");
+  
+  const [agentsData, setAgentsData] = useState(() => [...INITIAL_AGENTS_DATA].map(a => ({...a})));
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setAgentsData(prev => 
+        prev.map(agent => {
+          let newConfidence = agent.confidence + (Math.random() * 4 - 2);
+          if (newConfidence > 99.9) newConfidence = 99.9;
+          if (newConfidence < 70) newConfidence = 70;
+
+          let newFocus = agent.focus;
+          // 15% chance to update the focus reason simulating live processing
+          if (Math.random() > 0.85) {
+             const focuses = {
+                "Director": ["Global Strategy Orchestration", "Evaluating Arbitrage Opportunities", "Awaiting Risk Clearance", "Synthesizing Multi-Exchange Data", "Capitalizing on Inefficiency"],
+                "Quant-v4": ["BTC Volatility Analysis", "Order Book Imbalance Scanning", "Liquidity Sweep Detection", "Funding Rate Analysis", "Momentum Divergence Check"],
+                "Risk-Guardian": ["Drawdown Prevention", "Stress Testing Portfolios", "Validating Leverage Metrics", "Liquidation Level Check", "Monitoring Value at Risk (VaR)"],
+                "Alpha-Seeker": ["Execution Timing", "Optimizing Execution Fees", "Hunting Sniper Entries", "Routing to Dark Pools", "Staging Limit Orders"]
+             };
+             const list = focuses[agent.id as keyof typeof focuses] || [agent.focus];
+             newFocus = list[Math.floor(Math.random() * list.length)];
+          }
+
+          return {
+            ...agent,
+            confidence: Number(newConfidence.toFixed(1)),
+            focus: newFocus
+          };
+        })
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const selectedAgent = agentsData.find((a) => a.id === selectedAgentId) || agentsData[0];
 
   return (
     <motion.div
@@ -349,19 +386,37 @@ export function AIAgentsTab() {
         </h3>
 
         <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-[#333] before:to-transparent pt-4">
-          {/* Timeline Item 1 - Newest */}
+          {/* Timeline Item 0 - Newest */}
+          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#0ea5e9]/20 text-[#0ea5e9] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(14,165,233,0.5)]">
+              <Waves className="w-3 h-3" />
+            </div>
+            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
+              <div className="flex items-center justify-between space-x-2 mb-1">
+                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
+                  Liquidity Sweep Detected
+                </div>
+                <time className="text-[10px] text-[#0ea5e9]">Just now</time>
+              </div>
+              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
+                Quant Agent identified anomalous order book thinning combined with high volume liquidations below immediate support.
+              </div>
+            </div>
+          </div>
+
+          {/* Timeline Item 1 */}
           <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
             <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#ff4500]/20 text-[#ff4500] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(255,69,0,0.5)]">
               <ShieldAlert className="w-3 h-3" />
             </div>
             <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
               <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm">
+                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
                   Trade Rejected
                 </div>
-                <time className="text-[10px] text-[#ff4500]">Just now</time>
+                <time className="text-[10px] text-gray-600">1s ago</time>
               </div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
                 Director blocked execution as market conditions no longer
                 support the original thesis.
               </div>
@@ -375,12 +430,12 @@ export function AIAgentsTab() {
             </div>
             <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
               <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm flex flex-row-reverse md:flex-row">
+                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
                   Strategy Switched
                 </div>
                 <time className="text-[10px] text-gray-600">3s ago</time>
               </div>
-              <div className="text-gray-500 text-xs text-right md:text-left">
+              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
                 Quant-v4 shifted to defensive mode, adapting local parameters to
                 defend capital against sudden breakout.
               </div>
@@ -394,12 +449,12 @@ export function AIAgentsTab() {
             </div>
             <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
               <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm">
+                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
                   Risk Agent Warning Triggered
                 </div>
                 <time className="text-[10px] text-gray-600">12s ago</time>
               </div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
                 Risk Guardian flagged immediate drawdown risk due to market
                 instability. Margin requirements dynamically increased.
               </div>
@@ -413,12 +468,12 @@ export function AIAgentsTab() {
             </div>
             <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
               <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm flex flex-row-reverse md:flex-row">
+                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
                   Volatility Increased
                 </div>
                 <time className="text-[10px] text-gray-600">22s ago</time>
               </div>
-              <div className="text-gray-500 text-xs text-right md:text-left">
+              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
                 Quant Engine detected sudden volatility expansion across major
                 pairs. Order book spread widening.
               </div>
@@ -432,12 +487,12 @@ export function AIAgentsTab() {
             </div>
             <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
               <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm">
+                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
                   News Spike Detected
                 </div>
                 <time className="text-[10px] text-gray-600">45s ago</time>
               </div>
-              <div className="text-gray-500 text-xs">
+              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
                 NLP algorithms registered high-impact macroeconomic alert from
                 tier-1 financial sources.
               </div>
