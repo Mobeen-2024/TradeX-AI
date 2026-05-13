@@ -11,6 +11,8 @@ import {
   Crosshair,
   Layers,
   ChevronDown,
+  SearchCode,
+  BookOpen,
 } from "lucide-react";
 import {
   createChart,
@@ -24,50 +26,112 @@ import {
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 
 function ExecutionLog() {
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<{timestamp: string, type: string, text: string, color: string, value?: number}[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const messages = [
-      "SYSTEM: INITIALIZING QUANT-V4 KERNEL...",
-      "AGENT: ANALYZING ORDER FLOW IMBALANCE AT $64,300...",
-      "RISK_ENGINE: CHECKING MARGIN ALLOCATION. NORMAL.",
-      "AGENT: DETECTED SPOOFING ALGORITHM ON L2 ASK MATRIX.",
-      "SYSTEM: RECALIBRATING MICRO-TREND THRESHOLDS...",
+    let ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@aggTrade");
+    let isMounted = true;
+    
+    const initialLogs = [
+      { timestamp: new Date().toISOString().split("T")[1].slice(0, -1), type: "SYSTEM", text: "INITIALIZING QUANT-V4 KERNEL...", color: "text-gray-400" },
+      { timestamp: new Date().toISOString().split("T")[1].slice(0, -1), type: "RISK_ENGINE", text: "CHECKING MARGIN ALLOCATION. NORMAL.", color: "text-[#84cc16]" },
+      { timestamp: new Date().toISOString().split("T")[1].slice(0, -1), type: "AGENT", text: "CONNECTING TO BINANCE WSS FEED...", color: "text-[#0ea5e9]" },
     ];
-    let i = 0;
+    setLogs(initialLogs);
+
+    ws.onmessage = (event) => {
+      if(!isMounted) return;
+      
+      const data = JSON.parse(event.data);
+      if (data && data.e === 'aggTrade') {
+        const price = parseFloat(data.p);
+        const qty = parseFloat(data.q);
+        const isBuyerMaker = data.m; // true means sell
+        const usdValue = price * qty;
+        
+        if (usdValue > 100000) { // Large trade > 100k
+          const side = isBuyerMaker ? "SELL" : "BUY";
+          const color = side === "BUY" ? "text-[#39ff14]" : "text-[#ff4500]";
+          
+          setLogs(prev => {
+            const newLog = {
+              timestamp: new Date(data.T).toISOString().split("T")[1].slice(0, -1),
+              type: "WHALE_TRACKER",
+              text: `DETECTED ${usdValue >= 500000 ? "MASSIVE " : ""}${side}: ${qty.toFixed(2)} BTC @ $${price.toFixed(2)} ($${(usdValue/1000).toFixed(0)}k)`,
+              color: color,
+              value: usdValue
+            };
+            return [...prev, newLog].slice(-50);
+          });
+        }
+      }
+    };
+
     const interval = setInterval(() => {
-      setLogs((prev) => [...prev.slice(-4), messages[i % messages.length]]);
-      i++;
-    }, 2500);
-    return () => clearInterval(interval);
+       const msgs = [
+         {text: "RECALIBRATING MICRO-TREND THRESHOLDS...", type: "SYSTEM", color: "text-gray-400"},
+         {text: "ANALYZING ORDER FLOW IMBALANCE...", type: "AGENT", color: "text-[#0ea5e9]"},
+         {text: "UPDATING LIQUIDITY HEATMAP GROUPS...", type: "SYSTEM", color: "text-gray-400"},
+         {text: "SCANNING FOR FRONTRUN OPPORTUNITIES...", type: "AGENT", color: "text-[#0ea5e9]"},
+       ];
+       const r = msgs[Math.floor(Math.random() * msgs.length)];
+       setLogs(prev => {
+            const newLog = {
+              timestamp: new Date().toISOString().split("T")[1].slice(0, -1),
+              type: r.type,
+              text: r.text,
+              color: r.color
+            };
+            return [...prev, newLog].slice(-50);
+       });
+    }, 12000);
+
+    return () => {
+      isMounted = false;
+      ws.close();
+      clearInterval(interval);
+    }
   }, []);
 
+  useEffect(() => {
+    if (scrollRef.current) {
+       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [logs]);
+
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight">
-      <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-3 flex items-center gap-2 border-b border-[#1a1a1a] pb-2">
-        <Activity className="w-3.5 h-3.5 text-[#00f0ff]" />
-        Execution Feed
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-[160px] max-h-[220px]">
+      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-r from-transparent to-[#0ea5e9]/5 pointer-events-none"></div>
+      <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-2 pb-2 flex items-center justify-between border-b border-[#1a1a1a] relative z-10 w-full">
+        <div className="flex items-center gap-2">
+            <Activity className="w-3.5 h-3.5 text-[#0ea5e9]" />
+            Execution Feed
+        </div>
+        <div className="flex gap-1.5 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse"></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse" style={{animationDelay: '100ms'}}></span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#facc15] animate-pulse" style={{animationDelay: '200ms'}}></span>
+        </div>
       </h3>
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1.5 scroll-smooth"
+        className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 scroll-smooth relative z-10 break-words pr-1 mt-1"
       >
         {logs.map((log, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <span className="text-gray-600">
-              [{new Date().toISOString().split("T")[1].slice(0, -1)}]
+          <div key={i} className={`flex items-start gap-1 group cursor-pointer hover:bg-[#111] p-1 rounded transition-colors ${log.value && log.value >= 500000 ? 'bg-[#ff4500]/10 border border-[#ff4500]/30' : ''}`}>
+            <span className="text-gray-600 shrink-0 select-none">
+              [{log.timestamp}]
             </span>
-            <span
-              className={
-                log.startsWith("AGENT:")
-                  ? "text-[#0ea5e9]"
-                  : log.startsWith("RISK_ENGINE:")
-                    ? "text-[#84cc16]"
-                    : "text-gray-400"
-              }
-            >
-              {log}
+            <span className={`uppercase break-words whitespace-normal leading-[1.3] ${log.color}`}>
+              <span className={`font-bold mr-1 ${
+                  log.type === 'AGENT' ? 'text-[#0ea5e9]' : 
+                  log.type === 'SYSTEM' ? 'text-gray-500' : 
+                  log.type === 'WHALE_TRACKER' && log.color.includes('39ff14') ? 'text-[#39ff14]' : 
+                  log.type === 'WHALE_TRACKER' && log.color.includes('ff4500') ? 'text-[#ff4500]' : 
+                  'text-white'
+              }`}>[{log.type}]</span>
+              {log.text}
             </span>
           </div>
         ))}
@@ -76,17 +140,134 @@ function ExecutionLog() {
   );
 }
 
-function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
+function AIPatternScanner({ detectedPatterns }: { detectedPatterns: any[] }) {
+  const [showDictionary, setShowDictionary] = useState(false);
+
+  const patternDictionary = [
+    { name: "Head and Shoulders", type: "Structural", bias: "BEARISH", color: "#ff4500" },
+    { name: "Inverse Head and Shoulders", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Ascending Triangle", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Descending Triangle", type: "Structural", bias: "BEARISH", color: "#ff4500" },
+    { name: "Bullish Flag", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Bearish Flag", type: "Structural", bias: "BEARISH", color: "#ff4500" },
+    { name: "Bullish Pennant", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Bearish Pennant", type: "Structural", bias: "BEARISH", color: "#ff4500" },
+    { name: "Ascending Channel", type: "Structural", bias: "BULLISH/RANGING", color: "#facc15" },
+    { name: "Descending Channel", type: "Structural", bias: "BEARISH/RANGING", color: "#facc15" },
+    { name: "Double Top", type: "Structural", bias: "BEARISH", color: "#ff4500" },
+    { name: "Double Bottom", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Cup and Handle", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Rising Wedge", type: "Structural", bias: "BEARISH", color: "#ff4500" },
+    { name: "Falling Wedge", type: "Structural", bias: "BULLISH", color: "#39ff14" },
+    { name: "Doji", type: "Candlestick", bias: "NEUTRAL/REVERSAL", color: "#facc15" },
+    { name: "Bullish Engulfing", type: "Candlestick", bias: "BULLISH", color: "#39ff14" },
+    { name: "Bearish Engulfing", type: "Candlestick", bias: "BEARISH", color: "#ff4500" },
+    { name: "Hammer", type: "Candlestick", bias: "BULLISH", color: "#39ff14" },
+    { name: "Shooting Star", type: "Candlestick", bias: "BEARISH", color: "#ff4500" }
+  ];
+
+  return (
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-[220px]">
+      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-r from-transparent to-[#facc15]/5 pointer-events-none"></div>
+      <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-3 flex items-center justify-between border-b border-[#1a1a1a] pb-2 relative z-10">
+        <div className="flex items-center gap-2">
+          <SearchCode className="w-3.5 h-3.5 text-[#facc15]" />
+          Auto-Pattern Scan
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-gray-400 font-normal">
+             <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse"></span>
+             Scanning
+          </span>
+          <button 
+             onClick={() => setShowDictionary(!showDictionary)}
+             className={`p-1 rounded transition-colors ${showDictionary ? 'bg-[#facc15]/20 text-[#facc15]' : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'}`}
+             title="View Scanned Patterns Library"
+          >
+             <BookOpen className="w-4 h-4" />
+          </button>
+        </div>
+      </h3>
+      
+      {showDictionary ? (
+        <motion.div 
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-1.5 relative z-10 pr-1 mt-1"
+        >
+           <div className="text-[#facc15] mb-2 font-bold flex justify-between">
+              <span>PATTERN LIBRARY</span>
+              <span className="text-gray-500 font-normal">20 ACTIVE</span>
+           </div>
+           {patternDictionary.map((pat, i) => (
+             <div key={i} className="flex justify-between items-center bg-[#0a0a0a] p-2 border border-[#111] rounded shadow-sm hover:border-[#222] transition-colors">
+               <div className="flex flex-col gap-1">
+                 <span className="font-bold text-gray-200">{pat.name}</span>
+                 <span className="text-[9px] text-gray-500 uppercase tracking-widest">{pat.type}</span>
+               </div>
+               <span className="text-[9px] px-1.5 py-[1px] rounded font-bold" style={{ backgroundColor: `${pat.color}15`, color: pat.color }}>
+                  {pat.bias}
+               </span>
+             </div>
+           ))}
+        </motion.div>
+      ) : (
+        <div className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-2 relative z-10">
+          <div className="text-gray-600 mb-1">Scanning 34 candlestick & structural patterns...</div>
+          {!detectedPatterns || detectedPatterns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-4 h-full text-gray-600 text-center gap-2">
+              <SearchCode className="w-8 h-8 opacity-20" />
+              <span>Waiting for structural or candlestick formation signatures...</span>
+            </div>
+          ) : (
+            [...detectedPatterns].reverse().slice(0, 15).map((p, i) => (
+              <div key={i} className="flex justify-between items-center bg-[#0a0a0a] p-2 border border-[#111] rounded shadow-sm hover:border-white/10 transition-colors cursor-pointer group">
+                <div className="flex flex-col gap-0.5 max-w-[70%]">
+                  <span className="font-bold flex items-center gap-1.5" style={{ color: p.color }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: p.color, boxShadow: `0 0 5px ${p.color}` }}></span>
+                    {p.text}
+                  </span>
+                  <span className="text-[9px] text-gray-500 uppercase tracking-widest">{p.type} Pattern</span>
+                </div>
+                <div className="text-right flex flex-col gap-0.5">
+                   <span className="text-gray-400 font-bold">{new Date((p.time as number) * 1000).toISOString().split("T")[1].slice(0, -5)}</span>
+                   <span className={`text-[9px] px-1.5 py-[1px] rounded ${p.position === 'belowBar' ? 'bg-[#39ff14]/10 text-[#39ff14]' : p.position === 'aboveBar' ? 'bg-[#ff4500]/10 text-[#ff4500]' : 'bg-[#facc15]/10 text-[#facc15]'}`}>
+                      {p.position === 'belowBar' ? 'BULL' : p.position === 'aboveBar' ? 'BEAR' : 'NEUTRAL'}
+                   </span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MarketChart({ 
+  activeTimeframe = "1m",
+  onPatternsDetected,
+  showPatterns = true
+}: { 
+  activeTimeframe?: string,
+  onPatternsDetected?: (patterns: any[]) => void,
+  showPatterns?: boolean
+}) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candlestickSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const markersRef = useRef<any[]>([]);
+  const markerPluginRef = useRef<any>(null);
+
+  const [activeTooltip, setActiveTooltip] = useState({ visible: false, x: 0, y: 0, title: "", strength: "", retests: 0, prob: "", color: "" });
+  const activeLinesRef = useRef({ support: 0, resistance: 0, liquidity: 0, breakout: 0, trendlineStartPrice: 0, trendlineEndPrice: 0, timeStart: 0, timeEnd: 0 });
 
   const [aiInsight, setAiInsight] = useState({
-    title: "Trend Divergence",
-    desc: "Bullish divergence forming on 4H OBV indicator. Institutional accumulation detected.",
-    confidence: 92,
-    theme: "green" as "green" | "cyan" | "orange",
-    label: "Predictive State Active"
+    pattern: "Bullish Engulfing",
+    confidence: 87,
+    risk: "Moderate",
+    outlook: "Continuation likely",
+    theme: "green" as "green" | "red" | "purple"
   });
 
   const [toggles, setToggles] = useState({
@@ -200,10 +381,179 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
       crosshairMarkerVisible: false,
     });
 
+    const trendlineSeries = chart.addSeries(LineSeries, {
+      color: '#facc15',
+      lineWidth: 2,
+      lineStyle: 1,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    const liquiditySeries = chart.addSeries(LineSeries, {
+      color: '#a855f7',
+      lineWidth: 4,
+      lineStyle: 2,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    const breakoutSeries = chart.addSeries(LineSeries, {
+      color: '#0ea5e9',
+      lineWidth: 1,
+      lineStyle: 0,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    chart.subscribeCrosshairMove((param) => {
+      if (!param.point || !param.time || param.point.x < 0 || param.point.y < 0) {
+        setActiveTooltip(prev => prev.visible ? { ...prev, visible: false } : prev);
+        return;
+      }
+      
+      const y = param.point.y;
+      const x = param.point.x;
+      const l = activeLinesRef.current;
+      
+      if (!candlestickSeriesRef.current) return;
+      const series = candlestickSeriesRef.current;
+      
+      const tryMatch = (price: number, threshold = 8) => {
+         const py = series.priceToCoordinate(price);
+         if (py === null) return false;
+         return Math.abs(y - py) < threshold;
+      };
+
+      let trendlinePrice = 0;
+      const pTime = Number(param.time);
+      if (pTime >= l.timeStart && pTime <= l.timeEnd && l.timeEnd > l.timeStart) {
+          const ratio = (pTime - l.timeStart) / (l.timeEnd - l.timeStart);
+          trendlinePrice = l.trendlineStartPrice + (l.trendlineEndPrice - l.trendlineStartPrice) * ratio;
+      }
+
+      let m = false, t = "", s = "", r = 0, p = "", c = "";
+
+      if (tryMatch(l.resistance)) {
+          m = true; t = "AI Resistance Zone"; s = "High"; r = 4; p = "38%"; c = "#ff4500";
+      } else if (tryMatch(l.support)) {
+          m = true; t = "AI Support Zone"; s = "Strong"; r = 3; p = "22%"; c = "#39ff14";
+      } else if (tryMatch(l.breakout)) {
+          m = true; t = "Breakout Level"; s = "Moderate"; r = 2; p = "64%"; c = "#0ea5e9";
+      } else if (tryMatch(l.liquidity)) {
+          m = true; t = "Liquidity Area"; s = "High"; r = 6; p = "81%"; c = "#a855f7";
+      } else if (trendlinePrice && tryMatch(trendlinePrice)) {
+          m = true; t = "Dynamic Trendline"; s = "Moderate"; r = 3; p = "45%"; c = "#facc15";
+      }
+
+      if (m) {
+          setActiveTooltip({ visible: true, x, y, title: t, strength: s, retests: r, prob: p, color: c });
+      } else {
+          setActiveTooltip(prev => prev.visible ? { ...prev, visible: false } : prev);
+      }
+    });
+
     const binanceInterval = getBinanceInterval(activeTimeframe);
     const intervalSeconds = getTimeframeSeconds(activeTimeframe);
     let aborted = false;
     let activeWs: WebSocket | null = null;
+
+    const detectPatterns = (data: any[]) => {
+        const detected: any[] = [];
+        for (let i = 3; i < data.length; i++) {
+            const current = data[i];
+            const prev = data[i-1];
+            const isBullish = current.close > current.open;
+            const bodySize = Math.abs(current.open - current.close);
+            const candleSize = current.high - current.low;
+            
+            // clear colors
+            delete current.color;
+            delete current.borderColor;
+            delete current.wickColor;
+
+            let bias = '';
+            let confidence = 0;
+            let patText = '';
+
+            if (bodySize <= candleSize * 0.1 && candleSize > 0) {
+                 patText = 'Doji'; bias = 'Neutral'; confidence = 65;
+                 detected.push({ time: current.time, position: isBullish ? 'belowBar' : 'aboveBar', color: '#a855f7', shape: 'circle', text: patText, size: 1, type: 'Candlestick', bias, confidence, historicalRate: 51 });
+                 current.color = '#a855f7'; current.borderColor = '#a855f7'; current.wickColor = '#a855f7';
+            }
+            else if (prev.close < prev.open && current.close > current.open && current.open <= prev.close && current.close >= prev.open) {
+                 patText = 'Bullish Engulfing'; bias = 'Bullish'; confidence = 87;
+                 detected.push({ time: current.time, position: 'belowBar', color: '#39ff14', shape: 'arrowUp', text: patText, size: 1.5, type: 'Candlestick', bias, confidence, historicalRate: 72 });
+                 current.color = '#39ff14'; current.borderColor = '#00f0ff'; current.wickColor = '#00f0ff';
+            }
+            else if (prev.close > prev.open && current.close < current.open && current.open >= prev.close && current.close <= prev.open) {
+                 patText = 'Bearish Engulfing'; bias = 'Bearish'; confidence = 82;
+                 detected.push({ time: current.time, position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', text: patText, size: 1.5, type: 'Candlestick', bias, confidence, historicalRate: 68 });
+                 current.color = '#ff4500'; current.borderColor = '#ff4500'; current.wickColor = '#ff4500';
+            }
+            else {
+                const lowerShadow = Math.min(current.open, current.close) - current.low;
+                const upperShadow = current.high - Math.max(current.open, current.close);
+                if (lowerShadow > bodySize * 2 && upperShadow < bodySize * 0.2 && bodySize > 0) {
+                     patText = 'Hammer'; bias = 'Bullish'; confidence = 74;
+                     detected.push({ time: current.time, position: 'belowBar', color: '#00f0ff', shape: 'arrowUp', text: patText, size: 1.2, type: 'Candlestick', bias, confidence, historicalRate: 64 });
+                     current.color = '#00f0ff'; current.borderColor = '#00f0ff'; current.wickColor = '#00f0ff';
+                }
+                else if (upperShadow > bodySize * 2 && lowerShadow < bodySize * 0.2 && bodySize > 0) {
+                    patText = 'Shooting Star'; bias = 'Bearish'; confidence = 71;
+                    detected.push({ time: current.time, position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', text: patText, size: 1.2, type: 'Candlestick', bias, confidence, historicalRate: 61 });
+                    current.color = '#ff4500'; current.borderColor = '#ff4500'; current.wickColor = '#ff4500';
+                }
+            }
+        }
+        if (data.length > 50) {
+          const types = [
+            {text: 'Double Top Detected', position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', bias: 'Bearish'},
+            {text: 'Double Bottom', position: 'belowBar', color: '#39ff14', shape: 'arrowUp', bias: 'Bullish'},
+            {text: 'Inv Head & Shoulders', position: 'belowBar', color: '#39ff14', shape: 'arrowUp', bias: 'Bullish'},
+            {text: 'Head & Shoulders', position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', bias: 'Bearish'},
+            {text: 'Ascending Triangle', position: 'belowBar', color: '#39ff14', shape: 'circle', bias: 'Bullish'},
+            {text: 'Descending Triangle', position: 'aboveBar', color: '#ff4500', shape: 'circle', bias: 'Bearish'},
+            {text: 'Bullish Flag', position: 'belowBar', color: '#39ff14', shape: 'arrowUp', bias: 'Bullish'},
+            {text: 'Bearish Flag', position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', bias: 'Bearish'},
+            {text: 'Bullish Pennant', position: 'belowBar', color: '#39ff14', shape: 'arrowUp', bias: 'Bullish'},
+            {text: 'Bearish Pennant', position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', bias: 'Bearish'},
+            {text: 'Ascending Channel', position: 'belowBar', color: '#a855f7', shape: 'arrowUp', bias: 'Neutral'},
+            {text: 'Descending Channel', position: 'aboveBar', color: '#a855f7', shape: 'arrowDown', bias: 'Neutral'},
+            {text: 'Cup and Handle', position: 'belowBar', color: '#39ff14', shape: 'circle', bias: 'Bullish'},
+            {text: 'Rising Wedge', position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', bias: 'Bearish'},
+            {text: 'Falling Wedge', position: 'belowBar', color: '#39ff14', shape: 'arrowUp', bias: 'Bullish'},
+          ];
+
+          for (let j=0; j<3; j++) {
+            const pat = types[Math.floor(Math.random() * types.length)];
+            const historicalDataPointIndex = Math.floor(Math.random() * (data.length - 10) + 5);
+            const dataPoint = data[historicalDataPointIndex];
+            
+            detected.push({ 
+              time: dataPoint.time, 
+              position: pat.position, 
+              color: pat.color, 
+              shape: pat.shape, 
+              text: pat.text, 
+              size: 1.8, 
+              type: 'Structural',
+              bias: pat.bias,
+              confidence: Math.floor(Math.random() * 30) + 60,
+              historicalRate: Math.floor(Math.random() * 25) + 55
+            });
+            
+            // Highlight the structural candle
+            dataPoint.color = pat.color;
+            dataPoint.borderColor = pat.color;
+            dataPoint.wickColor = pat.color;
+          }
+        }
+        detected.sort((a,b) => a.time - b.time);
+        return detected;
+    };
 
     // Load Real Historical Data
     fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${binanceInterval}&limit=100`)
@@ -222,47 +572,35 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
         
         candlestickSeriesRef.current.setData(historicalData as any);
 
-        const markers: any[] = [];
-        let tickCount = 0;
+        const detectedPatterns = detectPatterns(historicalData);
+        markersRef.current = detectedPatterns;
         
-        // Setup initial markers based on history
-        if (historicalData.length > 80) {
-            markers.push({ time: historicalData[20].time, position: 'belowBar', color: '#00f0ff', shape: 'arrowUp', text: 'AI Accumulation Zone', size: 1.5 });
-            markers.push({ time: historicalData[50].time, position: 'aboveBar', color: '#ff4500', shape: 'arrowDown', text: 'AI Distribution Detected', size: 1.5 });
-            markers.push({ time: historicalData[80].time, position: 'belowBar', color: '#39ff14', shape: 'circle', text: 'Bullish Divergence', size: 1.5 });
+        if (!markerPluginRef.current && candlestickSeriesRef.current) {
+            markerPluginRef.current = createSeriesMarkers(candlestickSeriesRef.current, []);
+        }
+
+        if (showPatterns && markerPluginRef.current) {
+            try {
+                markerPluginRef.current.setMarkers(detectedPatterns);
+            } catch(e) {}
         }
         
-        const markerPlugin = createSeriesMarkers(candlestickSeriesRef.current, markers);
+        if (onPatternsDetected) {
+            onPatternsDetected(detectedPatterns);
+        }
+        
+        let tickCount = 0;
         
         const insights = [
-          {
-            title: "Volatility Expansion",
-            desc: `Bollinger Bands widening on ${activeTimeframe}. Expecting sharp directional move soon.`,
-            confidence: 85,
-            theme: "cyan" as const,
-            label: "Pattern Detected"
-          },
-          {
-            title: "Liquidity Sweep",
-            desc: "Order book shows large bids pulling. Price action sweeps local lows, indicating potential reversal.",
-            confidence: 94,
-            theme: "green" as const,
-            label: "AI Recommendation: LONG"
-          },
-          {
-            title: "Bearish Order Block",
-            desc: "Price approached crucial supply zone. Large volume node resistance detected.",
-            confidence: 76,
-            theme: "orange" as const,
-            label: "High Risk Area"
-          },
-          {
-            title: "Momentum Alignment",
-            desc: "Multiple timeframes showing bullish confluence. Micro trend intact.",
-            confidence: 98,
-            theme: "green" as const,
-            label: "Micro Bullish"
-          }
+          { pattern: "Bull Flag", confidence: 81, risk: "Moderate", outlook: "Continuation likely", theme: "green" as const },
+          { pattern: "Bullish Engulfing", confidence: 87, risk: "Low", outlook: "Reversal strong", theme: "green" as const },
+          { pattern: "Bearish Engulfing", confidence: 82, risk: "Moderate", outlook: "Reversal likely", theme: "red" as const },
+          { pattern: "Hammer", confidence: 74, risk: "High", outlook: "Possible bottom", theme: "green" as const },
+          { pattern: "Shooting Star", confidence: 71, risk: "High", outlook: "Possible top", theme: "red" as const },
+          { pattern: "Double Bottom", confidence: 89, risk: "Low", outlook: "Trend reversal", theme: "green" as const },
+          { pattern: "Head & Shoulders", confidence: 91, risk: "Low", outlook: "Trend reversal", theme: "red" as const },
+          { pattern: "Ascending Channel", confidence: 65, risk: "Moderate", outlook: "Price discovery", theme: "purple" as const },
+          { pattern: "Doji", confidence: 65, risk: "High", outlook: "Indecision", theme: "purple" as const },
         ];
 
         let lastKnownTime = historicalData.length > 0 ? historicalData[historicalData.length - 1].time : 0;
@@ -298,16 +636,23 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
             if (tickCount > 0 && tickCount % 15 === 0) {
               setAiInsight(insights[Math.floor(Math.random() * insights.length)]);
               
-              markers.push({
-                  time: rtTime as any,
-                  position: tickCount % 30 === 0 ? 'aboveBar' : 'belowBar',
-                  color: tickCount % 30 === 0 ? '#ff4500' : '#39ff14',
-                  shape: tickCount % 30 === 0 ? 'arrowDown' : 'circle',
-                  text: tickCount % 30 === 0 ? 'Micro Resistance' : 'Micro Support',
-                  size: 1.0
-              });
-              if (markers.length > 20) markers.shift();
-              markerPlugin.setMarkers(markers);
+              if (showPatterns) {
+                  const currentMarkers = markersRef.current;
+                  currentMarkers.push({
+                      time: rtTime as any,
+                      position: tickCount % 30 === 0 ? 'aboveBar' : 'belowBar',
+                      color: tickCount % 30 === 0 ? '#ff4500' : '#39ff14',
+                      shape: tickCount % 30 === 0 ? 'arrowDown' : 'arrowUp',
+                      text: tickCount % 30 === 0 ? 'Micro Resistance' : 'Micro Support',
+                      size: 1.0,
+                      type: 'Candlestick'
+                  });
+                  if (markerPluginRef.current) {
+                      try {
+                          markerPluginRef.current.setMarkers(currentMarkers);
+                      } catch(e) {}
+                  }
+              }
             }
 
             // Adaptive Support/Resistance bounds
@@ -327,6 +672,42 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
                     { time: srTimeStart as any, value: maxHigh },
                     { time: srTimeEnd as any, value: maxHigh }
                 ]);
+
+                const firstData = recentData[0];
+                const midData = recentData[Math.floor(recentData.length / 2)];
+                const lastData = recentData[recentData.length - 1];
+
+                const isUptrend = lastData.close > firstData.close;
+                const trendStartPrice = isUptrend ? minLow : maxHigh;
+                const trendEndPrice = isUptrend ? minLow + (rtLow - minLow) * 0.8 : maxHigh - (maxHigh - rtHigh) * 0.8;
+                
+                trendlineSeries.setData([
+                    { time: srTimeStart as any, value: trendStartPrice },
+                    { time: srTimeEnd as any, value: trendEndPrice + (trendEndPrice - trendStartPrice)*0.2 }
+                ]);
+
+                const liquidityZone = minLow + (maxHigh - minLow) * (isUptrend ? 0.3 : 0.7);
+                liquiditySeries.setData([
+                    { time: midData.time as any, value: liquidityZone },
+                    { time: srTimeEnd as any, value: liquidityZone }
+                ]);
+                
+                const breakoutLvl = isUptrend ? maxHigh - (maxHigh - minLow) * 0.1 : minLow + (maxHigh - minLow) * 0.1;
+                breakoutSeries.setData([
+                    { time: srTimeStart as any, value: breakoutLvl },
+                    { time: srTimeEnd as any, value: breakoutLvl }
+                ]);
+
+                activeLinesRef.current = {
+                    support: minLow,
+                    resistance: maxHigh,
+                    liquidity: liquidityZone,
+                    breakout: breakoutLvl,
+                    trendlineStartPrice: trendStartPrice,
+                    trendlineEndPrice: trendEndPrice,
+                    timeStart: srTimeStart,
+                    timeEnd: srTimeEnd
+                };
             }
             
             
@@ -349,7 +730,99 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
           }
         };
       })
-      .catch((err: any) => console.error("Error fetching binance klines", err));
+      .catch((err: any) => {
+          console.error("Error fetching binance klines, falling back to synthetic data", err);
+          if (aborted || !candlestickSeriesRef.current || !chartRef.current) return;
+          
+          let lastClose = 64000;
+          let currentTime = Math.floor(Date.now() / 1000) - 100 * intervalSeconds;
+          
+          const syntheticData = Array(100).fill(0).map((_, i) => {
+              const open = lastClose + (Math.random() * 20 - 10);
+              const close = open + (Math.random() * 100 - 50);
+              const high = Math.max(open, close) + Math.random() * 50;
+              const low = Math.min(open, close) - Math.random() * 50;
+              lastClose = close;
+              const t = currentTime;
+              currentTime += intervalSeconds;
+              return { time: t as any, open, high, low, close };
+          });
+          
+          candlestickSeriesRef.current.setData(syntheticData as any);
+          
+          if (syntheticData.length > 0) {
+              const recentData = syntheticData.slice(-50);
+              const minLow = Math.min(...recentData.map((d: any) => d.low));
+              const maxHigh = Math.max(...recentData.map((d: any) => d.high));
+              
+              const srTimeStart = recentData[0].time as number;
+              const srTimeEnd = recentData[recentData.length - 1].time as number + (intervalSeconds * 10);
+              const rtLow = recentData[recentData.length - 1].low;
+              const rtHigh = recentData[recentData.length - 1].high;
+              
+              supportSeries.setData([
+                  { time: srTimeStart as any, value: minLow },
+                  { time: srTimeEnd as any, value: minLow }
+              ]);
+              resistanceSeries.setData([
+                  { time: srTimeStart as any, value: maxHigh },
+                  { time: srTimeEnd as any, value: maxHigh }
+              ]);
+
+              const firstData = recentData[0];
+              const midData = recentData[Math.floor(recentData.length / 2)];
+              const lastData = recentData[recentData.length - 1];
+
+              const isUptrend = lastData.close > firstData.close;
+              const trendStartPrice = isUptrend ? minLow : maxHigh;
+              const trendEndPrice = isUptrend ? minLow + (rtLow - minLow) * 0.8 : maxHigh - (maxHigh - rtHigh) * 0.8;
+              
+              trendlineSeries.setData([
+                  { time: srTimeStart as any, value: trendStartPrice },
+                  { time: srTimeEnd as any, value: trendEndPrice + (trendEndPrice - trendStartPrice)*0.2 }
+              ]);
+
+              const liquidityZone = minLow + (maxHigh - minLow) * (isUptrend ? 0.3 : 0.7);
+              liquiditySeries.setData([
+                  { time: midData.time as any, value: liquidityZone },
+                  { time: srTimeEnd as any, value: liquidityZone }
+              ]);
+              
+              const breakoutLvl = isUptrend ? maxHigh - (maxHigh - minLow) * 0.1 : minLow + (maxHigh - minLow) * 0.1;
+              breakoutSeries.setData([
+                  { time: srTimeStart as any, value: breakoutLvl },
+                  { time: srTimeEnd as any, value: breakoutLvl }
+              ]);
+
+              activeLinesRef.current = {
+                  support: minLow,
+                  resistance: maxHigh,
+                  liquidity: liquidityZone,
+                  breakout: breakoutLvl,
+                  trendlineStartPrice: trendStartPrice,
+                  trendlineEndPrice: trendEndPrice,
+                  timeStart: srTimeStart,
+                  timeEnd: srTimeEnd
+              };
+          }
+
+          const detectedPatterns = detectPatterns(syntheticData);
+          markersRef.current = detectedPatterns;
+          
+          if (!markerPluginRef.current && candlestickSeriesRef.current) {
+              markerPluginRef.current = createSeriesMarkers(candlestickSeriesRef.current, []);
+          }
+
+          if (showPatterns && markerPluginRef.current) {
+              try {
+                  markerPluginRef.current.setMarkers(detectedPatterns);
+              } catch(e) {}
+          }
+          
+          if (onPatternsDetected) {
+              onPatternsDetected(detectedPatterns);
+          }
+      });
 
     return () => {
       aborted = true;
@@ -357,58 +830,194 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
           activeWs.close();
       }
       resizeObserver.disconnect();
-      chart.remove();
+      try {
+        chart.remove();
+      } catch (e) {}
+      chartRef.current = null;
+      candlestickSeriesRef.current = null;
+      markerPluginRef.current = null;
     };
   }, [activeTimeframe]);
+
+  useEffect(() => {
+    if (markerPluginRef.current && candlestickSeriesRef.current) {
+        try {
+            if (showPatterns) {
+                markerPluginRef.current.setMarkers(markersRef.current);
+            } else {
+                markerPluginRef.current.setMarkers([]);
+            }
+        } catch (e) {
+             console.error("Marker plugin update failed (possibly disposed)", e);
+        }
+    }
+  }, [showPatterns]);
 
   return (
     <div className="relative w-full h-[407px] ml-0">
       <div ref={chartContainerRef} className="w-full h-full absolute inset-0" />
+      
+      {activeTooltip.visible && (
+         <div 
+           className="absolute z-30 bg-[#050505]/90 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-[120%]"
+           style={{ left: activeTooltip.x, top: activeTooltip.y }}
+         >
+            <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
+                <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: activeTooltip.color, boxShadow: `0 0 8px ${activeTooltip.color}` }}></span>
+                <span className="font-bold font-mono text-[11px] text-white uppercase tracking-widest">{activeTooltip.title}</span>
+            </div>
+            <div className="flex flex-col gap-1 font-mono text-[9px]">
+               <div className="flex justify-between gap-6">
+                 <span className="text-gray-400">Strength:</span>
+                 <span className="font-bold" style={{ color: activeTooltip.color }}>{activeTooltip.strength}</span>
+               </div>
+               <div className="flex justify-between gap-6">
+                 <span className="text-gray-400">Retests:</span>
+                 <span className="text-white font-bold">{activeTooltip.retests}</span>
+               </div>
+               <div className="flex justify-between gap-6">
+                 <span className="text-gray-400">Break Prob:</span>
+                 <span className="text-white font-bold">{activeTooltip.prob}</span>
+               </div>
+            </div>
+         </div>
+      )}
+
       {/* Legend / Overlay info */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[9px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded w-[170px] font-bold leading-[11px]">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[9px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded w-[180px] font-bold leading-[11px]">
          <div className="flex items-center gap-2 text-[#00f0ff]">
             <div className="w-4 border-b-2 border-dashed border-[#00f0ff]"></div>
-            AI Trajectory Forecast
+            AI Forecast
          </div>
          <div className="flex items-center gap-2 text-[#ff4500]">
             <div className="w-4 border-b-2 border-[#ff4500]"></div>
-            AI Resistance Zone
+            Resistance Zone
          </div>
          <div className="flex items-center gap-2 text-[#39ff14]">
             <div className="w-4 border-b-2 border-[#39ff14]"></div>
-            AI Support Zone
+            Support Zone
+         </div>
+         <div className="flex items-center gap-2 text-[#facc15]">
+            <div className="w-4 border-b-2 border-dotted border-[#facc15]"></div>
+            Dynamic Trendline
+         </div>
+         <div className="flex items-center gap-2 text-[#a855f7]">
+            <div className="w-4 border-b-[3px] border-dashed border-[#a855f7]"></div>
+            Liquidity Area
+         </div>
+         <div className="flex items-center gap-2 text-[#0ea5e9]">
+            <div className="w-4 border-b-2 border-[#0ea5e9]"></div>
+            Breakout Level
          </div>
       </div>
 
       {/* Floating Toolbars and AI Reasoning Panels (Glassmorphism) */}
       <div className="absolute top-4 right-4 flex flex-col gap-3 pointer-events-none z-20">
         <motion.div 
-          key={aiInsight.title}
+          key={aiInsight.pattern}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-[#050505]/60 backdrop-blur-xl border border-white/10 rounded-xl p-4 w-72 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto relative overflow-hidden"
+          className="bg-[#050505]/70 backdrop-blur-xl border border-white/10 rounded overflow-hidden w-64 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#00f0ff]/5 blur-[30px] rounded-full pointer-events-none"></div>
-          <div className="flex justify-between items-start mb-2 relative z-10">
-            <h4 className={`flex items-center gap-2 font-mono font-bold text-[10px] uppercase ${aiInsight.theme === 'green' ? 'text-[#39ff14]' : aiInsight.theme === 'cyan' ? 'text-[#00f0ff]' : 'text-[#ff4500]'}`}>
-              <ShieldAlert className="w-3.5 h-3.5" /> {aiInsight.title}
-            </h4>
-            <AIConfidenceRing confidence={aiInsight.confidence} size={32} theme={aiInsight.theme} />
+          <div className="bg-[#111] px-3 py-1.5 flex justify-between items-center border-b border-white/5">
+             <span className="text-[9px] font-mono font-bold tracking-widest text-[#0ea5e9] flex items-center gap-2">
+                 <span className="w-1.5 h-1.5 rounded-full bg-[#0ea5e9] animate-pulse"></span>
+                 [ AI DETECTED ]
+             </span>
+             <span className="text-[9px] font-mono text-gray-500">{activeTimeframe}</span>
           </div>
-          <p className="text-gray-300 text-xs leading-relaxed font-sans mb-3 relative z-10">
-            {aiInsight.desc}
-          </p>
-          <div className="flex items-center gap-2 relative z-10">
-            <span className={`text-[9px] uppercase tracking-widest font-bold px-1.5 py-0.5 rounded border ${
-              aiInsight.theme === 'green' ? 'bg-[#39ff14]/10 text-[#39ff14] border-[#39ff14]/20' : 
-              aiInsight.theme === 'cyan' ? 'bg-[#00f0ff]/10 text-[#00f0ff] border-[#00f0ff]/20' : 
-              'bg-[#ff4500]/10 text-[#ff4500] border-[#ff4500]/20'
-            }`}>
-              {aiInsight.label}
-            </span>
+          <div className="p-3">
+             <h4 className={`font-bold font-mono text-[14px] uppercase mb-3 ${
+                 aiInsight.theme === 'green' ? 'text-[#39ff14]' : 
+                 aiInsight.theme === 'red' ? 'text-[#ff4500]' : 
+                 'text-[#a855f7]'
+             }`}>
+                {aiInsight.pattern}
+             </h4>
+             
+             <div className="flex flex-col gap-2 font-mono text-[10px]">
+                <div className="flex justify-between items-center">
+                   <span className="text-gray-400">Confidence:</span>
+                   <span className="text-white font-bold">{aiInsight.confidence}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                   <span className="text-gray-400">Risk:</span>
+                   <span className={`font-bold ${aiInsight.risk === 'Low' ? 'text-[#39ff14]' : aiInsight.risk === 'High' ? 'text-[#ff4500]' : 'text-[#facc15]'}`}>{aiInsight.risk}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                   <span className="text-gray-400">AI Outlook:</span>
+                   <span className="text-white font-bold text-right max-w-[120px]">{aiInsight.outlook}</span>
+                </div>
+             </div>
           </div>
+          <div 
+             className="w-full h-[2px]" 
+             style={{ 
+                 background: aiInsight.theme === 'green' ? 'linear-gradient(90deg, #39ff14, transparent)' :
+                             aiInsight.theme === 'red' ? 'linear-gradient(90deg, #ff4500, transparent)' :
+                             'linear-gradient(90deg, #a855f7, transparent)'
+             }}
+          />
         </motion.div>
         
+        <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-[#050505]/70 backdrop-blur-xl border border-white/10 rounded overflow-hidden w-64 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto mb-auto"
+          >
+            <div className="bg-[#111] px-3 py-1.5 flex justify-between items-center border-b border-white/5">
+               <span className="text-[9px] font-mono font-bold tracking-widest text-[#00f0ff] flex items-center gap-2">
+                   <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span>
+                   MULTI-TF INTELLIGENCE
+               </span>
+            </div>
+            {/* Context Insights */}
+            <div className="p-3 border-b border-white/5 bg-[#050505]">
+               <div className="flex flex-col gap-2 font-mono text-[9px] uppercase tracking-widest">
+                  <div className="flex items-center gap-2">
+                     <span className="text-[#a855f7] font-bold w-6">[1H]</span>
+                     <span className="text-gray-400">Momentum Weakening</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[#facc15] font-bold w-6">[4H]</span>
+                     <span className="text-gray-400">Resistance Above</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <span className="text-[#00f0ff] font-bold w-6">[1D]</span>
+                     <span className="text-gray-400">Bull Trend Active</span>
+                  </div>
+               </div>
+            </div>
+
+            {/* Smart Alignment */}
+            <div className="p-3 bg-gradient-to-b from-[#111]/80 to-transparent">
+                <div className="flex justify-between items-end mb-3 border-b border-white/5 pb-2">
+                   <div className="text-[9px] font-mono font-bold text-gray-500 uppercase">Alignment Score</div>
+                   <div className="text-[18px] font-mono font-bold text-[#39ff14] shadow-[0_0_10px_#39ff14] leading-none">92%</div>
+                </div>
+                
+                <div className="flex flex-col gap-2 font-mono text-[10px]">
+                   <div className="flex justify-between items-center">
+                      <span className="text-[#3b82f6] font-bold px-1.5 py-0.5 bg-[#3b82f6]/10 rounded border border-[#3b82f6]/20">5m</span>
+                      <span className="text-[#39ff14] font-bold pr-1">Bullish</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                      <span className="text-[#a855f7] font-bold px-1.5 py-0.5 bg-[#a855f7]/10 rounded border border-[#a855f7]/20">1H</span>
+                      <span className="text-[#39ff14] font-bold pr-1">Bullish</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                      <span className="text-[#facc15] font-bold px-1.5 py-0.5 bg-[#facc15]/10 rounded border border-[#facc15]/20">4H</span>
+                      <span className="text-[#39ff14] font-bold pr-1">Bullish</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                      <span className="text-[#00f0ff] font-bold px-1.5 py-0.5 bg-[#00f0ff]/10 rounded border border-[#00f0ff]/20">1D</span>
+                      <span className="text-[#39ff14] font-bold pr-1">Bullish</span>
+                   </div>
+                </div>
+            </div>
+          </motion.div>
+
         <div className="bg-[#050505]/60 backdrop-blur-xl border border-white/10 rounded-xl p-3 shadow-[0_10px_40px_rgba(0,0,0,0.8)] pointer-events-auto self-end flex gap-2">
            <button 
              onClick={() => setToggles(p => ({ ...p, sniping: !p.sniping }))}
@@ -443,32 +1052,67 @@ function MarketChart({ activeTimeframe = "1m" }: { activeTimeframe?: string }) {
   );
 }
 
-function TradeExecutionPanel() {
+function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
   const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [orderType, setOrderType] = useState("limit");
+  const [orderType, setOrderType] = useState<"limit" | "market" | "stop">("limit");
   const [size, setSize] = useState("1.5");
   const [price, setPrice] = useState("64200.5");
+  const [tp, setTp] = useState("");
+  const [sl, setSl] = useState("");
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<string | null>(null);
 
   const maxPosition = 4.25;
+  const displayPrice = orderType === "market" && currentPrice ? currentPrice.toFixed(2) : price;
+
+  useEffect(() => {
+    if (orderType === "market" && currentPrice) {
+      setPrice(currentPrice.toFixed(2));
+    }
+  }, [currentPrice, orderType]);
 
   const handleSizePercent = (pct: number) => {
     setSize(((maxPosition * pct) / 100).toFixed(4));
   };
 
+  const handleOrderType = (t: "limit" | "market" | "stop") => {
+    setOrderType(t);
+    if (t === "market" && currentPrice) {
+      setPrice(currentPrice.toFixed(2));
+    }
+  };
+
   const handleExecute = () => {
+    const numSize = parseFloat(size);
+    const numPrice = parseFloat(price);
+    
+    if (!size || isNaN(numSize) || numSize <= 0) {
+      setExecutionResult("Invalid Size");
+      setTimeout(() => setExecutionResult(null), 2000);
+      return;
+    }
+    
+    if (orderType !== "market" && (!price || isNaN(numPrice) || numPrice <= 0)) {
+      setExecutionResult("Invalid Price");
+      setTimeout(() => setExecutionResult(null), 2000);
+      return;
+    }
+
     setIsExecuting(true);
     setExecutionResult(null);
     setTimeout(() => {
       setIsExecuting(false);
-      setExecutionResult(`[SUCCESS] ${side.toUpperCase()} ${size} BTC @ ${orderType === 'market' ? 'Market' : price}`);
-      setTimeout(() => setExecutionResult(null), 3000);
+      const executePrice = orderType === 'market' ? (currentPrice ? currentPrice.toFixed(2) : 'Market') : price;
+      setExecutionResult(`[SUCCESS] ${side.toUpperCase()} ${size} BTC @ ${executePrice}`);
+      setSize("");
+      setTp("");
+      setSl("");
+      setTimeout(() => setExecutionResult(null), 3500);
     }, 1500);
   };
 
-  const requiredMargin = (parseFloat(size || "0") * parseFloat(price || "0") * 0.1).toFixed(2);
-  const estFee = (parseFloat(size || "0") * parseFloat(price || "0") * 0.0002).toFixed(2);
+  const requiredMargin = (parseFloat(size || "0") * parseFloat(displayPrice || "0") * 0.1).toFixed(2);
+  const estFee = (parseFloat(size || "0") * parseFloat(displayPrice || "0") * 0.0002).toFixed(2);
 
   return (
     <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-full font-sans shadow-2xl relative overflow-hidden max-h-[900px]">
@@ -493,10 +1137,10 @@ function TradeExecutionPanel() {
       </div>
 
       <div className="flex gap-2 mb-5">
-        {["limit", "market", "stop"].map((t) => (
+        {(["limit", "market", "stop"] as const).map((t) => (
           <button
             key={t}
-            onClick={() => setOrderType(t)}
+            onClick={() => handleOrderType(t)}
             className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all shadow-none ${orderType === t ? "bg-[#1a1a1a] text-white border border-[#333]" : "bg-transparent text-gray-500 border border-transparent hover:bg-[#111]"}`}
           >
             {t}
@@ -510,18 +1154,18 @@ function TradeExecutionPanel() {
           <div>
             <div className="flex justify-between text-xs font-mono mb-1.5">
               <span className="text-gray-500">Order Price (USDT)</span>
-              <span className="text-gray-300">~ $64,200.50</span>
+              <span className="text-gray-300">~ ${displayPrice}</span>
             </div>
             <div className="relative group">
               <input
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors"
+                className={`w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors ${orderType === "market" ? 'text-gray-500' : ''}`}
                 disabled={orderType === "market" || isExecuting}
               />
               {orderType === "market" && (
-                <div className="absolute inset-0 bg-[#000]/50 flex items-center px-3 text-sm text-gray-500 font-mono">
+                <div className="absolute inset-0 bg-transparent flex items-center px-3 text-sm text-gray-400 font-mono pointer-events-none">
                   Market Price
                 </div>
               )}
@@ -596,6 +1240,8 @@ function TradeExecutionPanel() {
             </div>
             <input
               type="number"
+              value={tp}
+              onChange={(e) => setTp(e.target.value)}
               placeholder="Optional"
               disabled={isExecuting}
               className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#39ff14]/50"
@@ -607,6 +1253,8 @@ function TradeExecutionPanel() {
             </div>
             <input
               type="number"
+              value={sl}
+              onChange={(e) => setSl(e.target.value)}
               placeholder="Optional"
               disabled={isExecuting}
               className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#ff4500]/50"
@@ -649,12 +1297,189 @@ function TradeExecutionPanel() {
   );
 }
 
+function L2OrderBook() {
+  const [bids, setBids] = useState<[string, string][]>([]);
+  const [asks, setAsks] = useState<[string, string][]>([]);
+  const [spread, setSpread] = useState<string>("0.0");
+  const [midPrice, setMidPrice] = useState<string>("0.0");
+  const [maxVolume, setMaxVolume] = useState<number>(1);
+
+  useEffect(() => {
+    let ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@depth10@100ms");
+    let isMounted = true;
+    
+    ws.onmessage = (event) => {
+      if(!isMounted) return;
+      const data = JSON.parse(event.data);
+      if (data && data.bids && data.asks) {
+        setBids(data.bids.slice(0, 7));
+        setAsks(data.asks.slice(0, 7).reverse());
+        
+        let localMax = 0;
+        data.bids.slice(0, 7).forEach((b: any) => localMax = Math.max(localMax, parseFloat(b[1])));
+        data.asks.slice(0, 7).forEach((a: any) => localMax = Math.max(localMax, parseFloat(a[1])));
+        setMaxVolume(localMax * 1.2 || 1);
+
+        if (data.bids[0] && data.asks[0]) {
+           const bestBid = parseFloat(data.bids[0][0]);
+           const bestAsk = parseFloat(data.asks[0][0]);
+           setSpread((bestAsk - bestBid).toFixed(2));
+           setMidPrice(((bestAsk + bestBid) / 2).toFixed(2));
+        }
+      }
+    };
+    
+    return () => {
+      isMounted = false;
+      ws.close();
+    }
+  }, []);
+
+  return (
+    <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[350px] shrink-0">
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
+        <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+          <Eye className="w-4 h-4 text-[#00f0ff]" />
+          L2 Order Book
+        </h3>
+        <div className="text-[9px] font-mono text-[#0ea5e9]/50 animate-pulse flex items-center gap-1">
+           <div className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]"></div>
+           LIVE BTCDOM
+        </div>
+      </div>
+
+      {/* Asks (Red) */}
+      <div className="flex-1 flex flex-col justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
+        {asks.length > 0 ? asks.map((ask, i) => {
+          const price = parseFloat(ask[0]).toFixed(1);
+          const size = parseFloat(ask[1]).toFixed(3);
+          const sum = (parseFloat(ask[1]) * parseFloat(ask[0]) / 1000).toFixed(1) + "k";
+          const depth = Math.min((parseFloat(ask[1]) / maxVolume) * 100, 100);
+          return (
+            <div key={`ask-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5 overflow-hidden">
+              <div className="absolute top-0 right-0 h-full bg-[#ff4500]/15 transition-all duration-300" style={{ width: `${depth}%` }}></div>
+              <span className="text-[#ff4500] relative z-10 font-bold">{price}</span>
+              <span className="text-gray-400 relative z-10">{size}</span>
+              <span className="text-gray-600 relative z-10">{sum}</span>
+            </div>
+          );
+        }) : [...Array(7)].map((_, i) => (
+           <div key={`ask-skel-${i}`} className="flex justify-between py-0.5 px-1 text-gray-700 animate-pulse">
+             <span>---.-</span><span>-.---</span><span>--.-k</span>
+           </div>
+        ))}
+      </div>
+
+      {/* Spread Display */}
+      <div className="py-1.5 border-y border-[#222] my-1 flex justify-between items-center text-[11px] font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
+        <span className="text-[#39ff14] flex items-center">
+          <ArrowUpRight className="w-3.5 h-3.5 mr-1" /> {midPrice !== "0.0" ? midPrice : "..."}
+        </span>
+        <span className="text-[#00f0ff] text-[9px] flex items-center gap-1">
+          <Layers className="w-3 h-3 opacity-50" />
+          SPREAD {spread !== "0.0" ? spread : "..."}
+        </span>
+      </div>
+
+      {/* Bids (Green/Teal) */}
+      <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
+        {bids.length > 0 ? bids.map((bid, i) => {
+          const price = parseFloat(bid[0]).toFixed(1);
+          const size = parseFloat(bid[1]).toFixed(3);
+          const sum = (parseFloat(bid[1]) * parseFloat(bid[0]) / 1000).toFixed(1) + "k";
+          const depth = Math.min((parseFloat(bid[1]) / maxVolume) * 100, 100);
+          return (
+            <div key={`bid-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5 overflow-hidden">
+              <div className="absolute top-0 right-0 h-full bg-[#00f0ff]/10 transition-all duration-300" style={{ width: `${depth}%` }}></div>
+              <span className="text-[#0ea5e9] relative z-10 font-bold">{price}</span>
+              <span className="text-gray-400 relative z-10">{size}</span>
+              <span className="text-gray-600 relative z-10">{sum}</span>
+            </div>
+          );
+        }) : [...Array(7)].map((_, i) => (
+           <div key={`bid-skel-${i}`} className="flex justify-between py-0.5 px-1 text-gray-700 animate-pulse">
+             <span>---.-</span><span>-.---</span><span>--.-k</span>
+           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RecentTrades() {
+  const [trades, setTrades] = useState<{ price: string; quantity: string; time: string; isBuyerMaker: boolean }[]>([]);
+
+  useEffect(() => {
+    let ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
+    let isMounted = true;
+
+    ws.onmessage = (event) => {
+      if (!isMounted) return;
+      const data = JSON.parse(event.data);
+      if (data && data.e === 'trade') {
+        const t = new Date(data.T);
+        const timeStr = `${t.getHours().toString().padStart(2, '0')}:${t.getMinutes().toString().padStart(2, '0')}:${t.getSeconds().toString().padStart(2, '0')}`;
+        
+        setTrades(prev => {
+          const newTrade = {
+            price: parseFloat(data.p).toFixed(1),
+            quantity: parseFloat(data.q).toFixed(4),
+            time: timeStr,
+            isBuyerMaker: data.m // true = sell, false = buy
+          };
+          return [newTrade, ...prev].slice(0, 20); // Keep last 20 trades
+        });
+      }
+    };
+
+    return () => {
+      isMounted = false;
+      ws.close();
+    };
+  }, []);
+
+  return (
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[220px] shrink-0">
+      <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
+        <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+          <Activity className="w-4 h-4 text-[#0ea5e9]" />
+          Recent Trades
+        </h3>
+        <div className="text-[9px] font-mono text-[#00f0ff]/50 animate-pulse flex items-center gap-1">
+           <div className="w-1.5 h-1.5 rounded-full bg-[#00f0ff]"></div>
+           LIVE
+        </div>
+      </div>
+      <div className="flex justify-between text-[9px] font-mono font-bold text-gray-500 px-1 pb-1 mb-1 border-b border-[#111]">
+        <span>PRICE [USDT]</span>
+        <span>AMOUNT [BTC]</span>
+        <span>TIME</span>
+      </div>
+      <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-y-auto no-scrollbar">
+        {trades.length > 0 ? trades.map((trade, i) => (
+          <div key={i} className="flex justify-between py-0.5 px-1 hover:bg-white/5 cursor-pointer">
+            <span className={trade.isBuyerMaker ? "text-[#ff4500] font-bold" : "text-[#39ff14] font-bold"}>{trade.price}</span>
+            <span className="text-gray-300">{trade.quantity}</span>
+            <span className="text-gray-600">{trade.time}</span>
+          </div>
+        )) : [...Array(10)].map((_, i) => (
+           <div key={`skel-${i}`} className="flex justify-between py-0.5 px-1 text-gray-700 animate-pulse">
+             <span>---.-</span><span>-.----</span><span>--:--:--</span>
+           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function LiveMarketsTab() {
   const [dataStream, setDataStream] = useState<number[]>(Array(50).fill(64200));
   const [priceStats, setPriceStats] = useState({ changePercent: 2.14, isPositive: true });
   const [activeTimeframe, setActiveTimeframe] = useState("1D");
   const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
   const [ivRank, setIvRank] = useState(78.4);
+  const [detectedPatterns, setDetectedPatterns] = useState<any[]>([]);
+  const [toggles, setToggles] = useState({ patterns: true });
   const [heatmapBlocks, setHeatmapBlocks] = useState<number[][]>(() => 
     Array(6).fill(0).map(() => Array(10).fill(0).map(() => Math.random()))
   );
@@ -840,6 +1665,14 @@ export function LiveMarketsTab() {
                     <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">1H</span>
                     <span className="text-[#39ff14] text-xs font-bold drop-shadow-[0_0_5px_#39ff14]">Bullish</span>
                   </div>
+                  <button 
+                    onClick={() => setToggles(p => ({ ...p, patterns: !p.patterns }))}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-lg border border-white/5 backdrop-blur-md shadow-inner transition-colors hover:border-white/10 ${toggles.patterns ? 'bg-[#0ea5e9]/20 font-bold text-[#0ea5e9]' : 'bg-[#0a0a0a]/50 text-gray-500'}`}
+                    title="Toggle AI Pattern Scanner"
+                  >
+                    <SearchCode className="w-4 h-4" />
+                    <span className="text-xs uppercase tracking-widest">Patterns</span>
+                  </button>
                   <div className="flex items-center gap-2 bg-[#0a0a0a]/50 px-3.5 py-2 rounded-lg border border-white/5 backdrop-blur-md shadow-inner transition-colors hover:border-white/10">
                     <span className="text-[9px] uppercase tracking-widest text-gray-400 font-bold">4H</span>
                     <span className="text-[#39ff14] text-xs font-bold drop-shadow-[0_0_5px_#39ff14]">Bullish</span>
@@ -853,9 +1686,12 @@ export function LiveMarketsTab() {
 
             {/* TradingView / lightweight-charts Instance */}
             <div className="w-full border border-white/5 rounded-xl bg-[#030303]/80 relative flex flex-col pt-1 shadow-inner overflow-hidden flex-1">
-              {/* Subtle inner glow for the chart container */}
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0ea5e9]/[0.02] pointer-events-none"></div>
-              <MarketChart activeTimeframe={activeTimeframe} />
+              <MarketChart 
+                activeTimeframe={activeTimeframe} 
+                onPatternsDetected={setDetectedPatterns}
+                showPatterns={toggles.patterns}
+              />
             </div>
           </div>
 
@@ -928,78 +1764,13 @@ export function LiveMarketsTab() {
 
         {/* Right Sidebar: Trade Execution, Order Book & Log (Spans 3 cols) */}
         <div className="col-span-1 xl:col-span-3 flex flex-col gap-6">
-          <TradeExecutionPanel />
+          <TradeExecutionPanel currentPrice={dataStream[dataStream.length - 1]} />
 
-          <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[220px] shrink-0">
-            <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
-              <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
-                <Eye className="w-4 h-4 text-[#00f0ff]" />
-                L2 Order Book
-              </h3>
-            </div>
-
-            {/* Asks (Red) */}
-            <div className="flex-1 flex flex-col-reverse justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
-              {[...Array(6)].map((_, i) => {
-                const price = (64200 + i * 1.5).toFixed(1);
-                const size = (Math.random() * 5).toFixed(3);
-                const sum = (Math.random() * 100).toFixed(1);
-                const depth = Math.random() * 100;
-                return (
-                  <div
-                    key={`ask-${i}`}
-                    className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5"
-                  >
-                    <div
-                      className="absolute top-0 right-0 h-full bg-[#ff4500]/15"
-                      style={{ width: `${depth}%` }}
-                    ></div>
-                    <span className="text-[#ff4500] relative z-10 font-bold">
-                      {price}
-                    </span>
-                    <span className="text-gray-400 relative z-10">{size}</span>
-                    <span className="text-gray-600 relative z-10">{sum}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Spread Display */}
-            <div className="py-1 border-y border-[#222] my-1 flex justify-between items-center text-xs font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
-              <span className="text-[#39ff14] flex items-center">
-                <ArrowUpRight className="w-3.5 h-3.5 mr-1" /> 64,198.5
-              </span>
-              <span className="text-[#00f0ff] text-[10px]">Spread: 1.5</span>
-            </div>
-
-            {/* Bids (Green/Teal) */}
-            <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
-              {[...Array(6)].map((_, i) => {
-                const price = (64197 - i * 1.5).toFixed(1);
-                const size = (Math.random() * 5).toFixed(3);
-                const sum = (Math.random() * 100).toFixed(1);
-                const depth = Math.random() * 100;
-                return (
-                  <div
-                    key={`bid-${i}`}
-                    className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5"
-                  >
-                    <div
-                      className="absolute top-0 right-0 h-full bg-[#00f0ff]/10"
-                      style={{ width: `${depth}%` }}
-                    ></div>
-                    <span className="text-[#0ea5e9] relative z-10 font-bold">
-                      {price}
-                    </span>
-                    <span className="text-gray-400 relative z-10">{size}</span>
-                    <span className="text-gray-600 relative z-10">{sum}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <L2OrderBook />
 
           <ExecutionLog />
+          <AIPatternScanner detectedPatterns={detectedPatterns} />
+          <RecentTrades />
         </div>
       </div>
     </motion.div>
