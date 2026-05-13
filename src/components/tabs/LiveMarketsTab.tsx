@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Radio, ArrowUpRight, ShieldAlert, Activity, Cpu, Eye, BarChart2 } from 'lucide-react';
 import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickSeries } from 'lightweight-charts';
@@ -274,6 +274,31 @@ export function LiveMarketsTab() {
     return () => clearInterval(interval);
   }, []);
 
+  const asksData = useMemo(() => [...Array(18)].map((_, i) => ({
+    price: (64200 + i * 1.5).toFixed(1),
+    size: (Math.random() * 5).toFixed(3),
+    sum: (Math.random() * 100).toFixed(1),
+    depth: Math.random() * 100
+  })), []);
+
+  const bidsData = useMemo(() => [...Array(18)].map((_, i) => ({
+    price: (64197 - i * 1.5).toFixed(1),
+    size: (Math.random() * 5).toFixed(3),
+    sum: (Math.random() * 100).toFixed(1),
+    depth: Math.random() * 100
+  })), []);
+
+  const heatmapData = useMemo(() => [...Array(6)].map((_, r) =>
+    [...Array(12)].map((_, c) => {
+      const intensity = Math.random();
+      let color = 'bg-[#111]';
+      if (intensity > 0.8) color = 'bg-[#ff4500]';
+      else if (intensity > 0.6) color = 'bg-[#facc15]';
+      else if (intensity > 0.4) color = 'bg-[#00f0ff]';
+      return color;
+    })
+  ), []);
+
   return (
     <motion.div 
       key="live-markets-v2"
@@ -357,16 +382,11 @@ export function LiveMarketsTab() {
                </h3>
                <div className="flex-1 w-full flex flex-col gap-1 relative overflow-hidden">
                  {/* Simulated Heatmap Blocks */}
-                 {[...Array(6)].map((_, r) => (
+                 {heatmapData.map((row, r) => (
                     <div key={r} className="flex gap-1 flex-1">
-                      {[...Array(12)].map((_, c) => {
-                         const intensity = Math.random();
-                         let color = 'bg-[#111]';
-                         if (intensity > 0.8) color = 'bg-[#ff4500]';
-                         else if (intensity > 0.6) color = 'bg-[#facc15]';
-                         else if (intensity > 0.4) color = 'bg-[#00f0ff]';
-                         return <div key={c} className={`flex-1 rounded-sm opacity-80 ${color}`}></div>;
-                      })}
+                      {row.map((color, c) => (
+                        <div key={c} className={`flex-1 rounded-sm opacity-80 ${color}`}></div>
+                      ))}
                     </div>
                  ))}
                  {/* Overlay Text */}
@@ -411,20 +431,14 @@ export function LiveMarketsTab() {
              
              {/* Asks (Red) */}
              <div className="flex-1 flex flex-col-reverse justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
-               {[...Array(18)].map((_, i) => {
-                 const price = (64200 + i * 1.5).toFixed(1);
-                 const size = (Math.random() * 5).toFixed(3);
-                 const sum = (Math.random() * 100).toFixed(1);
-                 const depth = Math.random() * 100;
-                 return (
-                   <div key={`ask-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5">
-                     <div className="absolute top-0 right-0 h-full bg-[#ff4500]/15" style={{ width: `${depth}%`}}></div>
-                     <span className="text-[#ff4500] relative z-10 font-bold">{price}</span>
-                     <span className="text-gray-400 relative z-10">{size}</span>
-                     <span className="text-gray-600 relative z-10">{sum}</span>
-                   </div>
-                 );
-               })}
+               {asksData.map((ask, i) => (
+                 <div key={`ask-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5">
+                   <div className="absolute top-0 right-0 h-full bg-[#ff4500]/15" style={{ width: `${ask.depth}%`}}></div>
+                   <span className="text-[#ff4500] relative z-10 font-bold">{ask.price}</span>
+                   <span className="text-gray-400 relative z-10">{ask.size}</span>
+                   <span className="text-gray-600 relative z-10">{ask.sum}</span>
+                 </div>
+               ))}
              </div>
              
              {/* Spread Display */}
@@ -435,20 +449,14 @@ export function LiveMarketsTab() {
 
              {/* Bids (Green/Teal) */}
              <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
-               {[...Array(18)].map((_, i) => {
-                 const price = (64197 - i * 1.5).toFixed(1);
-                 const size = (Math.random() * 5).toFixed(3);
-                 const sum = (Math.random() * 100).toFixed(1);
-                 const depth = Math.random() * 100;
-                 return (
-                   <div key={`bid-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5">
-                     <div className="absolute top-0 right-0 h-full bg-[#00f0ff]/10" style={{ width: `${depth}%`}}></div>
-                     <span className="text-[#0ea5e9] relative z-10 font-bold">{price}</span>
-                     <span className="text-gray-400 relative z-10">{size}</span>
-                     <span className="text-gray-600 relative z-10">{sum}</span>
-                   </div>
-                 );
-               })}
+               {bidsData.map((bid, i) => (
+                 <div key={`bid-${i}`} className="flex justify-between relative py-0.5 px-1 group cursor-pointer hover:bg-white/5">
+                   <div className="absolute top-0 right-0 h-full bg-[#00f0ff]/10" style={{ width: `${bid.depth}%`}}></div>
+                   <span className="text-[#0ea5e9] relative z-10 font-bold">{bid.price}</span>
+                   <span className="text-gray-400 relative z-10">{bid.size}</span>
+                   <span className="text-gray-600 relative z-10">{bid.sum}</span>
+                 </div>
+               ))}
              </div>
           </div>
           
