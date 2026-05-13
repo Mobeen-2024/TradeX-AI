@@ -45,7 +45,7 @@ export function BottomSystemTerminal() {
          <div className="flex items-center gap-3 text-[9px] font-mono text-gray-500">
            <span className="flex items-center gap-1"><Cpu className="w-3 h-3 text-gray-400" /> SYS: 12%</span>
            <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3 text-gray-400" /> ERR: 0</span>
-           <button aria-label="Maximize terminal" title="Maximize terminal" className="hover:text-white transition-colors ml-2 cursor-pointer"><Maximize2 className="w-3 h-3" /></button>
+           <button className="hover:text-white transition-colors ml-2 cursor-pointer"><Maximize2 className="w-3 h-3" /></button>
          </div>
       </div>
       <div className="flex-1 p-2 px-4 overflow-y-auto no-scrollbar font-mono text-[10px] leading-relaxed flex flex-col justify-end gap-0.5">

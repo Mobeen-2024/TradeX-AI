@@ -43,7 +43,6 @@ export function TopIntelligenceBar() {
           <Activity className={`w-3.5 h-3.5 ${getRegimeColor(regime)}`} />
           Regime:
           <select
-            aria-label="Select market regime"
             value={regime}
             onChange={(e) => setRegime(e.target.value as MarketRegime)}
             className={`bg-transparent outline-none cursor-pointer uppercase font-bold tracking-widest ${getRegimeColor(regime)}`}
@@ -69,7 +68,6 @@ export function TopIntelligenceBar() {
           <Search className="w-3.5 h-3.5 text-gray-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            aria-label="Search command interface"
             placeholder="Command Interface..."
             className="bg-[#0a0a0a] border border-[#222] text-xs font-mono px-8 py-1 rounded-sm w-48 md:w-64 focus:outline-none focus:border-[#00f0ff] transition-colors text-white"
           />
@@ -77,9 +75,9 @@ export function TopIntelligenceBar() {
             ⌘K
           </span>
         </div>
-        <button aria-label="Notifications" title="Notifications" className="text-gray-500 hover:text-white transition-colors relative cursor-pointer">
+        <button className="text-gray-500 hover:text-white transition-colors relative cursor-pointer">
           <Bell className="w-4 h-4" />
-          <span aria-label="Unread notifications" className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff4500] rounded-full border border-[#020202]"></span>
+          <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff4500] rounded-full border border-[#020202]"></span>
         </button>
       </div>
     </header>

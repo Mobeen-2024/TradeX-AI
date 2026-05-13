@@ -786,8 +786,8 @@ export function LiveMarketsTab() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 relative z-10">
-        {/* Main Chart Area (Spans 7 cols) */}
-        <div className="col-span-1 xl:col-span-7 flex flex-col gap-6">
+        {/* Main Chart Area (Spans 9 cols) */}
+        <div className="col-span-1 xl:col-span-9 flex flex-col gap-6">
           <div className="bg-[#020202] border border-white/10 rounded-2xl p-6 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
             {/* Glassmorphic/Cyberpunk decorative glow */}
             <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-[#0ea5e9]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
@@ -926,10 +926,12 @@ export function LiveMarketsTab() {
           </div>
         </div>
 
-        {/* Order Book & Execution Log (Spans 2 cols) */}
-        <div className="col-span-1 xl:col-span-2 flex flex-col gap-6">
-          <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col relative overflow-hidden shadow-none max-h-[600px]">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-[#1a1a1a]">
+        {/* Right Sidebar: Trade Execution, Order Book & Log (Spans 3 cols) */}
+        <div className="col-span-1 xl:col-span-3 flex flex-col gap-6">
+          <TradeExecutionPanel />
+
+          <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[220px] shrink-0">
+            <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
                 <Eye className="w-4 h-4 text-[#00f0ff]" />
                 L2 Order Book
@@ -938,7 +940,7 @@ export function LiveMarketsTab() {
 
             {/* Asks (Red) */}
             <div className="flex-1 flex flex-col-reverse justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
-              {[...Array(18)].map((_, i) => {
+              {[...Array(6)].map((_, i) => {
                 const price = (64200 + i * 1.5).toFixed(1);
                 const size = (Math.random() * 5).toFixed(3);
                 const sum = (Math.random() * 100).toFixed(1);
@@ -963,7 +965,7 @@ export function LiveMarketsTab() {
             </div>
 
             {/* Spread Display */}
-            <div className="py-2 border-y border-[#222] my-1 flex justify-between items-center text-xs font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
+            <div className="py-1 border-y border-[#222] my-1 flex justify-between items-center text-xs font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
               <span className="text-[#39ff14] flex items-center">
                 <ArrowUpRight className="w-3.5 h-3.5 mr-1" /> 64,198.5
               </span>
@@ -972,7 +974,7 @@ export function LiveMarketsTab() {
 
             {/* Bids (Green/Teal) */}
             <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
-              {[...Array(18)].map((_, i) => {
+              {[...Array(6)].map((_, i) => {
                 const price = (64197 - i * 1.5).toFixed(1);
                 const size = (Math.random() * 5).toFixed(3);
                 const sum = (Math.random() * 100).toFixed(1);
@@ -998,11 +1000,6 @@ export function LiveMarketsTab() {
           </div>
 
           <ExecutionLog />
-        </div>
-
-        {/* Trade Execution Panel (Spans 3 cols) */}
-        <div className="col-span-1 xl:col-span-3">
-          <TradeExecutionPanel />
         </div>
       </div>
     </motion.div>
