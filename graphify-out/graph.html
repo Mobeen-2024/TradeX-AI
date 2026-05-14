@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Graphify - Project Knowledge Graph</title>
+  <style>
+    :root {
+      --bg-color: #050510;
+      --panel-bg: rgba(15, 15, 25, 0.7);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #00f0ff;
+      --accent-glow: rgba(0, 240, 255, 0.5);
+    }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-image: 
+        radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
+        radial-gradient(circle at 85% 30%, rgba(168, 85, 247, 0.05), transparent 25%);
+    }
+    #sidebar {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 320px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(to bottom, rgba(255,255,255,0.05), transparent);
+    }
+    h1 {
+      margin: 0 0 5px 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h1::before {
+      content: '';
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .search-container {
+      padding: 15px 20px;
+      position: relative;
+    }
+    input {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-main);
+      padding: 10px 12px 10px 32px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: all 0.2s;
+      box-sizing: border-box;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(0, 240, 255, 0.1);
+    }
+    .search-icon {
+      position: absolute;
+      left: 30px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      width: 14px;
+      height: 14px;
+    }
+    #details {
+      padding: 20px;
+      border-top: 1px solid var(--border-color);
+      flex-grow: 1;
+      font-size: 13px;
+      line-height: 1.5;
+      display: none;
+    }
+    #details.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    .detail-title {
+      color: var(--accent);
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .detail-group {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .detail-desc {
+      color: #cbd5e1;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .node text {
+      pointer-events: none;
+      font-size: 11px;
+      fill: #e2e8f0;
+      font-family: 'JetBrains Mono', Courier, monospace;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    }
+    .link {
+      stroke: rgba(255, 255, 255, 0.15);
+      stroke-opacity: 0.6;
+    }
+    .node circle {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .node:hover circle {
+      filter: brightness(1.2);
+    }
+    /* Group Colors */
+    .group-core { fill: #ef4444; }
+    .bg-core { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+    
+    .group-ui { fill: #3b82f6; }
+    .bg-ui { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+    
+    .group-features { fill: #a855f7; }
+    .bg-features { background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3); }
+    
+    .group-context { fill: #f59e0b; }
+    .bg-context { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    
+    .group-store { fill: #14b8a6; }
+    .bg-store { background: rgba(20, 184, 166, 0.15); color: #14b8a6; border: 1px solid rgba(20, 184, 166, 0.3); }
+    
+    .group-tabs { fill: #10b981; }
+    .bg-tabs { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .legend-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+  </style>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <div id="sidebar">
+    <div class="header">
+      <h1>TradeX OS</h1>
+      <p class="subtitle">System Knowledge Graph</p>
+    </div>
+    <div class="search-container">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input type="text" id="search" placeholder="Search architecture...">
+    </div>
+    <div id="details">
+      <div class="detail-title" id="d-title">Node Name</div>
+      <div class="detail-group" id="d-group">GROUP</div>
+      <div class="detail-desc" id="d-desc">Description goes here.</div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Core App/Entry</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>Layout & UI Shell</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>View Tabs</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div>State/Store</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div>Features/AI</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Contexts</div>
+  </div>
+
+  <svg width="100vw" height="100vh"></svg>
+  
+  <script>
+    const graphData = {
+      "nodes": [
+        { "id": "App.tsx", "group": "core", "label": "App.tsx", "desc": "Main application shell. Orchestrates layout, contexts, and global stores." },
+        { "id": "main.tsx", "group": "core", "label": "main.tsx", "desc": "React DOM entry point. Mounts the application to the root element." },
+        { "id": "Sidebar.tsx", "group": "ui", "label": "Sidebar.tsx", "desc": "Left navigation sidebar. Controls tab switching and primary routing." },
+        { "id": "MainContent.tsx", "group": "ui", "label": "MainContent.tsx", "desc": "Dynamic mounting point for active tabs and central workspace." },
+        { "id": "TopIntelligenceBar.tsx", "group": "ui", "label": "TopIntelligenceBar.tsx", "desc": "Header displaying high-level market mode, active alerts, and time." },
+        { "id": "BottomSystemTerminal.tsx", "group": "ui", "label": "BottomSystemTerminal.tsx", "desc": "Footer terminal streaming execution logs and raw system telemetry." },
+        { "id": "AuthFlow.tsx", "group": "ui", "label": "AuthFlow.tsx", "desc": "Cyberpunk-styled terminal authentication loop." },
+        { "id": "MobileApp.tsx", "group": "ui", "label": "MobileApp.tsx", "desc": "Dedicated layout tree for mobile devices to handle density constraints." },
+        { "id": "AIVoiceAssistant.tsx", "group": "features", "label": "AIVoiceAssistant.tsx", "desc": "Global HUD Voice Assistant allowing natural language execution commands." },
+        { "id": "MarketRegimeContext.tsx", "group": "context", "label": "MarketRegimeContext.tsx", "desc": "Provides global ambient state (Bull, Bear, Neutral, Volatile) to style UI." },
+        { "id": "intelligenceStore.ts", "group": "store", "label": "intelligenceStore.ts", "desc": "Zustand store managing execution flags and intelligence layers." },
+        { "id": "LiveMarketsTab.tsx", "group": "tabs", "label": "LiveMarketsTab.tsx", "desc": "High-performance canvas charting, probability engines, and L2 orderbooks." },
+        { "id": "AutoTradingTab.tsx", "group": "tabs", "label": "AutoTradingTab.tsx", "desc": "Algorithmic trading configuration and deployment dashboard." },
+        { "id": "SimulationEngineTab.tsx", "group": "tabs", "label": "SimulationEngineTab.tsx", "desc": "Backtesting rig for strategy verification and historical replays." },
+        { "id": "AIAgentsTab.tsx", "group": "tabs", "label": "AIAgentsTab.tsx", "desc": "Management interface for autonomous sub-agents and swarm execution." },
+        { "id": "WorkflowsTab.tsx", "group": "tabs", "label": "WorkflowsTab.tsx", "desc": "Visual node editor for conditional trading logic sequences." },
+        { "id": "HistoryTab.tsx", "group": "tabs", "label": "HistoryTab.tsx", "desc": "Trade ledger, PnL tracking, and performance analytics." },
+        { "id": "LibraryTab.tsx", "group": "tabs", "label": "LibraryTab.tsx", "desc": "Documentation repository, system blueprint registry, and user guides." },
+        { "id": "RiskCenterTab.tsx", "group": "tabs", "label": "RiskCenterTab.tsx", "desc": "Live portfolio risk matrices, exposure alerts, and VaR calculations." },
+        { "id": "DashboardTab.tsx", "group": "tabs", "label": "DashboardTab.tsx", "desc": "Exec-level overview of strategies, net positions, and system health." },
+        { "id": "ChartAnalysisTab.tsx", "group": "tabs", "label": "ChartAnalysisTab.tsx", "desc": "Extended technical studies and multi-timeframe correlation boards." }
+      ],
+      "links": [
+        { "source": "main.tsx", "target": "App.tsx", "value": 3 },
+        { "source": "App.tsx", "target": "Sidebar.tsx", "value": 2 },
+        { "source": "App.tsx", "target": "MainContent.tsx", "value": 3 },
+        { "source": "App.tsx", "target": "TopIntelligenceBar.tsx", "value": 2 },
+        { "source": "App.tsx", "target": "BottomSystemTerminal.tsx", "value": 2 },
+        { "source": "App.tsx", "target": "AuthFlow.tsx", "value": 2 },
+        { "source": "App.tsx", "target": "MobileApp.tsx", "value": 2 },
+        { "source": "App.tsx", "target": "AIVoiceAssistant.tsx", "value": 2 },
+        { "source": "App.tsx", "target": "MarketRegimeContext.tsx", "value": 2 },
+        { "source": "MainContent.tsx", "target": "LiveMarketsTab.tsx", "value": 3 },
+        { "source": "MainContent.tsx", "target": "AutoTradingTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "SimulationEngineTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "AIAgentsTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "WorkflowsTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "HistoryTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "LibraryTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "RiskCenterTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "DashboardTab.tsx", "value": 1 },
+        { "source": "MainContent.tsx", "target": "ChartAnalysisTab.tsx", "value": 1 },
+        { "source": "LiveMarketsTab.tsx", "target": "intelligenceStore.ts", "value": 2 }
+      ]
+    };
+
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const svg = d3.select("svg")
+      .call(d3.zoom().scaleExtent([0.5, 4]).on("zoom", (event) => {
+        svgGroup.attr("transform", event.transform);
+      }));
+
+    const svgGroup = svg.append("g");
+    
+    // Add glow filter
+    const defs = svg.append("defs");
+    const filter = defs.append("filter").attr("id", "glow");
+    filter.append("feGaussianBlur").attr("stdDeviation", "3.5").attr("result", "coloredBlur");
+    const feMerge = filter.append("feMerge");
+    feMerge.append("feMergeNode").attr("in", "coloredBlur");
+    feMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+    const simulation = d3.forceSimulation(graphData.nodes)
+        .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(120))
+        .force("charge", d3.forceManyBody().strength(-400))
+        .force("center", d3.forceCenter(width / 2 + 150, height / 2))
+        .force("collide", d3.forceCollide().radius(40));
+
+    const link = svgGroup.append("g")
+        .attr("class", "links")
+      .selectAll("line")
+      .data(graphData.links)
+      .join("line")
+        .attr("class", "link")
+        .attr("stroke-width", d => Math.max(1, d.value));
+
+    const node = svgGroup.append("g")
+        .attr("class", "nodes")
+      .selectAll("g")
+      .data(graphData.nodes)
+      .join("g")
+        .attr("class", d => `node group-${d.group}`)
+        .call(drag(simulation));
+
+    // Shadow/Glow layer
+    node.append("circle")
+        .attr("r", 9)
+        .attr("class", d => `group-${d.group}`)
+        .style("filter", "url(#glow)")
+        .style("opacity", 0.6);
+
+    // Core node
+    node.append("circle")
+        .attr("r", 7)
+        .attr("class", d => `group-${d.group}`)
+        .attr("stroke", "#fff")
+        .attr("stroke-width", 1.5);
+
+    node.append("text")
+        .attr("x", 14)
+        .attr("y", 4)
+        .text(d => d.label);
+
+    const detailsPanel = document.getElementById("details");
+    const elTitle = document.getElementById("d-title");
+    const elGroup = document.getElementById("d-group");
+    const elDesc = document.getElementById("d-desc");
+
+    node.on("click", function(event, d) {
+       // Reset all
+       node.selectAll("circle[stroke]").attr("stroke", "#fff").attr("stroke-width", 1.5);
+       node.style("opacity", 0.3);
+       link.style("stroke-opacity", 0.1);
+       
+       // Highlight connected
+       const connectedNodeIds = new Set([d.id]);
+       link.filter(l => {
+           if(l.source.id === d.id || l.target.id === d.id) {
+               connectedNodeIds.add(l.source.id);
+               connectedNodeIds.add(l.target.id);
+               return true;
+           }
+           return false;
+       }).style("stroke-opacity", 0.8).style("stroke", "#00f0ff");
+       
+       node.filter(n => connectedNodeIds.has(n.id))
+           .style("opacity", 1);
+       
+       // Highlight self
+       d3.select(this).select("circle[stroke]").attr("stroke", "#00f0ff").attr("stroke-width", 3);
+       
+       // Update Details
+       detailsPanel.classList.add("active");
+       elTitle.textContent = d.id;
+       elGroup.textContent = d.group.toUpperCase();
+       elGroup.className = `detail-group bg-${d.group}`;
+       elDesc.textContent = d.desc;
+       
+       event.stopPropagation();
+    });
+
+    svg.on("click", () => {
+        node.selectAll("circle[stroke]").attr("stroke", "#fff").attr("stroke-width", 1.5);
+        node.style("opacity", 1);
+        link.style("stroke-opacity", 0.6).style("stroke", "rgba(255, 255, 255, 0.15)");
+        detailsPanel.classList.remove("active");
+    });
+
+    simulation.on("tick", () => {
+      link
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+
+      node.attr("transform", d => `translate(${d.x},${d.y})`);
+    });
+
+    document.getElementById('search').addEventListener('input', function(e) {
+      const term = e.target.value.toLowerCase();
+      if(term === '') {
+          node.style("opacity", 1).style("display", "block");
+          link.style("opacity", 0.6).style("stroke", "rgba(255, 255, 255, 0.15)");
+          return;
+      }
+      
+      const matchedNodeIds = new Set();
+      
+      node.style("opacity", d => {
+          const match = d.label.toLowerCase().includes(term) || d.desc.toLowerCase().includes(term);
+          if(match) matchedNodeIds.add(d.id);
+          return match ? 1 : 0.05;
+      });
+      
+      link.style("opacity", d => (matchedNodeIds.has(d.source.id) && matchedNodeIds.has(d.target.id)) ? 0.8 : 0.02);
+    });
+
+    function drag(simulation) {
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      }
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      }
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+      return d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended);
+    }
+    
+    // Zoom to fit initially
+    setTimeout(() => {
+       const bounds = svgGroup.node().getBBox();
+       const fullWidth = width;
+       const fullHeight = height;
+       const widthStr = bounds.width || 1;
+       const heightStr = bounds.height || 1;
+       const midX = bounds.x + widthStr / 2;
+       const midY = bounds.y + heightStr / 2;
+       if (widthStr === 1 && heightStr === 1) return;
+       const scale = 0.85 / Math.max(widthStr / fullWidth, heightStr / fullHeight);
+       const translate = [fullWidth / 2 - scale * midX + 150, fullHeight / 2 - scale * midY]; // +150 to account for sidebar
+       
+       svg.transition().duration(1000).call(
+         d3.zoom().on("zoom", (event) => { svgGroup.attr("transform", event.transform); }).transform,
+         d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale)
+       );
+    }, 1500);
+  </script>
+</body>
+</html>

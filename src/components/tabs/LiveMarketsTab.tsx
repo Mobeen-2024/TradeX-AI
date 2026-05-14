@@ -362,6 +362,42 @@ function MarketChart({
       priceLineVisible: false,
     });
 
+    const coneUpperSeries = chart.addSeries(LineSeries, {
+      color: 'rgba(0, 240, 255, 0.2)',
+      lineWidth: 1,
+      lineStyle: 2,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    const coneLowerSeries = chart.addSeries(LineSeries, {
+      color: 'rgba(0, 240, 255, 0.2)',
+      lineWidth: 1,
+      lineStyle: 2,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    const altTargetSeries = chart.addSeries(LineSeries, {
+      color: '#a855f7',
+      lineWidth: 1,
+      lineStyle: 3,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
+    const highRiskSeries = chart.addSeries(LineSeries, {
+      color: '#ff4500',
+      lineWidth: 1,
+      lineStyle: 3,
+      crosshairMarkerVisible: false,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    });
+
     // Support/Resistance Series (Line)
     const supportSeries = chart.addSeries(LineSeries, {
       color: '#39ff14',
@@ -712,17 +748,47 @@ function MarketChart({
             
             
             // Adaptive Prediction Line Recalculation
-            let predictionData = [{ time: rtTime as any, value: rtClose }];
-            let pTime = rtTime;
-            let pVal = rtClose;
+            let pBaseTime = rtTime;
+            
+            let mostLikelyData = [{ time: rtTime as any, value: rtClose }];
+            let coneUpperData = [{ time: rtTime as any, value: rtClose }];
+            let coneLowerData = [{ time: rtTime as any, value: rtClose }];
+            let mlVal = rtClose;
+            
+            let altData = [{ time: rtTime as any, value: rtClose }];
+            let altVal = rtClose;
+            
+            let riskData = [{ time: rtTime as any, value: rtClose }];
+            let riskVal = rtClose;
+            
             const aiOptimism = Math.random() > 0.5 ? 1 : -1;
-            for (let j = 1; j <= 10; j++) {
-                pTime += intervalSeconds;
-                pVal += aiOptimism * 10 + (Math.random() * 20 - 5);
-                predictionData.push({ time: pTime as any, value: pVal });
+            
+            for (let j = 1; j <= 15; j++) {
+                pBaseTime += intervalSeconds;
+                
+                // Most likely (stable trend)
+                mlVal += aiOptimism * 8 + (Math.random() * 15 - 7.5);
+                mostLikelyData.push({ time: pBaseTime as any, value: mlVal });
+                
+                // Confidence cone expands over time
+                const coneWidth = j * 2 + Math.random() * 5;
+                coneUpperData.push({ time: pBaseTime as any, value: mlVal + coneWidth });
+                coneLowerData.push({ time: pBaseTime as any, value: mlVal - coneWidth });
+                
+                // Alternative (counter trend or sideways)
+                altVal += (-aiOptimism * 5) + (Math.random() * 25 - 12.5);
+                altData.push({ time: pBaseTime as any, value: altVal });
+                
+                // High risk (extreme volatility)
+                riskVal += (-aiOptimism * 20) + (Math.random() * 60 - 30);
+                riskData.push({ time: pBaseTime as any, value: riskVal });
             }
-            // Since prediction goes into the future, we need to completely replace data 
-            predictionSeries.setData(predictionData);
+            
+            predictionSeries.setData(mostLikelyData);
+            coneUpperSeries.setData(coneUpperData);
+            coneLowerSeries.setData(coneLowerData);
+            altTargetSeries.setData(altData);
+            highRiskSeries.setData(riskData);
 
             tickCount++;
           } catch(e) {
@@ -804,6 +870,39 @@ function MarketChart({
                   timeStart: srTimeStart,
                   timeEnd: srTimeEnd
               };
+              
+              let pBaseTime = recentData[recentData.length - 1].time as number;
+              let mlVal = recentData[recentData.length - 1].close;
+              let altVal = mlVal;
+              let riskVal = mlVal;
+              let mostLikelyData = [{ time: pBaseTime as any, value: mlVal }];
+              let coneUpperData = [{ time: pBaseTime as any, value: mlVal }];
+              let coneLowerData = [{ time: pBaseTime as any, value: mlVal }];
+              let altData = [{ time: pBaseTime as any, value: mlVal }];
+              let riskData = [{ time: pBaseTime as any, value: mlVal }];
+              const aiOptimism = Math.random() > 0.5 ? 1 : -1;
+              
+              for (let j = 1; j <= 15; j++) {
+                  pBaseTime += intervalSeconds;
+                  mlVal += aiOptimism * 8 + (Math.random() * 15 - 7.5);
+                  mostLikelyData.push({ time: pBaseTime as any, value: mlVal });
+                  
+                  const coneWidth = j * 2 + Math.random() * 5;
+                  coneUpperData.push({ time: pBaseTime as any, value: mlVal + coneWidth });
+                  coneLowerData.push({ time: pBaseTime as any, value: mlVal - coneWidth });
+                  
+                  altVal += (-aiOptimism * 5) + (Math.random() * 25 - 12.5);
+                  altData.push({ time: pBaseTime as any, value: altVal });
+                  
+                  riskVal += (-aiOptimism * 20) + (Math.random() * 60 - 30);
+                  riskData.push({ time: pBaseTime as any, value: riskVal });
+              }
+              
+              predictionSeries.setData(mostLikelyData);
+              coneUpperSeries.setData(coneUpperData);
+              coneLowerSeries.setData(coneLowerData);
+              altTargetSeries.setData(altData);
+              highRiskSeries.setData(riskData);
           }
 
           const detectedPatterns = detectPatterns(syntheticData);
@@ -887,7 +986,15 @@ function MarketChart({
       <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[9px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded w-[180px] font-bold leading-[11px]">
          <div className="flex items-center gap-2 text-[#00f0ff]">
             <div className="w-4 border-b-2 border-dashed border-[#00f0ff]"></div>
-            AI Forecast
+            Most Likely Path
+         </div>
+         <div className="flex items-center gap-2 text-[#a855f7]">
+            <div className="w-4 border-b border-dashed border-[#a855f7]"></div>
+            Alt Scenario
+         </div>
+         <div className="flex items-center gap-2 text-[#ff4500]">
+            <div className="w-4 border-b border-dashed border-[#ff4500]"></div>
+            High-Risk Scenario
          </div>
          <div className="flex items-center gap-2 text-[#ff4500]">
             <div className="w-4 border-b-2 border-[#ff4500]"></div>
@@ -1121,18 +1228,56 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
         className={`absolute -top-20 -right-20 w-40 h-40 blur-[80px] rounded-full pointer-events-none opacity-20 ${side === "buy" ? "bg-[#39ff14]" : "bg-[#ff4500]"}`}
       ></div>
 
-      <div className="flex border border-[#222] rounded-sm overflow-hidden mb-5 sticky z-10 shrink-0 bg-[#0a0a0a]">
+      <div className="bg-[#111] border border-[#222] rounded p-3 mb-5 sticky z-10 shrink-0 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[10px] font-mono font-bold tracking-widest text-[#00f0ff] uppercase flex items-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5" /> AI Market Probability
+          </span>
+        </div>
+        
+        <div className="space-y-3 font-mono text-[10px]">
+           <div>
+              <div className="flex justify-between mb-1">
+                 <span className="text-gray-400">Bullish Continuation</span>
+                 <span className="text-[#39ff14] font-bold">68%</span>
+              </div>
+              <div className="w-full h-1.5 bg-[#050505] rounded overflow-hidden">
+                 <div className="w-[68%] h-full bg-[#39ff14] shadow-[0_0_8px_#39ff14]"></div>
+              </div>
+           </div>
+           <div>
+              <div className="flex justify-between mb-1">
+                 <span className="text-gray-400">Pullback Risk</span>
+                 <span className="text-[#ff4500] font-bold">24%</span>
+              </div>
+              <div className="w-full h-1.5 bg-[#050505] rounded overflow-hidden">
+                 <div className="w-[24%] h-full bg-[#ff4500]"></div>
+              </div>
+           </div>
+           <div>
+              <div className="flex justify-between mb-1">
+                 <span className="text-gray-400">Fakeout Probability</span>
+                 <span className="text-[#a855f7] font-bold">8%</span>
+              </div>
+              <div className="w-full h-1.5 bg-[#050505] rounded overflow-hidden flex items-center">
+                 <div className="w-[8%] h-full bg-[#a855f7]"></div>
+              </div>
+           </div>
+        </div>
+      </div>
+      
+      <div className="flex gap-2 mb-5">
         <button
           onClick={() => setSide("buy")}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all border-r border-[#222] ${side === "buy" ? "bg-[#39ff14]/10 text-[#39ff14] shadow-[inset_0_-2px_0_#39ff14]" : "text-gray-500 hover:bg-white/5"}`}
+          className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all rounded-sm border ${side === "buy" ? "bg-[#39ff14]/10 text-[#39ff14] border-[#39ff14]/30" : "bg-transparent text-gray-500 border-[#222] hover:bg-white/5"}`}
         >
-          Buy / Long
+          Long
         </button>
         <button
           onClick={() => setSide("sell")}
-          className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-all ${side === "sell" ? "bg-[#ff4500]/10 text-[#ff4500] shadow-[inset_0_-2px_0_#ff4500]" : "text-gray-500 hover:bg-white/5"}`}
+          className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-widest transition-all rounded-sm border ${side === "sell" ? "bg-[#ff4500]/10 text-[#ff4500] border-[#ff4500]/30" : "bg-transparent text-gray-500 border-[#222] hover:bg-white/5"}`}
         >
-          Sell / Short
+          Short
         </button>
       </div>
 
