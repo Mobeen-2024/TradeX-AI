@@ -41,11 +41,12 @@ export function TopIntelligenceBar() {
         <div className="h-4 w-[1px] bg-[#1a1a1a] hidden md:block"></div>
         <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-gray-500">
           <Activity className={`w-3.5 h-3.5 ${getRegimeColor(regime)}`} />
-          Regime:
+          <label htmlFor="regime-select">Regime:</label>
           <select
+            id="regime-select"
             value={regime}
             onChange={(e) => setRegime(e.target.value as MarketRegime)}
-            className={`bg-transparent outline-none cursor-pointer uppercase font-bold tracking-widest ${getRegimeColor(regime)}`}
+            className={`bg-transparent outline-none focus-visible:ring-2 focus-visible:ring-[#00f0ff] focus-visible:outline-none rounded cursor-pointer uppercase font-bold tracking-widest ${getRegimeColor(regime)}`}
           >
             <option value="neutral" className="bg-[#111] text-gray-400">
               Neutral
@@ -75,7 +76,10 @@ export function TopIntelligenceBar() {
             ⌘K
           </span>
         </div>
-        <button className="text-gray-500 hover:text-white transition-colors relative cursor-pointer">
+        <button
+          className="text-gray-500 hover:text-white transition-colors relative cursor-pointer focus-visible:ring-2 focus-visible:ring-[#00f0ff] focus-visible:outline-none rounded"
+          aria-label="View Notifications"
+        >
           <Bell className="w-4 h-4" />
           <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff4500] rounded-full border border-[#020202]"></span>
         </button>
