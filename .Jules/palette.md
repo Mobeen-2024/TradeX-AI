@@ -1,0 +1,3 @@
+## 2024-05-24 - Missing ARIA labels and focus states on icon-only buttons
+**Learning:** Found multiple instances of icon-only buttons lacking ARIA labels and keyboard focus states, making them completely inaccessible to screen reader users and difficult to use for keyboard navigators. These small oversights significantly degrade the application's overall accessibility.
+**Action:** When adding new interactive components, always ensure icon-only buttons have an `aria-label` explaining their function and utilize Tailwind's `focus-visible:ring-2` combined with `outline-none` to provide clear visual feedback for keyboard users.

@@ -42,8 +42,9 @@ export function AIVoiceAssistant() {
     <>
       {/* Floating Button */}
       <motion.button
+        aria-label="Open AI Voice Assistant"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-36 right-6 md:bottom-8 md:right-8 z-50 w-14 h-14 bg-[#050505] border border-[#a855f7]/50 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:scale-105 transition-transform"
+        className="fixed bottom-36 right-6 md:bottom-8 md:right-8 z-50 w-14 h-14 bg-[#050505] border border-[#a855f7]/50 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:scale-105 transition-transform focus-visible:ring-2 focus-visible:ring-[#a855f7] outline-none"
         whileHover={{
           boxShadow: "0 0 30px rgba(168,85,247,0.4)",
           borderColor: "#a855f7",
@@ -83,8 +84,9 @@ export function AIVoiceAssistant() {
                 </div>
               </div>
               <button
+                aria-label="Close Voice Assistant"
                 onClick={() => setIsOpen(false)}
-                className="text-gray-500 hover:text-white transition-colors"
+                className="text-gray-500 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-[#a855f7] outline-none rounded-sm"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -151,8 +153,9 @@ export function AIVoiceAssistant() {
               </div>
 
               <button
+                aria-label={isListening ? "Stop listening" : "Start listening"}
                 onClick={handleMicClick}
-                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                className={`w-12 h-12 rounded-full flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-[#a855f7] outline-none ${
                   isListening
                     ? "bg-[#a855f7] text-white shadow-[0_0_20px_#a855f7] scale-110"
                     : "bg-[#111] border border-[#a855f7]/50 text-[#a855f7] hover:bg-[#a855f7]/10"
