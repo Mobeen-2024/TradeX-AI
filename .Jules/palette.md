@@ -1,0 +1,3 @@
+## 2025-02-28 - TopIntelligenceBar Accessibility Improvements
+**Learning:** Icon-only buttons and form elements without visible text labels frequently miss `aria-label` attributes, which impairs screen reader usability. Removing default focus outlines (`outline-none`) without adding explicit visual focus states (`focus-visible:ring-2`) breaks keyboard accessibility, especially in dense UI regions like the top navigation bar.
+**Action:** When creating new icon-only interactive elements or input fields, always add descriptive `aria-label`s. Ensure that any component with `outline-none` receives an explicit, high-contrast `focus-visible` state.
