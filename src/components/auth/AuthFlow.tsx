@@ -75,22 +75,27 @@ function LoginForm({ setStep, onNext }: { setStep: (s: AuthStep) => void, onNext
 
       <div className="space-y-4">
         <div>
-          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block mb-1.5 ml-1">Operator ID / Email</label>
+          <label htmlFor="operator-id" className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block mb-1.5 ml-1">Operator ID / Email</label>
           <div className="relative group">
             <Mail className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-[#0ea5e9] transition-colors" />
-            <input type="text" className="w-full bg-black/40 border border-[#1a1a1a] rounded-xl px-9 py-3 text-sm text-white focus:outline-none focus:border-[#0ea5e9]/50 transition-colors font-mono focus:bg-black/60" placeholder="sys_op@tradex.inc" defaultValue="alex.strata" />
+            <input id="operator-id" type="text" className="w-full bg-black/40 border border-[#1a1a1a] rounded-xl px-9 py-3 text-sm text-white focus:outline-none focus:border-[#0ea5e9]/50 transition-colors font-mono focus:bg-black/60" placeholder="sys_op@tradex.inc" defaultValue="alex.strata" />
           </div>
         </div>
 
         <div>
            <div className="flex justify-between items-center mb-1.5 px-1">
-             <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">Passphrase</label>
+             <label htmlFor="passphrase" className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">Passphrase</label>
              <a href="#" className="text-[10px] text-[#0ea5e9] hover:text-white transition-colors font-mono uppercase">Recover Key</a>
            </div>
           <div className="relative group">
             <Lock className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-[#0ea5e9] transition-colors" />
-            <input type={showPassword ? "text" : "password"} className="w-full bg-black/40 border border-[#1a1a1a] rounded-xl px-9 py-3 text-sm text-white focus:outline-none focus:border-[#0ea5e9]/50 transition-colors font-mono focus:bg-black/60" placeholder="••••••••••••••••" defaultValue="tradex2026!#" />
-            <button onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none">
+            <input id="passphrase" type={showPassword ? "text" : "password"} className="w-full bg-black/40 border border-[#1a1a1a] rounded-xl px-9 py-3 text-sm text-white focus:outline-none focus:border-[#0ea5e9]/50 transition-colors font-mono focus:bg-black/60" placeholder="••••••••••••••••" defaultValue="tradex2026!#" />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0ea5e9] rounded"
+            >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
@@ -98,10 +103,16 @@ function LoginForm({ setStep, onNext }: { setStep: (s: AuthStep) => void, onNext
       </div>
 
       <div className="flex gap-3 mt-4">
-        <button onClick={onNext} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+        <button type="button" onClick={onNext} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
           Initialize <ArrowRight className="w-4 h-4" />
         </button>
-        <button onClick={onNext} className="w-12 h-12 border border-[#1a1a1a] bg-black/40 hover:bg-black/80 rounded-xl flex items-center justify-center text-[#0ea5e9] hover:border-[#0ea5e9]/50 transition-all flex-shrink-0" title="Biometric Integration">
+        <button
+          type="button"
+          onClick={onNext}
+          className="w-12 h-12 border border-[#1a1a1a] bg-black/40 hover:bg-black/80 rounded-xl flex items-center justify-center text-[#0ea5e9] hover:border-[#0ea5e9]/50 transition-all flex-shrink-0"
+          title="Biometric Integration"
+          aria-label="Biometric Integration"
+        >
           <Fingerprint className="w-5 h-5" />
         </button>
       </div>
