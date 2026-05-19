@@ -35,6 +35,24 @@ export class EventDispatcher {
     // Using pg_notify to emit to 'tradex_events' channel
     await pool.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
   }
+
+  static async dispatchExisting(id: string, type: EventType, payload: any) {
+    const pool = getPool();
+    await pool.query(
+      `UPDATE event_queue_logs SET status = 'PENDING', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [id]
+    );
+    const eventPayload: EventPayload = { id, type, payload };
+    await pool.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
+  }
+
+  static async markDeadLetter(id: string) {
+    const pool = getPool();
+    await pool.query(
+      `UPDATE event_queue_logs SET status = 'DEAD_LETTER', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+      [id]
+    );
+  }
 }
 
 export class EventListener {
@@ -58,6 +76,32 @@ export class EventListener {
           eventId = event.id;
           const handlers = this.handlers.get(event.type) || [];
           
+          if (eventId) {
+            const pool = getPool();
+            const client = await pool.connect();
+            try {
+              await client.query('BEGIN');
+              const lockRes = await client.query(
+                `SELECT id FROM event_queue_logs WHERE id = $1 AND status = 'PENDING' FOR UPDATE SKIP LOCKED`,
+                [eventId]
+              );
+              if (lockRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return;
+              }
+              await client.query(
+                `UPDATE event_queue_logs SET status = 'PROCESSING', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                [eventId]
+              );
+              await client.query('COMMIT');
+            } catch (err) {
+              await client.query('ROLLBACK');
+              throw err;
+            } finally {
+              client.release();
+            }
+          }
+
           let allSuccess = true;
           for (const handler of handlers) {
              try {
@@ -72,12 +116,12 @@ export class EventListener {
             const pool = getPool();
             if (allSuccess) {
               await pool.query(
-                `UPDATE event_queue_logs SET status = 'PROCESSED', processed_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                `UPDATE event_queue_logs SET status = 'PROCESSED', processed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
                 [eventId]
               );
             } else {
               await pool.query(
-                `UPDATE event_queue_logs SET status = 'FAILED', retry_count = retry_count + 1 WHERE id = $1`,
+                `UPDATE event_queue_logs SET status = 'FAILED', retry_count = retry_count + 1, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
                 [eventId]
               );
             }
