@@ -62,4 +62,35 @@ export class MemoryRepository {
     const result = await pool.query(query, params);
     return result.rows as SemanticMemoryLog[];
   }
+
+  static async getRecent(
+    limit: number = 5,
+    portfolioId?: string,
+    userId?: string
+  ): Promise<SemanticMemoryLog[]> {
+    const pool = getPool();
+    let query = `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at
+                 FROM semantic_memory_logs`;
+    const params: any[] = [limit];
+    let whereClauses: string[] = [];
+
+    if (portfolioId) {
+      whereClauses.push(`portfolio_id = $${params.length + 1}`);
+      params.push(portfolioId);
+    }
+
+    if (userId) {
+      whereClauses.push(`user_id = $${params.length + 1}`);
+      params.push(userId);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ` + whereClauses.join(" AND ");
+    }
+
+    query += ` ORDER BY timestamp DESC LIMIT $1`;
+    
+    const result = await pool.query(query, params);
+    return result.rows as SemanticMemoryLog[];
+  }
 }

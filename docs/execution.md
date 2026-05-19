@@ -11,6 +11,7 @@ Current Sprint:
 - Embedding provider integration
 - Market ingestion foundation
 - Market snapshots schema for replay engine
+- Quant Agent backend service
 
 Rules:
 - MIGRATION POLICY: Freeze 001_initial_schema.sql permanently. Do not modify historical migrations again. Use additive numbered migrations (002_*.sql, 003_*.sql) for all future schema changes.

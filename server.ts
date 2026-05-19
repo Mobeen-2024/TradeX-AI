@@ -9,6 +9,7 @@ import { authRouter } from "./src/api/routes/auth";
 import { portfolioRouter } from "./src/api/routes/portfolio";
 import { memoryRouter } from "./src/api/routes/memory";
 import { marketRouter } from "./src/api/routes/market";
+import { intelligenceRouter } from "./src/api/routes/intelligence";
 
 dotenv.config();
 
@@ -61,6 +62,7 @@ async function startServer() {
   apiRouter.use("/portfolio", portfolioRouter);
   apiRouter.use("/memory", memoryRouter);
   apiRouter.use("/market", marketRouter);
+  apiRouter.use("/intelligence", intelligenceRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {
