@@ -1,5 +1,5 @@
 import { Client } from "pg";
-import { getPool } from "../db/connection";
+import { getPool, isUsingMockDb } from "../db/connection";
 
 export enum EventType {
   MARKET_TICK_RECEIVED = "MARKET_TICK_RECEIVED",
@@ -27,6 +27,21 @@ export class EventDispatcher {
    * Emit an event using PostgreSQL NOTIFY
    */
   static async emit(type: EventType, payload: any) {
+    if (isUsingMockDb()) {
+      console.log(`[EventDispatcher] [Mock Mode] Emitting in-memory event: ${type}`);
+      setTimeout(async () => {
+        const handlers = EventListener.getHandlersFor(type);
+        for (const handler of handlers) {
+          try {
+            await Promise.resolve(handler(payload));
+          } catch (err) {
+            console.error(`[EventDispatcher] [Mock Mode] Error in handler for ${type}:`, err);
+          }
+        }
+      }, 0);
+      return;
+    }
+
     const pool = getPool();
     const client = await pool.connect();
     try {
@@ -51,6 +66,21 @@ export class EventDispatcher {
   }
 
   static async dispatchExisting(id: string, type: EventType, payload: any) {
+    if (isUsingMockDb()) {
+      console.log(`[EventDispatcher] [Mock Mode] Dispatching existing in-memory event: ${type}`);
+      setTimeout(async () => {
+        const handlers = EventListener.getHandlersFor(type);
+        for (const handler of handlers) {
+          try {
+            await Promise.resolve(handler(payload));
+          } catch (err) {
+            console.error(`[EventDispatcher] [Mock Mode] Error in handler for ${type}:`, err);
+          }
+        }
+      }, 0);
+      return;
+    }
+
     const pool = getPool();
     const client = await pool.connect();
     try {
@@ -71,6 +101,11 @@ export class EventDispatcher {
   }
 
   static async markDeadLetter(id: string) {
+    if (isUsingMockDb()) {
+      console.log(`[EventDispatcher] [Mock Mode] Marked dead letter: ${id}`);
+      return;
+    }
+
     const pool = getPool();
     await pool.query(
       `UPDATE event_queue_logs SET status = 'DEAD_LETTER', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
@@ -83,7 +118,15 @@ export class EventListener {
   private static client: Client | null = null;
   private static handlers: Map<EventType, EventHandler[]> = new Map();
 
+  static getHandlersFor(type: EventType): EventHandler[] {
+    return this.handlers.get(type) || [];
+  }
+
   static async initialize() {
+    if (isUsingMockDb()) {
+      console.log("[EventListener] [Mock Mode] Database is in mock mode. Running using in-memory event loop.");
+      return;
+    }
     if (this.client) return;
 
     this.client = new Client({

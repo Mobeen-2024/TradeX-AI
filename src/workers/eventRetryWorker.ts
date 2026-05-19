@@ -1,4 +1,4 @@
-import { getPool } from "../db/connection";
+import { getPool, isUsingMockDb } from "../db/connection";
 import { EventDispatcher, EventType } from "../events";
 
 export class EventRetryWorker {
@@ -26,6 +26,7 @@ export class EventRetryWorker {
   }
 
   static async scanPendingEvents() {
+    if (isUsingMockDb()) return;
     const pool = getPool();
     // Find PENDING events older than 60s
     const query = `
@@ -42,6 +43,7 @@ export class EventRetryWorker {
   }
 
   static async scanFailedEvents() {
+    if (isUsingMockDb()) return;
     const pool = getPool();
     // Make sure we have at least updated_at, fallback to created_at if updated_at is null
     const query = `
