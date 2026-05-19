@@ -23,6 +23,10 @@ export function getPool() {
 }
 
 export async function checkDbConnection() {
+  if (!process.env.DATABASE_URL) {
+    console.warn("DATABASE_URL environment variable is missing. Database connection check skipped.");
+    return false;
+  }
   try {
     const pool = getPool();
     const client = await pool.connect();
