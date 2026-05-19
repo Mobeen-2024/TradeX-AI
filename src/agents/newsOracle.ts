@@ -56,6 +56,8 @@ Format exactly as JSON:
 }`;
 
       let responseText = "{}";
+      let fallbackUsed = false;
+      let apiErrorMessage = "";
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
@@ -68,6 +70,8 @@ Format exactly as JSON:
         responseText = response.text || "{}";
       } catch (apiError: any) {
         console.warn("NewsOracle Gemini API failed, fallback", apiError.message);
+        fallbackUsed = true;
+        apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           sentiment: "MIXED",
           aiRationale: "API Error, fallback to MIXED sentiment. " + apiError.message
@@ -80,6 +84,8 @@ Format exactly as JSON:
         sentimentEvaluation = JSON.parse(text);
       } catch (e) {
         console.warn("NewsOracle Gemini parsing failed, fallback");
+        fallbackUsed = true;
+        apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         sentimentEvaluation = {
           sentiment: "MIXED",
           aiRationale: "Failed to parse AI output. Raw: " + text
@@ -100,7 +106,9 @@ Format exactly as JSON:
         agent_name: "NewsOracle",
         start_timestamp: startTimestamp,
         duration_ms: durationMs,
-        success: true,
+        success: !fallbackUsed,
+        fallback_used: fallbackUsed,
+        error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
         portfolio_id: portfolioId
       });

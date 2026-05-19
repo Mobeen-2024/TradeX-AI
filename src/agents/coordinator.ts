@@ -45,6 +45,8 @@ Format exactly as JSON:
 }`;
 
       let responseText = "{}";
+      let fallbackUsed = false;
+      let apiErrorMessage = "";
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
@@ -57,6 +59,8 @@ Format exactly as JSON:
         responseText = response.text || "{}";
       } catch (apiError: any) {
         console.warn("Coordinator Gemini API failed, fallback", apiError.message);
+        fallbackUsed = true;
+        apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           action: "HOLD",
           confidence: "MEDIUM",
@@ -70,6 +74,8 @@ Format exactly as JSON:
         aggregateDecision = JSON.parse(text);
       } catch (e) {
         console.warn("Coordinator Gemini parsing failed, fallback");
+        fallbackUsed = true;
+        apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         aggregateDecision = {
           action: "HOLD",
           confidence: "LOW",
@@ -90,7 +96,9 @@ Format exactly as JSON:
         agent_name: "Coordinator",
         start_timestamp: startTimestamp,
         duration_ms: durationMs,
-        success: true,
+        success: !fallbackUsed,
+        fallback_used: fallbackUsed,
+        error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
         portfolio_id: portfolioId
       });

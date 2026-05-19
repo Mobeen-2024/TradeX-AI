@@ -50,6 +50,8 @@ Format exactly as JSON:
 }`;
 
       let responseText = "{}";
+      let fallbackUsed = false;
+      let apiErrorMessage = "";
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
@@ -62,6 +64,8 @@ Format exactly as JSON:
         responseText = response.text || "{}";
       } catch (apiError: any) {
         console.warn("RiskGuardian Gemini API failed, fallback", apiError.message);
+        fallbackUsed = true;
+        apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           riskLevel: "HIGH",
           marginRisk: "WARNING",
@@ -75,6 +79,8 @@ Format exactly as JSON:
         riskEvaluation = JSON.parse(text);
       } catch (e) {
         console.warn("RiskGuardian Gemini parsing failed, fallback");
+        fallbackUsed = true;
+        apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         riskEvaluation = {
           riskLevel: "HIGH",
           marginRisk: "WARNING",
@@ -96,7 +102,9 @@ Format exactly as JSON:
         agent_name: "RiskGuardian",
         start_timestamp: startTimestamp,
         duration_ms: durationMs,
-        success: true,
+        success: !fallbackUsed,
+        fallback_used: fallbackUsed,
+        error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
         portfolio_id: portfolioId
       });

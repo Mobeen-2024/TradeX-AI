@@ -1,0 +1,2 @@
+ALTER TABLE execution_logs
+ADD COLUMN fallback_used BOOLEAN NOT NULL DEFAULT FALSE;

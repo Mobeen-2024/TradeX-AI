@@ -51,6 +51,8 @@ Output your response as JSON in the exact format:
 }`;
 
       let responseText = "{}";
+      let fallbackUsed = false;
+      let apiErrorMessage = "";
       try {
         const response = await ai.models.generateContent({
           model: "gemini-3.1-pro-preview",
@@ -63,6 +65,8 @@ Output your response as JSON in the exact format:
         responseText = response.text || "{}";
       } catch (apiError: any) {
         console.warn("QuantAgent Gemini API failed, fallback", apiError.message);
+        fallbackUsed = true;
+        apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           marketRegime: "CHOPPY",
           aiRationale: "API Error, fallback to CHOPPY. " + apiError.message
@@ -75,6 +79,8 @@ Output your response as JSON in the exact format:
         analysisResult = JSON.parse(text);
       } catch (e) {
         console.warn("QuantAgent Gemini parsing failed, fallback");
+        fallbackUsed = true;
+        apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         analysisResult = {
           marketRegime: "CHOPPY",
           aiRationale: "Failed to parse AI output. Raw: " + text
@@ -94,7 +100,9 @@ Output your response as JSON in the exact format:
         agent_name: "QuantAgent",
         start_timestamp: startTimestamp,
         duration_ms: durationMs,
-        success: true,
+        success: !fallbackUsed,
+        fallback_used: fallbackUsed,
+        error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
         portfolio_id: portfolioId
       });

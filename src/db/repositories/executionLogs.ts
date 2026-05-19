@@ -6,6 +6,7 @@ export interface ExecutionLog {
   start_timestamp: Date;
   duration_ms: number;
   success: boolean;
+  fallback_used?: boolean;
   error_message?: string | null;
   portfolio_id?: string | null;
   user_id?: string | null;
@@ -16,8 +17,8 @@ export class ExecutionLogRepository {
   static async insertLog(log: ExecutionLog): Promise<void> {
     const pool = getPool();
     await pool.query(
-      `INSERT INTO execution_logs (agent_name, start_timestamp, duration_ms, success, error_message, portfolio_id, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      `INSERT INTO execution_logs (agent_name, start_timestamp, duration_ms, success, error_message, portfolio_id, user_id, fallback_used)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         log.agent_name,
         log.start_timestamp,
@@ -26,6 +27,7 @@ export class ExecutionLogRepository {
         log.error_message || null,
         log.portfolio_id || null,
         log.user_id || null,
+        log.fallback_used ?? false,
       ]
     );
   }
