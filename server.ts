@@ -5,12 +5,23 @@ import dotenv from "dotenv";
 import { checkDbConnection } from "./src/db/connection";
 
 import { GoogleGenAI } from "@google/genai";
+import { authRouter } from "./src/api/routes/auth";
+import { portfolioRouter } from "./src/api/routes/portfolio";
 
 dotenv.config();
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function startServer() {
+  if (process.env.NODE_ENV === "production") {
+    console.log("[TradeX OS Daemon] Production mode detected. Validating db connection...");
+    const isConnected = await checkDbConnection();
+    if (!isConnected) {
+      throw new Error("FATAL: Database connection failed during production startup.");
+    }
+    console.log("[TradeX OS Daemon] Database connected successfully.");
+  }
+
   const app = express();
   const PORT = 3000;
 
@@ -35,6 +46,9 @@ async function startServer() {
 
   // API Layer - Core Endpoints
   const apiRouter = express.Router();
+
+  apiRouter.use("/auth", authRouter);
+  apiRouter.use("/portfolio", portfolioRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {

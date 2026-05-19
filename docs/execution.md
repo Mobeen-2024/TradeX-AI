@@ -5,6 +5,8 @@ Current Sprint:
 - Express scaffold
 - Gemini API backend integration
 - Database schema and migrations
+- Authentication foundation
+- Portfolio domain layer
 
 Rules:
 - Only edit files directly related to current user request.
