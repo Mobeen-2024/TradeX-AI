@@ -13,14 +13,16 @@ export interface MarketSnapshot {
 }
 
 export class MarketSnapshotRepository {
-  static async getLatest(assetId?: string): Promise<MarketSnapshot[]> {
+  static async getLatest(assetIds?: string[]): Promise<MarketSnapshot[]> {
     const pool = getPool();
-    if (assetId) {
+    if (assetIds && assetIds.length > 0) {
       const result = await pool.query(
-        `SELECT * FROM market_snapshots WHERE asset_id = $1 ORDER BY timestamp DESC LIMIT 1`,
-        [assetId]
+        `SELECT DISTINCT ON (asset_id) * FROM market_snapshots WHERE asset_id = ANY($1) ORDER BY asset_id, timestamp DESC`,
+        [assetIds]
       );
       return result.rows as MarketSnapshot[];
+    } else if (assetIds && assetIds.length === 0) {
+      return [];
     } else {
       const result = await pool.query(
         `SELECT DISTINCT ON (asset_id) * FROM market_snapshots ORDER BY asset_id, timestamp DESC`
