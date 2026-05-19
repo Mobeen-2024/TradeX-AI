@@ -7,3 +7,9 @@ dist/
 *
 !src/
 !src/**
+
+graphify-out/
+docs/
+*.md
+README.md
+package-lock.json

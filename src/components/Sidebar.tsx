@@ -6,7 +6,7 @@ import { TabType } from '../App';
 export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setActiveTab: (tab: TabType) => void }) {
   return (
     <aside className="w-[72px] hover:w-[280px] group/sidebar flex-shrink-0 bg-[#020202] border-r border-[#1a1a1a] flex flex-col h-full relative z-50 transition-all duration-300 overflow-hidden">
-      <div className="p-4 overflow-y-auto overflow-x-hidden no-scrollbar flex-1 pb-32 w-full block scroll-smooth">
+      <div className="p-2 overflow-y-auto overflow-x-hidden no-scrollbar flex-1 pb-32 w-full block scroll-smooth">
         {/* Core Identity */}
         <div className="flex items-center justify-between mb-8 px-1 mt-4">
           <div className="flex items-center gap-3">
@@ -75,7 +75,7 @@ export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setAc
       </div>
 
       {/* System Status telemetry */}
-      <div className="absolute bottom-0 left-0 w-full p-4 bg-[#020202] border-t border-[#1a1a1a]">
+      <div className="absolute bottom-0 left-0 w-full p-2 bg-[#020202] border-t border-[#1a1a1a]">
         <div className="flex flex-col gap-3 h-[72px] overflow-hidden whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
           <div className="flex justify-between items-center text-[10px] font-mono">
             <span className="text-gray-500 uppercase tracking-widest">Connectivity</span>

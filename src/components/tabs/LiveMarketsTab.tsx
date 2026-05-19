@@ -592,8 +592,11 @@ function MarketChart({
     };
 
     // Load Real Historical Data
-    fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${binanceInterval}&limit=100`)
-      .then(res => res.json())
+    fetch(`/api/market/klines?symbol=BTCUSDT&interval=${binanceInterval}&limit=100`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (aborted) return;
         if (!candlestickSeriesRef.current || !chartRef.current) return;

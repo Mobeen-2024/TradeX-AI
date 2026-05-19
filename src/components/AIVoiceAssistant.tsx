@@ -11,28 +11,41 @@ export function AIVoiceAssistant() {
 
   const [overrideActive, setOverrideActive] = useState(false);
 
-  const handleMicClick = () => {
+  const handleMicClick = async () => {
     if (!isListening) {
       setIsListening(true);
-      // Simulate listening and responding
-      setTimeout(() => {
+      // Simulate speech to text logic
+      // In a real scenario we would capture audio, and transcribe it.
+      const userMessage = "Why was the SOL trade rejected? And what is the optimal setup right now?";
+      setConversation((prev) => [
+        ...prev,
+        { role: "user", text: userMessage },
+      ]);
+      setIsListening(false);
+
+      try {
+        const response = await fetch('/api/intelligence/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userMessage }),
+        });
+        const data = await response.json();
+        
         setConversation((prev) => [
           ...prev,
-          { role: "user", text: "Why was the SOL trade rejected?" },
+          {
+            role: "ai",
+            text: data.response || "No response generated.",
+            action: data.response?.toLowerCase().includes("override") ? "override" : undefined,
+          },
         ]);
-        setIsListening(false);
-
-        setTimeout(() => {
-          setConversation((prev) => [
-            ...prev,
-            {
-              role: "ai",
-              text: "Risk exceeded volatility threshold during low liquidity conditions.",
-              action: "override",
-            },
-          ]);
-        }, 800);
-      }, 2000);
+      } catch (e) {
+        console.error(e);
+        setConversation((prev) => [
+          ...prev,
+          { role: "ai", text: "Error connecting to Intelligence Engine. Fallback to simulated offline logic." }
+        ]);
+      }
     } else {
       setIsListening(false);
     }
