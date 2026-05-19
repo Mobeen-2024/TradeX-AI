@@ -13,7 +13,8 @@ Current Sprint:
 - Market snapshots schema for replay engine
 - Quant Agent backend service
 - Risk Guardian backend service
-- Agent execution tracing
+- News Oracle backend service
+- Coordinator backend service
 
 Rules:
 - MIGRATION POLICY: Freeze 001_initial_schema.sql permanently. Do not modify historical migrations again. Use additive numbered migrations (002_*.sql, 003_*.sql) for all future schema changes.

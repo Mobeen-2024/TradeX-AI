@@ -74,8 +74,6 @@ Format exactly as JSON:
       // 4. Persist risk rationale into semantic_memory_logs
       const rationaleStr = `Risk Level: ${riskEvaluation.riskLevel} | Margin Risk: ${riskEvaluation.marginRisk} | Rationale: ${riskEvaluation.aiRationale}`;
       const loggedMemory = await MemoryService.logMemory(
-        riskEvaluation.riskLevel, // Leveraging market_regime field for Risk Level temporarily or we just pass null? 
-        // Wait, market_regime is string so we can pass risk level there, but maybe better to just use Risk: XXX
         `RISK_EVALUATION (${riskEvaluation.riskLevel})`, // using market regime for tags
         rationaleStr,
         userId,
