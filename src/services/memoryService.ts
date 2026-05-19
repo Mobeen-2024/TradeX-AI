@@ -6,7 +6,9 @@ export class MemoryService {
     marketRegime: string | null,
     aiRationale: string | null,
     userId?: string | null,
-    portfolioId?: string | null
+    portfolioId?: string | null,
+    correlationId?: string,
+    agentName?: string
   ): Promise<SemanticMemoryLog> {
     let embedding: number[];
     if (aiRationale) {
@@ -15,7 +17,7 @@ export class MemoryService {
     } else {
       embedding = new Array(768).fill(0);
     }
-    return MemoryRepository.create(marketRegime, aiRationale, embedding, userId, portfolioId);
+    return MemoryRepository.create(marketRegime, aiRationale, embedding, userId, portfolioId, correlationId, agentName);
   }
 
   static async searchMemory(

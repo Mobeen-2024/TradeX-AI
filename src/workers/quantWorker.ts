@@ -9,6 +9,7 @@ export class QuantWorker {
         await QuantAgent.analyzeMarket(payload.portfolioId, payload.userId, payload.correlationId);
       } catch (err) {
         console.error(`[QuantWorker] error:`, err);
+        throw err;
       }
     });
   }

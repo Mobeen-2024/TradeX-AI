@@ -18,7 +18,7 @@ export class QuantAgent {
       // 1. Get latest market snapshots filtered by portfolio positions
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
       const assetIds = Array.from(new Set(positions.map(p => p.asset_id)));
-      
+
       let marketState = "No market snapshots available (no active positions measured).";
       if (assetIds.length > 0) {
         const latestSnapshots = await MarketSnapshotRepository.getLatest(assetIds);
@@ -93,7 +93,9 @@ Output your response as JSON in the exact format:
         analysisResult.marketRegime,
         analysisResult.aiRationale,
         userId,
-        portfolioId
+        portfolioId,
+        correlationId,
+        "QuantAgent"
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -108,8 +110,8 @@ Output your response as JSON in the exact format:
         portfolio_id: portfolioId
       });
 
-      await EventDispatcher.emit(EventType.QUANT_ANALYSIS_COMPLETED, { 
-        portfolioId, 
+      await EventDispatcher.emit(EventType.QUANT_ANALYSIS_COMPLETED, {
+        portfolioId,
         marketRegime: analysisResult.marketRegime,
         correlationId,
         rawOutput: analysisResult
