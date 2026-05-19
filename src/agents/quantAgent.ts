@@ -50,16 +50,26 @@ Output your response as JSON in the exact format:
   "aiRationale": "Your detailed reasoning..."
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2
-        }
-      });
+      let responseText = "{}";
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.2
+          }
+        });
+        responseText = response.text || "{}";
+      } catch (apiError: any) {
+        console.warn("QuantAgent Gemini API failed, fallback", apiError.message);
+        responseText = JSON.stringify({
+          marketRegime: "CHOPPY",
+          aiRationale: "API Error, fallback to CHOPPY. " + apiError.message
+        });
+      }
 
-      const text = response.text || "{}";
+      const text = responseText;
       let analysisResult;
       try {
         analysisResult = JSON.parse(text);

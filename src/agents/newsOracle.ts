@@ -55,16 +55,26 @@ Format exactly as JSON:
   "aiRationale": "Your detailed sentiment reasoning..."
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2
-        }
-      });
+      let responseText = "{}";
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.2
+          }
+        });
+        responseText = response.text || "{}";
+      } catch (apiError: any) {
+        console.warn("NewsOracle Gemini API failed, fallback", apiError.message);
+        responseText = JSON.stringify({
+          sentiment: "MIXED",
+          aiRationale: "API Error, fallback to MIXED sentiment. " + apiError.message
+        });
+      }
 
-      const text = response.text || "{}";
+      const text = responseText;
       let sentimentEvaluation;
       try {
         sentimentEvaluation = JSON.parse(text);

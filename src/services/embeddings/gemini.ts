@@ -14,14 +14,15 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
       return new Array(768).fill(0);
     }
     
-    // gemini-embedding-2-preview actually defaults to 768 dimensions usually.
-    const response = await this.ai.models.embedContent({
-      model: "text-embedding-004", // Most widely supported google/genai embedding model
-      contents: text,
-      // You can specify outputDimensionality with config if needed:
-      // config: { outputDimensionality: 768 }
-    });
-    
-    return response.embeddings?.[0]?.values || new Array(768).fill(0);
+    try {
+      const response = await this.ai.models.embedContent({
+        model: "text-embedding-004", 
+        contents: text,
+      });
+      return response.embeddings?.[0]?.values || new Array(768).fill(0);
+    } catch (e: any) {
+      console.warn("Gemini embedding failed, returning zeros. Error:", e.message);
+      return new Array(768).fill(0);
+    }
   }
 }

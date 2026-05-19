@@ -49,16 +49,27 @@ Format exactly as JSON:
   "aiRationale": "Your detailed risk reasoning..."
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2
-        }
-      });
+      let responseText = "{}";
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.2
+          }
+        });
+        responseText = response.text || "{}";
+      } catch (apiError: any) {
+        console.warn("RiskGuardian Gemini API failed, fallback", apiError.message);
+        responseText = JSON.stringify({
+          riskLevel: "HIGH",
+          marginRisk: "WARNING",
+          aiRationale: "API Error, fallback to HIGH risk. " + apiError.message
+        });
+      }
 
-      const text = response.text || "{}";
+      const text = responseText;
       let riskEvaluation;
       try {
         riskEvaluation = JSON.parse(text);

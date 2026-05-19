@@ -44,16 +44,27 @@ Format exactly as JSON:
   "rationale": "Your detailed synthesis and final decision reasoning..."
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          temperature: 0.2
-        }
-      });
+      let responseText = "{}";
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3.1-pro-preview",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            temperature: 0.2
+          }
+        });
+        responseText = response.text || "{}";
+      } catch (apiError: any) {
+        console.warn("Coordinator Gemini API failed, fallback", apiError.message);
+        responseText = JSON.stringify({
+          action: "HOLD",
+          confidence: "MEDIUM",
+          rationale: "API Error, fallback to HOLD. " + apiError.message
+        });
+      }
 
-      const text = response.text || "{}";
+      const text = responseText;
       let aggregateDecision;
       try {
         aggregateDecision = JSON.parse(text);
