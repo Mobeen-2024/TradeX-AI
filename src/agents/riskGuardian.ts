@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { EventDispatcher, EventType } from "../events";
 
 export class RiskGuardian {
-  static async evaluateRisk(portfolioId: string, userId: string) {
+  static async evaluateRisk(portfolioId: string, userId: string, correlationId?: string) {
     const startTimestamp = new Date();
     try {
       if (!process.env.GEMINI_API_KEY) {
@@ -95,7 +95,9 @@ Format exactly as JSON:
         `RISK_EVALUATION (${riskEvaluation.riskLevel})`, // using market regime for tags
         rationaleStr,
         userId,
-        portfolioId
+        portfolioId,
+        correlationId,
+        "RiskGuardian"
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -110,7 +112,7 @@ Format exactly as JSON:
         portfolio_id: portfolioId
       });
 
-      await EventDispatcher.emit(EventType.RISK_VALIDATED, { portfolioId, riskLevel: riskEvaluation.riskLevel });
+      await EventDispatcher.emit(EventType.RISK_VALIDATED, { portfolioId, riskLevel: riskEvaluation.riskLevel, correlationId });
 
       return {
         newRiskEvaluation: loggedMemory,

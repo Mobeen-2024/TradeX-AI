@@ -6,6 +6,7 @@ import { checkDbConnection } from "./src/db/connection";
 import { EventListener } from "./src/events";
 import { Coordinator } from "./src/agents/coordinator";
 import { QuantWorker } from "./src/workers/quantWorker";
+import { RiskWorker } from "./src/workers/riskWorker";
 import { EventRetryWorker } from "./src/workers/eventRetryWorker";
 
 import { GoogleGenAI } from "@google/genai";
@@ -40,14 +41,19 @@ async function startServer() {
     await checkDbConnection();
   }
 
-  try {
-    console.log("[TradeX OS Daemon] Initializing EventListener...");
-    await EventListener.initialize();
-    Coordinator.initialize();
-    QuantWorker.initialize();
-    EventRetryWorker.initialize();
-  } catch (e) {
-    console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);
+  if (process.env.DATABASE_URL) {
+    try {
+      console.log("[TradeX OS Daemon] Initializing EventListener...");
+      await EventListener.initialize();
+      Coordinator.initialize();
+      QuantWorker.initialize();
+      RiskWorker.initialize();
+      EventRetryWorker.initialize();
+    } catch (e) {
+      console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);
+    }
+  } else {
+    console.warn("[TradeX OS Daemon] DATABASE_URL is missing. Background workers and EventListener are disabled.");
   }
 
   const app = express();

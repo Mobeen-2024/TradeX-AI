@@ -17,13 +17,13 @@ intelligenceRouter.post("/analyze", async (req: AuthRequest, res: Response): Pro
     const { portfolioId, useWorker = false, async = false } = req.body;
 
     if (!userId) {
-       res.status(401).json({ error: "Unauthorized" });
-       return;
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
     if (!portfolioId) {
-       res.status(400).json({ error: "portfolioId is required" });
-       return;
+      res.status(400).json({ error: "portfolioId is required" });
+      return;
     }
 
     if (!useWorker) {
@@ -38,10 +38,10 @@ intelligenceRouter.post("/analyze", async (req: AuthRequest, res: Response): Pro
 
     const correlationId = crypto.randomUUID();
 
-    await EventDispatcher.emit(EventType.QUANT_ANALYSIS_REQUESTED, { 
-      portfolioId, 
-      userId, 
-      correlationId 
+    await EventDispatcher.emit(EventType.QUANT_ANALYSIS_REQUESTED, {
+      portfolioId,
+      userId,
+      correlationId
     });
 
     if (async) {
@@ -84,23 +84,65 @@ intelligenceRouter.post("/analyze", async (req: AuthRequest, res: Response): Pro
 intelligenceRouter.post("/risk", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { portfolioId } = req.body;
+    const { portfolioId, useWorker = false, async = false } = req.body;
 
     if (!userId) {
-       res.status(401).json({ error: "Unauthorized" });
-       return;
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
     if (!portfolioId) {
-       res.status(400).json({ error: "portfolioId is required" });
-       return;
+      res.status(400).json({ error: "portfolioId is required" });
+      return;
     }
 
-    const result = await RiskGuardian.evaluateRisk(portfolioId, userId);
+    if (!useWorker) {
+      // Fallback synchronous behavior
+      const result = await RiskGuardian.evaluateRisk(portfolioId, userId);
+      res.status(200).json({
+        message: "Risk evaluation completed synchronously",
+        data: result
+      });
+      return;
+    }
+
+    const correlationId = crypto.randomUUID();
+
+    await EventDispatcher.emit(EventType.RISK_VALIDATION_REQUESTED, {
+      portfolioId,
+      userId,
+      correlationId
+    });
+
+    if (async) {
+      res.status(202).json({
+        message: "Risk evaluation enqueued",
+        correlationId
+      });
+      return;
+    }
+
+    // Await for worker result
+    const workerResult = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        EventListener.unsubscribe(EventType.RISK_VALIDATED, handler);
+        reject(new Error("Worker timed out after 30 seconds"));
+      }, 30000);
+
+      const handler = (payload: any) => {
+        if (payload.correlationId === correlationId) {
+          clearTimeout(timeout);
+          EventListener.unsubscribe(EventType.RISK_VALIDATED, handler);
+          resolve(payload);
+        }
+      };
+
+      EventListener.subscribe(EventType.RISK_VALIDATED, handler);
+    });
 
     res.status(200).json({
-      message: "Risk evaluation completed",
-      data: result
+      message: "Risk evaluation completed via worker",
+      data: workerResult
     });
   } catch (error: any) {
     console.error("Risk Guardian error:", error);
@@ -115,13 +157,13 @@ intelligenceRouter.post("/run-cycle", async (req: AuthRequest, res: Response): P
     const { portfolioId } = req.body;
 
     if (!userId) {
-       res.status(401).json({ error: "Unauthorized" });
-       return;
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
     if (!portfolioId) {
-       res.status(400).json({ error: "portfolioId is required" });
-       return;
+      res.status(400).json({ error: "portfolioId is required" });
+      return;
     }
 
     const { Coordinator } = await import("../../agents/coordinator");
@@ -142,13 +184,13 @@ intelligenceRouter.post("/news", async (req: AuthRequest, res: Response): Promis
     const { portfolioId } = req.body;
 
     if (!userId) {
-       res.status(401).json({ error: "Unauthorized" });
-       return;
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
     if (!portfolioId) {
-       res.status(400).json({ error: "portfolioId is required" });
-       return;
+      res.status(400).json({ error: "portfolioId is required" });
+      return;
     }
 
     const result = await NewsOracle.analyzeSentiment(portfolioId, userId);

@@ -104,13 +104,12 @@ export function AutoTradingTab() {
               <button
                 key={mode.id}
                 onClick={() => setOsMode(mode.id)}
-                className={`flex flex-col items-center justify-center p-4 rounded border transition-all ${
-                  isActive
+                className={`flex flex-col items-center justify-center p-4 rounded border transition-all ${isActive
                     ? mode.id === "Autonomous"
                       ? "bg-[#00f0ff]/10 border-[#00f0ff] shadow-[0_0_15px_rgba(0,240,255,0.15)]"
                       : "bg-white/5 border-white text-white"
                     : "bg-[#0a0a0a] border-[#222] text-gray-500 hover:border-[#444] hover:text-gray-300"
-                }`}
+                  }`}
               >
                 <div
                   className={`mb-3 ${isActive ? (mode.id === "Autonomous" ? "text-[#00f0ff]" : "text-white") : "text-gray-600"}`}
