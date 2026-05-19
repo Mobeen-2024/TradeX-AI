@@ -8,6 +8,7 @@ import { GoogleGenAI } from "@google/genai";
 import { authRouter } from "./src/api/routes/auth";
 import { portfolioRouter } from "./src/api/routes/portfolio";
 import { memoryRouter } from "./src/api/routes/memory";
+import { marketRouter } from "./src/api/routes/market";
 
 dotenv.config();
 
@@ -15,7 +16,15 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function startServer() {
   if (process.env.NODE_ENV === "production") {
-    console.log("[TradeX OS Daemon] Production mode detected. Validating db connection...");
+    console.log("[TradeX OS Daemon] Production mode detected. Validating environment...");
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("FATAL: GEMINI_API_KEY is missing during production startup.");
+    }
+    if (!process.env.JWT_SECRET) {
+      throw new Error("FATAL: JWT_SECRET is missing during production startup.");
+    }
+
+    console.log("[TradeX OS Daemon] Validating db connection...");
     const isConnected = await checkDbConnection();
     if (!isConnected) {
       throw new Error("FATAL: Database connection failed during production startup.");
@@ -51,6 +60,7 @@ async function startServer() {
   apiRouter.use("/auth", authRouter);
   apiRouter.use("/portfolio", portfolioRouter);
   apiRouter.use("/memory", memoryRouter);
+  apiRouter.use("/market", marketRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {
