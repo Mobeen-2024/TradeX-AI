@@ -3,6 +3,7 @@ import { ExecutionService } from "../services/executionService";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { MemoryService } from "../services/memoryService";
 import { getPool } from "../db/connection";
+import { v4 as uuidv4 } from "uuid";
 
 export class ExecutionAgent {
     static initialize() {
@@ -20,9 +21,9 @@ export class ExecutionAgent {
     static async executeDecision(payload: any) {
         const startTimestamp = new Date();
         const { portfolioId, correlationId, decision } = payload;
-        
+
         let userId = payload.userId;
-        
+
         if (!userId) {
             const pool = getPool();
             const res = await pool.query("SELECT user_id FROM portfolios WHERE id = $1", [portfolioId]);
@@ -35,16 +36,53 @@ export class ExecutionAgent {
 
         try {
             if (decision.action === "BUY" || decision.action === "SELL") {
+                // Kill-switch: check risk level before execution
+                const riskMemory = await MemoryService.getByCorrelation(correlationId, "RiskGuardian");
+                if (riskMemory && riskMemory.market_regime.includes("HIGH")) {
+                    console.warn(`[ExecutionAgent] Blocking execution due to HIGH risk for correlation ${correlationId}`);
+
+                    await MemoryService.logMemory(
+                        `SKIPPED_EXECUTION`,
+                        `Execution blocked by RiskGuardian (Risk=HIGH). Rationale: ${riskMemory.ai_rationale}`,
+                        userId,
+                        portfolioId,
+                        correlationId,
+                        "ExecutionAgent"
+                    );
+
+                    const durationMs = Date.now() - startTimestamp.getTime();
+                    await ExecutionLogRepository.insertLog({
+                        agent_name: "ExecutionAgent",
+                        start_timestamp: startTimestamp,
+                        duration_ms: durationMs,
+                        success: true,
+                        error_message: "Blocked by RiskGuardian",
+                        user_id: userId,
+                        portfolio_id: portfolioId
+                    });
+                    return; // Abort execution
+                }
+
                 const orderRequest = {
                     portfolioId,
                     userId,
                     assetId: decision.assetId || "BTC", // Default to BTC if unspecified
                     action: decision.action,
                     size: 1, // Default size for simulation
+                    correlationId: correlationId || uuidv4()
                 };
-                
-                const orderId = await ExecutionService.placeOrder(orderRequest);
-                
+
+                const { orderId, price } = await ExecutionService.placeOrder(orderRequest);
+
+                // Log to agent_decisions
+                const pool = getPool();
+                await pool.query(
+                    `INSERT INTO agent_decisions 
+                     (agent_name, portfolio_id, asset_id, direction, entry_price, rationale, evaluation) 
+                     VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')`,
+                    ['QuantAgent', portfolioId, decision.assetId || "BTC", decision.action, price, decision.rationale]
+                );
+
                 // Track execution in memory
                 await MemoryService.logMemory(
                     `EXECUTED_ORDER`,

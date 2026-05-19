@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN correlation_id VARCHAR(255) UNIQUE;

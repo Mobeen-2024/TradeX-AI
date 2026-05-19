@@ -17,11 +17,21 @@ export class RiskGuardian {
 
       // 1. Get portfolio positions
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
+
+      const MAX_POSITION_USD = 150000;
+      const MAX_PORTFOLIO_USD = 500000;
+
+      let totalExposureUsd = 0;
+      let hasPositionLimitBreach = false;
+
       let positionsContext = "No active positions.";
       if (positions.length > 0) {
-        positionsContext = positions.map(
-          p => `- Asset: ${p.asset_id}, Size: ${p.size}, Entry Price: $${p.entry_price}, Unrealized/Realized PnL: ${p.pnl_realized}`
-        ).join("\n");
+        positionsContext = positions.map(p => {
+          const posValue = Number(p.size) * Number(p.avg_entry_price);
+          totalExposureUsd += posValue;
+          if (posValue > MAX_POSITION_USD) hasPositionLimitBreach = true;
+          return `- Asset: ${p.asset_id}, Size: ${p.size}, Value: $${posValue}, Unrealized/Realized PnL: ${p.pnl_realized}`;
+        }).join("\n");
       }
 
       // 2. Get latest Quant Analysis
@@ -38,6 +48,12 @@ Evaluate the current position exposure and margin risk given the current market 
 
 Portfolio Positions:
 ${positionsContext}
+Total Portfolio Exposure: $${totalExposureUsd}
+
+Rules:
+- Max Position Size: $${MAX_POSITION_USD}
+- Max Portfolio Exposure: $${MAX_PORTFOLIO_USD}
+If any rule is breached, you MUST set riskLevel to "HIGH".
 
 Recent Quant Analysis context:
 ${quantContext}
@@ -87,6 +103,12 @@ Format exactly as JSON:
           marginRisk: "WARNING",
           aiRationale: "Failed to parse AI output. Raw: " + text
         };
+      }
+
+      // HARD ENFORCEMENT OF LIMITS (Authoritative check)
+      if (hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD) {
+        riskEvaluation.riskLevel = "HIGH";
+        riskEvaluation.aiRationale = "[SYSTEM OVERRIDE] Hard risk limits breached. " + riskEvaluation.aiRationale;
       }
 
       // 4. Persist risk rationale into semantic_memory_logs

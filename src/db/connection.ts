@@ -28,15 +28,15 @@ export function getPool() {
             return { rows: [] };
           }
 
-          if (sql.includes("SELECT cash FROM balances")) {
-            return { rows: [{ cash: "150000.00" }] };
+          if (sql.includes("SELECT cash_balance FROM balances")) {
+            return { rows: [{ cash_balance: "150000.00" }] };
           }
 
           if (sql.includes("SELECT * FROM positions")) {
             return {
               rows: [
-                { id: "pos-1", portfolio_id: params?.[0], asset_id: "BTC", size: "1.5", entry_price: "45000", pnl_realized: "1200", created_at: new Date(), updated_at: new Date() },
-                { id: "pos-2", portfolio_id: params?.[0], asset_id: "ETH", size: "10.0", entry_price: "2500", pnl_realized: "300", created_at: new Date(), updated_at: new Date() }
+                { id: "pos-1", portfolio_id: params?.[0], asset_id: "BTC", size: "1.5", avg_entry_price: "45000", pnl_realized: "1200", created_at: new Date(), updated_at: new Date() },
+                { id: "pos-2", portfolio_id: params?.[0], asset_id: "ETH", size: "10.0", avg_entry_price: "2500", pnl_realized: "300", created_at: new Date(), updated_at: new Date() }
               ]
             };
           }

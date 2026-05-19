@@ -14,7 +14,7 @@ export class PortfolioService {
     const portfolio = await PortfolioRepository.create(userId, name, description);
     const pool = getPool();
     await pool.query(
-      `INSERT INTO balances (portfolio_id, cash) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      `INSERT INTO balances (portfolio_id, cash_balance) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
       [portfolio.id, 100000.0]
     );
     return portfolio;
@@ -29,8 +29,8 @@ export class PortfolioService {
       const positions = await PositionRepository.findByPortfolioId(portfolio.id);
 
       // Get cash
-      const balanceResult = await pool.query(`SELECT cash FROM balances WHERE portfolio_id = $1`, [portfolio.id]);
-      const cash = balanceResult.rows.length > 0 ? Number(balanceResult.rows[0].cash) : 100000.0;
+      const balanceResult = await pool.query(`SELECT cash_balance FROM balances WHERE portfolio_id = $1`, [portfolio.id]);
+      const cash = balanceResult.rows.length > 0 ? Number(balanceResult.rows[0].cash_balance) : 100000.0;
 
       let totalUnrealizedPnl = 0;
       let totalRealizedPnl = 0;
@@ -46,10 +46,10 @@ export class PortfolioService {
           `SELECT price FROM market_ticks WHERE symbol = $1 ORDER BY timestamp DESC LIMIT 1`,
           [pos.asset_id]
         );
-        const currentPrice = priceResult.rows.length > 0 ? Number(priceResult.rows[0].price) : Number(pos.entry_price);
+        const currentPrice = priceResult.rows.length > 0 ? Number(priceResult.rows[0].price) : Number(pos.avg_entry_price);
 
         const size = Number(pos.size);
-        const entryPrice = Number(pos.entry_price);
+        const entryPrice = Number(pos.avg_entry_price);
         const unrealized = (currentPrice - entryPrice) * size;
 
         totalUnrealizedPnl += unrealized;

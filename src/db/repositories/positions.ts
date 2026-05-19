@@ -4,7 +4,7 @@ export interface Position {
   id: string;
   portfolio_id: string;
   asset_id: string;
-  entry_price: string; // Decimal is string in pg driver by default
+  avg_entry_price: string; // Decimal is string in pg driver by default
   size: string;
   pnl_realized: string;
   created_at: Date;
@@ -15,7 +15,7 @@ export class PositionRepository {
   static async create(portfolioId: string, assetId: string, entryPrice: string, size: string): Promise<Position> {
     const pool = getPool();
     const result = await pool.query(
-      "INSERT INTO positions (portfolio_id, asset_id, entry_price, size) VALUES ($1, $2, $3, $4) RETURNING *",
+      "INSERT INTO positions (portfolio_id, asset_id, avg_entry_price, size) VALUES ($1, $2, $3, $4) RETURNING *",
       [portfolioId, assetId, entryPrice, size]
     );
     return result.rows[0] as Position;
