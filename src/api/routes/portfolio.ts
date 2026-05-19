@@ -29,6 +29,23 @@ portfolioRouter.post("/create", async (req: AuthRequest, res: Response): Promise
   }
 });
 
+// GET /api/portfolio/me
+portfolioRouter.get("/me", async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const authUserId = req.user?.userId;
+    if (!authUserId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const portfolios = await PortfolioService.getUserPortfolios(authUserId);
+    res.status(200).json({ portfolios });
+  } catch (error) {
+    console.error("Get portfolios error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // GET /api/portfolio/:userId
 portfolioRouter.get("/:userId", async (req: AuthRequest, res: Response): Promise<void> => {
   try {

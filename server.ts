@@ -9,6 +9,7 @@ import { QuantWorker } from "./src/workers/quantWorker";
 import { RiskWorker } from "./src/workers/riskWorker";
 import { NewsWorker } from "./src/workers/newsWorker";
 import { EventRetryWorker } from "./src/workers/eventRetryWorker";
+import { ExecutionAgent } from "./src/agents/executionAgent";
 import { TelemetryServer } from "./src/telemetry";
 
 import { GoogleGenAI } from "@google/genai";
@@ -52,6 +53,7 @@ async function startServer() {
       QuantWorker.initialize();
       RiskWorker.initialize();
       NewsWorker.initialize();
+      ExecutionAgent.initialize();
       EventRetryWorker.initialize();
     } catch (e) {
       console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);

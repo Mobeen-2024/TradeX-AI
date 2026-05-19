@@ -36,7 +36,7 @@ interface PipelineRun {
   finalDecision?: "BUY" | "SELL" | "HOLD" | string;
 }
 
-const STAGES = ["QuantAgent", "RiskGuardian", "NewsOracle", "Coordinator"];
+const STAGES = ["QuantAgent", "RiskGuardian", "NewsOracle", "Coordinator", "ExecutionAgent"];
 
 export function AgentPipeline({ correlationIdFilter }: { correlationIdFilter?: string }) {
   const [runs, setRuns] = useState<Record<string, PipelineRun>>({});
@@ -67,6 +67,7 @@ export function AgentPipeline({ correlationIdFilter }: { correlationIdFilter?: s
               RiskGuardian: { status: "pending" },
               NewsOracle: { status: "pending" },
               Coordinator: { status: "pending" },
+              ExecutionAgent: { status: "pending" },
             },
           };
 
@@ -137,7 +138,7 @@ export function AgentPipeline({ correlationIdFilter }: { correlationIdFilter?: s
   );
 }
 
-function PipelineCard({ run }: { run: PipelineRun }) {
+const PipelineCard: React.FC<{ run: PipelineRun }> = ({ run }) => {
   const formatTime = (iso?: string) => {
     if (!iso) return "--:--:--";
     const d = new Date(iso);

@@ -12,7 +12,7 @@ export class TelemetryServer {
       // Extract optional correlationId filter from query params
       const url = new URL(req.url || "", `http://${req.headers.host}`);
       const correlationIdFilter = url.searchParams.get("correlationId");
-      
+
       console.log(`[Telemetry] Client connected. Correlation Filter: ${correlationIdFilter || 'None'}`);
 
       // Optional: attach filter to the connection object
@@ -34,7 +34,8 @@ export class TelemetryServer {
     EventListener.subscribe(EventType.RISK_VALIDATED, (payload) => this.broadcast(EventType.RISK_VALIDATED, "RiskGuardian", payload, "completed"));
     EventListener.subscribe(EventType.NEWS_PROCESSED, (payload) => this.broadcast(EventType.NEWS_PROCESSED, "NewsOracle", payload, "completed"));
     EventListener.subscribe(EventType.COORDINATOR_DECISION_COMPLETED, (payload) => this.broadcast(EventType.COORDINATOR_DECISION_COMPLETED, "Coordinator", payload, "completed"));
-    
+    EventListener.subscribe(EventType.ORDER_EXECUTED, (payload) => this.broadcast(EventType.ORDER_EXECUTED, "ExecutionAgent", payload, "completed"));
+
     console.log("[Telemetry] Telemetry WebSocket Server initialized at /ws/agent-telemetry");
   }
 
@@ -42,7 +43,7 @@ export class TelemetryServer {
     if (!this.wss) return;
 
     const correlationId = payload?.correlationId;
-    
+
     // Create the message to broadcast
     const messageObj = {
       correlationId: correlationId || "unknown",
@@ -84,6 +85,8 @@ export class TelemetryServer {
         return payload?.sentiment ? `Sentiment: ${payload.sentiment}` : "News processed";
       case EventType.COORDINATOR_DECISION_COMPLETED:
         return payload?.decision?.action ? `Decision: ${payload.decision.action}` : "Coordinator decision logic executed";
+      case EventType.ORDER_EXECUTED:
+        return payload?.action ? `Executed ${payload.action} order (${payload.orderId})` : "Execution Agent handled order";
       default:
         return "Completed";
     }
