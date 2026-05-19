@@ -75,17 +75,21 @@ async function startServer() {
   // API Layer - Core Endpoints
   const apiRouter = express.Router();
 
-  apiRouter.use("/auth", authRouter);
-  apiRouter.use("/portfolio", portfolioRouter);
-  apiRouter.use("/memory", memoryRouter);
-  apiRouter.use("/market", marketRouter);
-  apiRouter.use("/intelligence", intelligenceRouter);
-
-  apiRouter.get("/health", async (req, res) => {
+  // Public APIs should be registered before routers that apply global auth middlewares
+  apiRouter.get("/market/klines", async (req, res) => {
     try {
-      res.json({ status: "system_operational", db_connected: true });
+      const { symbol = "BTCUSDT", interval = "1m", limit = "100" } = req.query;
+      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+
+      if (!response.ok) {
+        throw new Error(`Binance API Error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      res.json(data);
     } catch (e) {
-      res.status(500).json({ status: "system_degraded", error: String(e) });
+      console.error("Proxy error fetching klines:", e);
+      res.status(500).json({ error: "Failed to fetch from Binance" });
     }
   });
 
@@ -99,20 +103,17 @@ async function startServer() {
     });
   });
 
-  apiRouter.get("/market/klines", async (req, res) => {
+  apiRouter.use("/auth", authRouter);
+  apiRouter.use("/portfolio", portfolioRouter);
+  apiRouter.use("/memory", memoryRouter);
+  apiRouter.use("/market", marketRouter);
+  apiRouter.use("/intelligence", intelligenceRouter);
+
+  apiRouter.get("/health", async (req, res) => {
     try {
-      const { symbol = "BTCUSDT", interval = "1m", limit = "100" } = req.query;
-      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
-      
-      if (!response.ok) {
-        throw new Error(`Binance API Error: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      res.json(data);
+      res.json({ status: "system_operational", db_connected: true });
     } catch (e) {
-      console.error("Proxy error fetching klines:", e);
-      res.status(500).json({ error: "Failed to fetch from Binance" });
+      res.status(500).json({ status: "system_degraded", error: String(e) });
     }
   });
 
