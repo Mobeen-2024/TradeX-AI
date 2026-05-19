@@ -3,12 +3,14 @@ import { getPool } from "../db/connection";
 
 export enum EventType {
   MARKET_TICK_RECEIVED = "MARKET_TICK_RECEIVED",
+  QUANT_ANALYSIS_REQUESTED = "QUANT_ANALYSIS_REQUESTED",
   QUANT_ANALYSIS_COMPLETED = "QUANT_ANALYSIS_COMPLETED",
   RISK_VALIDATED = "RISK_VALIDATED",
   NEWS_PROCESSED = "NEWS_PROCESSED"
 }
 
 export interface EventPayload {
+  id?: string;
   type: EventType;
   payload: any;
 }
@@ -21,7 +23,15 @@ export class EventDispatcher {
    */
   static async emit(type: EventType, payload: any) {
     const pool = getPool();
-    const eventPayload: EventPayload = { type, payload };
+    
+    // Persist event log before emitting
+    const insertRes = await pool.query(
+      `INSERT INTO event_queue_logs (event_type, payload, status) VALUES ($1, $2, $3) RETURNING id`,
+      [type, JSON.stringify(payload), 'PENDING']
+    );
+    const eventId = insertRes.rows[0].id;
+
+    const eventPayload: EventPayload = { id: eventId, type, payload };
     // Using pg_notify to emit to 'tradex_events' channel
     await pool.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
   }
@@ -40,18 +50,40 @@ export class EventListener {
 
     await this.client.connect();
 
-    this.client.on('notification', (msg) => {
+    this.client.on('notification', async (msg) => {
       if (msg.channel === 'tradex_events' && msg.payload) {
+        let eventId: string | undefined;
         try {
           const event: EventPayload = JSON.parse(msg.payload);
+          eventId = event.id;
           const handlers = this.handlers.get(event.type) || [];
+          
+          let allSuccess = true;
           for (const handler of handlers) {
-             Promise.resolve(handler(event.payload)).catch(err => {
-                 console.error(`Error in event handler for ${event.type}:`, err);
-             });
+             try {
+               await Promise.resolve(handler(event.payload));
+             } catch (err) {
+               console.error(`Error in event handler for ${event.type}:`, err);
+               allSuccess = false;
+             }
+          }
+
+          if (eventId) {
+            const pool = getPool();
+            if (allSuccess) {
+              await pool.query(
+                `UPDATE event_queue_logs SET status = 'PROCESSED', processed_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                [eventId]
+              );
+            } else {
+              await pool.query(
+                `UPDATE event_queue_logs SET status = 'FAILED', retry_count = retry_count + 1 WHERE id = $1`,
+                [eventId]
+              );
+            }
           }
         } catch (err) {
-          console.error("Failed to parse event notification:", err);
+          console.error("Failed to parse event notification or process DB update:", err);
         }
       }
     });
@@ -64,6 +96,14 @@ export class EventListener {
     const handlers = this.handlers.get(type) || [];
     handlers.push(handler);
     this.handlers.set(type, handlers);
+  }
+
+  static unsubscribe(type: EventType, handler: EventHandler) {
+    let handlers = this.handlers.get(type);
+    if (handlers) {
+      handlers = handlers.filter(h => h !== handler);
+      this.handlers.set(type, handlers);
+    }
   }
 
   static async shutdown() {

@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { EventDispatcher, EventType } from "../events";
 
 export class QuantAgent {
-  static async analyzeMarket(portfolioId: string, userId: string) {
+  static async analyzeMarket(portfolioId: string, userId: string, correlationId?: string) {
     const startTimestamp = new Date();
     try {
       if (!process.env.GEMINI_API_KEY) {
@@ -108,7 +108,12 @@ Output your response as JSON in the exact format:
         portfolio_id: portfolioId
       });
 
-      await EventDispatcher.emit(EventType.QUANT_ANALYSIS_COMPLETED, { portfolioId, marketRegime: analysisResult.marketRegime });
+      await EventDispatcher.emit(EventType.QUANT_ANALYSIS_COMPLETED, { 
+        portfolioId, 
+        marketRegime: analysisResult.marketRegime,
+        correlationId,
+        rawOutput: analysisResult
+      });
 
       return {
         newAnalysis: loggedMemory,

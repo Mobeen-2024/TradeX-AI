@@ -3,6 +3,8 @@ import { authMiddleware, AuthRequest } from "../middlewares/auth";
 import { QuantAgent } from "../../agents/quantAgent";
 import { RiskGuardian } from "../../agents/riskGuardian";
 import { NewsOracle } from "../../agents/newsOracle";
+import { EventDispatcher, EventListener, EventType } from "../../events";
+import crypto from "crypto";
 
 export const intelligenceRouter = Router();
 
@@ -12,7 +14,7 @@ intelligenceRouter.use(authMiddleware);
 intelligenceRouter.post("/analyze", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { portfolioId } = req.body;
+    const { portfolioId, useWorker = false, async = false } = req.body;
 
     if (!userId) {
        res.status(401).json({ error: "Unauthorized" });
@@ -24,11 +26,53 @@ intelligenceRouter.post("/analyze", async (req: AuthRequest, res: Response): Pro
        return;
     }
 
-    const result = await QuantAgent.analyzeMarket(portfolioId, userId);
+    if (!useWorker) {
+      // Fallback synchronous behavior
+      const result = await QuantAgent.analyzeMarket(portfolioId, userId);
+      res.status(200).json({
+        message: "Analysis completed synchronously",
+        data: result
+      });
+      return;
+    }
+
+    const correlationId = crypto.randomUUID();
+
+    await EventDispatcher.emit(EventType.QUANT_ANALYSIS_REQUESTED, { 
+      portfolioId, 
+      userId, 
+      correlationId 
+    });
+
+    if (async) {
+      res.status(202).json({
+        message: "Analysis enqueued",
+        correlationId
+      });
+      return;
+    }
+
+    // Await for worker result
+    const workerResult = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        EventListener.unsubscribe(EventType.QUANT_ANALYSIS_COMPLETED, handler);
+        reject(new Error("Worker timed out after 30 seconds"));
+      }, 30000);
+
+      const handler = (payload: any) => {
+        if (payload.correlationId === correlationId) {
+          clearTimeout(timeout);
+          EventListener.unsubscribe(EventType.QUANT_ANALYSIS_COMPLETED, handler);
+          resolve(payload);
+        }
+      };
+
+      EventListener.subscribe(EventType.QUANT_ANALYSIS_COMPLETED, handler);
+    });
 
     res.status(200).json({
-      message: "Analysis completed",
-      data: result
+      message: "Analysis completed via worker",
+      data: workerResult
     });
   } catch (error: any) {
     console.error("Intelligence Analysis error:", error);

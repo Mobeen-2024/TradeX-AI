@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { checkDbConnection } from "./src/db/connection";
 import { EventListener } from "./src/events";
 import { Coordinator } from "./src/agents/coordinator";
+import { QuantWorker } from "./src/workers/quantWorker";
 
 import { GoogleGenAI } from "@google/genai";
 import { authRouter } from "./src/api/routes/auth";
@@ -42,6 +43,7 @@ async function startServer() {
     console.log("[TradeX OS Daemon] Initializing EventListener...");
     await EventListener.initialize();
     Coordinator.initialize();
+    QuantWorker.initialize();
   } catch (e) {
     console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);
   }
