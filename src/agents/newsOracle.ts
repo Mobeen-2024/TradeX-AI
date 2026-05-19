@@ -6,7 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import { EventDispatcher, EventType } from "../events";
 
 export class NewsOracle {
-  static async analyzeSentiment(portfolioId: string, userId: string) {
+  static async analyzeSentiment(portfolioId: string, userId: string, correlationId?: string) {
     const startTimestamp = new Date();
     try {
       if (!process.env.GEMINI_API_KEY) {
@@ -30,8 +30,8 @@ export class NewsOracle {
           portfolio_id: portfolioId
         });
         return {
-           newAnalysis: null,
-           rawOutput: { sentiment: "NEUTRAL", aiRationale: "No active positions to analyze news for." }
+          newAnalysis: null,
+          rawOutput: { sentiment: "NEUTRAL", aiRationale: "No active positions to analyze news for." }
         };
       }
 
@@ -99,7 +99,9 @@ Format exactly as JSON:
         `NEWS_SENTIMENT (${sentimentEvaluation.sentiment})`,
         rationaleStr,
         userId,
-        portfolioId
+        portfolioId,
+        correlationId,
+        "NewsOracle"
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -114,7 +116,7 @@ Format exactly as JSON:
         portfolio_id: portfolioId
       });
 
-      await EventDispatcher.emit(EventType.NEWS_PROCESSED, { portfolioId, sentiment: sentimentEvaluation.sentiment });
+      await EventDispatcher.emit(EventType.NEWS_PROCESSED, { portfolioId, sentiment: sentimentEvaluation.sentiment, correlationId });
 
       return {
         newAnalysis: loggedMemory,

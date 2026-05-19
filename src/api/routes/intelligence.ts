@@ -181,7 +181,7 @@ intelligenceRouter.post("/run-cycle", async (req: AuthRequest, res: Response): P
 intelligenceRouter.post("/news", async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const userId = req.user?.userId;
-    const { portfolioId } = req.body;
+    const { portfolioId, useWorker = false, async = false } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -193,11 +193,53 @@ intelligenceRouter.post("/news", async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const result = await NewsOracle.analyzeSentiment(portfolioId, userId);
+    if (!useWorker) {
+      // Fallback synchronous behavior
+      const result = await NewsOracle.analyzeSentiment(portfolioId, userId);
+      res.status(200).json({
+        message: "News sentiment analysis completed synchronously",
+        data: result
+      });
+      return;
+    }
+
+    const correlationId = crypto.randomUUID();
+
+    await EventDispatcher.emit(EventType.NEWS_PROCESSING_REQUESTED, {
+      portfolioId,
+      userId,
+      correlationId
+    });
+
+    if (async) {
+      res.status(202).json({
+        message: "News processing enqueued",
+        correlationId
+      });
+      return;
+    }
+
+    // Await for worker result
+    const workerResult = await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        EventListener.unsubscribe(EventType.NEWS_PROCESSED, handler);
+        reject(new Error("Worker timed out after 30 seconds"));
+      }, 30000);
+
+      const handler = (payload: any) => {
+        if (payload.correlationId === correlationId) {
+          clearTimeout(timeout);
+          EventListener.unsubscribe(EventType.NEWS_PROCESSED, handler);
+          resolve(payload);
+        }
+      };
+
+      EventListener.subscribe(EventType.NEWS_PROCESSED, handler);
+    });
 
     res.status(200).json({
-      message: "News sentiment analysis completed",
-      data: result
+      message: "News processing completed via worker",
+      data: workerResult
     });
   } catch (error: any) {
     console.error("News Oracle error:", error);
