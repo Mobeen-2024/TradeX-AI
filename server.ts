@@ -16,6 +16,7 @@ import { portfolioRouter } from "./src/api/routes/portfolio";
 import { memoryRouter } from "./src/api/routes/memory";
 import { marketRouter } from "./src/api/routes/market";
 import { intelligenceRouter } from "./src/api/routes/intelligence";
+import { eventsRouter } from "./src/api/routes/events";
 
 dotenv.config();
 
@@ -116,6 +117,7 @@ async function startServer() {
   apiRouter.use("/memory", memoryRouter);
   apiRouter.use("/market", marketRouter);
   apiRouter.use("/intelligence", intelligenceRouter);
+  apiRouter.use("/events", eventsRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {
