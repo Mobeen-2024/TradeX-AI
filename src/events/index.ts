@@ -23,27 +23,46 @@ export class EventDispatcher {
    */
   static async emit(type: EventType, payload: any) {
     const pool = getPool();
-    
-    // Persist event log before emitting
-    const insertRes = await pool.query(
-      `INSERT INTO event_queue_logs (event_type, payload, status) VALUES ($1, $2, $3) RETURNING id`,
-      [type, JSON.stringify(payload), 'PENDING']
-    );
-    const eventId = insertRes.rows[0].id;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Persist event log before emitting
+      const insertRes = await client.query(
+        `INSERT INTO event_queue_logs (event_type, payload, status) VALUES ($1, $2, $3) RETURNING id`,
+        [type, JSON.stringify(payload), 'PENDING']
+      );
+      const eventId = insertRes.rows[0].id;
 
-    const eventPayload: EventPayload = { id: eventId, type, payload };
-    // Using pg_notify to emit to 'tradex_events' channel
-    await pool.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
+      const eventPayload: EventPayload = { id: eventId, type, payload };
+      // Using pg_notify to emit to 'tradex_events' channel
+      await client.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   static async dispatchExisting(id: string, type: EventType, payload: any) {
     const pool = getPool();
-    await pool.query(
-      `UPDATE event_queue_logs SET status = 'PENDING', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-      [id]
-    );
-    const eventPayload: EventPayload = { id, type, payload };
-    await pool.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE event_queue_logs SET status = 'PENDING', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [id]
+      );
+      const eventPayload: EventPayload = { id, type, payload };
+      await client.query(`SELECT pg_notify('tradex_events', $1)`, [JSON.stringify(eventPayload)]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   static async markDeadLetter(id: string) {
@@ -75,7 +94,7 @@ export class EventListener {
           const event: EventPayload = JSON.parse(msg.payload);
           eventId = event.id;
           const handlers = this.handlers.get(event.type) || [];
-          
+
           if (eventId) {
             const pool = getPool();
             const client = await pool.connect();
@@ -104,12 +123,12 @@ export class EventListener {
 
           let allSuccess = true;
           for (const handler of handlers) {
-             try {
-               await Promise.resolve(handler(event.payload));
-             } catch (err) {
-               console.error(`Error in event handler for ${event.type}:`, err);
-               allSuccess = false;
-             }
+            try {
+              await Promise.resolve(handler(event.payload));
+            } catch (err) {
+              console.error(`Error in event handler for ${event.type}:`, err);
+              allSuccess = false;
+            }
           }
 
           if (eventId) {
