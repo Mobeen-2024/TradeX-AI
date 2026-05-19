@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS positions (
 -- Semantic Memory Logs table (The Agent Vault)
 CREATE TABLE IF NOT EXISTS semantic_memory_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    portfolio_id UUID REFERENCES portfolios(id) ON DELETE SET NULL,
     timestamp TIMESTAMPTZ DEFAULT NOW(),
     market_regime VARCHAR,
     ai_rationale TEXT,

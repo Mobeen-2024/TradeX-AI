@@ -7,6 +7,7 @@ import { checkDbConnection } from "./src/db/connection";
 import { GoogleGenAI } from "@google/genai";
 import { authRouter } from "./src/api/routes/auth";
 import { portfolioRouter } from "./src/api/routes/portfolio";
+import { memoryRouter } from "./src/api/routes/memory";
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ async function startServer() {
 
   apiRouter.use("/auth", authRouter);
   apiRouter.use("/portfolio", portfolioRouter);
+  apiRouter.use("/memory", memoryRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {
