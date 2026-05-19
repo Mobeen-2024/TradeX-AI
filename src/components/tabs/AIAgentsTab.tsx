@@ -57,15 +57,33 @@ const INITIAL_AGENTS_DATA = [
   },
 ] as const;
 
+interface AIAgent {
+  id: "Director" | "Quant-v4" | "Risk-Guardian" | "Alpha-Seeker";
+  name: string;
+  role: string;
+  status: string;
+  color: string;
+  confidence: number;
+  focus: string;
+}
+
 export function AIAgentsTab() {
   const [selectedAgentId, setSelectedAgentId] =
-    useState<(typeof INITIAL_AGENTS_DATA)[number]["id"]>("Director");
-  
-  const [agentsData, setAgentsData] = useState(() => [...INITIAL_AGENTS_DATA].map(a => ({...a})));
+    useState<AIAgent["id"]>("Director");
+
+  const [agentsData, setAgentsData] = useState<AIAgent[]>(() => [...INITIAL_AGENTS_DATA].map(a => ({
+    id: a.id,
+    name: a.name,
+    role: a.role,
+    status: a.status,
+    color: a.color as string,
+    confidence: a.confidence as number,
+    focus: a.focus as string
+  })));
 
   React.useEffect(() => {
     const interval = setInterval(() => {
-      setAgentsData(prev => 
+      setAgentsData(prev =>
         prev.map(agent => {
           let newConfidence = agent.confidence + (Math.random() * 4 - 2);
           if (newConfidence > 99.9) newConfidence = 99.9;
@@ -74,14 +92,14 @@ export function AIAgentsTab() {
           let newFocus = agent.focus;
           // 15% chance to update the focus reason simulating live processing
           if (Math.random() > 0.85) {
-             const focuses = {
-                "Director": ["Global Strategy Orchestration", "Evaluating Arbitrage Opportunities", "Awaiting Risk Clearance", "Synthesizing Multi-Exchange Data", "Capitalizing on Inefficiency"],
-                "Quant-v4": ["BTC Volatility Analysis", "Order Book Imbalance Scanning", "Liquidity Sweep Detection", "Funding Rate Analysis", "Momentum Divergence Check"],
-                "Risk-Guardian": ["Drawdown Prevention", "Stress Testing Portfolios", "Validating Leverage Metrics", "Liquidation Level Check", "Monitoring Value at Risk (VaR)"],
-                "Alpha-Seeker": ["Execution Timing", "Optimizing Execution Fees", "Hunting Sniper Entries", "Routing to Dark Pools", "Staging Limit Orders"]
-             };
-             const list = focuses[agent.id as keyof typeof focuses] || [agent.focus];
-             newFocus = list[Math.floor(Math.random() * list.length)];
+            const focuses = {
+              "Director": ["Global Strategy Orchestration", "Evaluating Arbitrage Opportunities", "Awaiting Risk Clearance", "Synthesizing Multi-Exchange Data", "Capitalizing on Inefficiency"],
+              "Quant-v4": ["BTC Volatility Analysis", "Order Book Imbalance Scanning", "Liquidity Sweep Detection", "Funding Rate Analysis", "Momentum Divergence Check"],
+              "Risk-Guardian": ["Drawdown Prevention", "Stress Testing Portfolios", "Validating Leverage Metrics", "Liquidation Level Check", "Monitoring Value at Risk (VaR)"],
+              "Alpha-Seeker": ["Execution Timing", "Optimizing Execution Fees", "Hunting Sniper Entries", "Routing to Dark Pools", "Staging Limit Orders"]
+            };
+            const list = focuses[agent.id as keyof typeof focuses] || [agent.focus];
+            newFocus = list[Math.floor(Math.random() * list.length)];
           }
 
           return {
@@ -193,64 +211,64 @@ export function AIAgentsTab() {
                 transition={{ duration: 0.3, ease: "easeOut" }}
                 className="group flex flex-col p-4 rounded-sm border text-left w-full hover:border-[#333]"
               >
-              <div className="flex items-center justify-between w-full mb-3">
-                <div>
-                  <h4 className="text-gray-200 text-sm font-bold font-sans group-hover:text-white transition-colors">
-                    {agent.name}
-                  </h4>
-                  <span className="text-[10px] text-gray-500 uppercase tracking-widest">
-                    {agent.role}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex h-2 w-2">
-                    {agent.status === "Processing" && (
-                      <span
-                        className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                        style={{ backgroundColor: agent.color }}
-                      ></span>
-                    )}
-                    <span
-                      className="relative inline-flex rounded-full h-2 w-2"
-                      style={{ backgroundColor: agent.color }}
-                    ></span>
-                  </div>
-                  <span
-                    className="text-[9px] uppercase tracking-widest"
-                    style={{ color: agent.color }}
-                  >
-                    {agent.status}
-                  </span>
-                </div>
-              </div>
-
-              <div className="w-full mt-1">
-                <div className="flex justify-between items-center bg-[#0a0a0a] p-2 rounded-sm border border-[#1a1a1a] mb-2">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] uppercase font-bold tracking-widest text-gray-500">Neural Sync</span>
-                    <span className="text-[10px] font-mono text-gray-300 w-32 leading-tight truncate">
-                      {agent.focus}
+                <div className="flex items-center justify-between w-full mb-3">
+                  <div>
+                    <h4 className="text-gray-200 text-sm font-bold font-sans group-hover:text-white transition-colors">
+                      {agent.name}
+                    </h4>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-widest">
+                      {agent.role}
                     </span>
                   </div>
-                  <div className="shrink-0 flex items-center justify-center">
-                    <AIConfidenceRing 
-                      confidence={agent.confidence} 
-                      size={28} 
-                      theme={
-                        agent.color === "#39ff14"
-                          ? "green"
-                          : agent.color === "#00f0ff"
-                            ? "cyan"
-                            : agent.color === "#a855f7"
-                              ? "purple"
-                              : "amber"
-                      }
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex h-2 w-2">
+                      {agent.status === "Processing" && (
+                        <span
+                          className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                          style={{ backgroundColor: agent.color }}
+                        ></span>
+                      )}
+                      <span
+                        className="relative inline-flex rounded-full h-2 w-2"
+                        style={{ backgroundColor: agent.color }}
+                      ></span>
+                    </div>
+                    <span
+                      className="text-[9px] uppercase tracking-widest"
+                      style={{ color: agent.color }}
+                    >
+                      {agent.status}
+                    </span>
                   </div>
                 </div>
-              </div>
-            </motion.button>
-          ))}
+
+                <div className="w-full mt-1">
+                  <div className="flex justify-between items-center bg-[#0a0a0a] p-2 rounded-sm border border-[#1a1a1a] mb-2">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] uppercase font-bold tracking-widest text-gray-500">Neural Sync</span>
+                      <span className="text-[10px] font-mono text-gray-300 w-32 leading-tight truncate">
+                        {agent.focus}
+                      </span>
+                    </div>
+                    <div className="shrink-0 flex items-center justify-center">
+                      <AIConfidenceRing
+                        confidence={agent.confidence}
+                        size={28}
+                        theme={
+                          agent.color === "#39ff14"
+                            ? "green"
+                            : agent.color === "#00f0ff"
+                              ? "cyan"
+                              : agent.color === "#a855f7"
+                                ? "purple"
+                                : "amber"
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </motion.button>
+            ))}
           </motion.div>
         </div>
 
@@ -292,8 +310,8 @@ export function AIAgentsTab() {
                 <div className="flex flex-col items-center">
                   <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2">Uncertainty</span>
                   <div className="w-10 h-10 rounded-full border border-[#ff4500]/30 bg-[#ff4500]/5 flex items-center justify-center relative">
-                     <div className="absolute inset-0 rounded-full bg-[#ff4500]/10 animate-pulse"></div>
-                     <span className="text-xs font-bold text-[#ff4500]">{(100 - selectedAgent.confidence + Math.random() * 5).toFixed(1)}%</span>
+                    <div className="absolute inset-0 rounded-full bg-[#ff4500]/10 animate-pulse"></div>
+                    <span className="text-xs font-bold text-[#ff4500]">{(100 - selectedAgent.confidence + Math.random() * 5).toFixed(1)}%</span>
                   </div>
                 </div>
               </div>
@@ -380,14 +398,14 @@ export function AIAgentsTab() {
               </AnimatePresence>
             </div>
             <div className="pt-4 border-t border-[#1a1a1a] flex justify-between items-center relative z-10 shrink-0">
-               <div className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
-                 <span className="w-2 h-2 rounded-full bg-[#39ff14] animate-pulse"></span>
-                 Agent Active
-               </div>
-               <button className="flex items-center gap-2 bg-[#ff4500]/10 hover:bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]/30 px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_10px_rgba(255,69,0,0.1)]">
-                  <ShieldAlert className="w-3 h-3" />
-                  Manual Override
-               </button>
+              <div className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#39ff14] animate-pulse"></span>
+                Agent Active
+              </div>
+              <button className="flex items-center gap-2 bg-[#ff4500]/10 hover:bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]/30 px-4 py-2 rounded text-[10px] font-bold uppercase tracking-widest transition-colors shadow-[0_0_10px_rgba(255,69,0,0.1)]">
+                <ShieldAlert className="w-3 h-3" />
+                Manual Override
+              </button>
             </div>
           </div>
         </div>

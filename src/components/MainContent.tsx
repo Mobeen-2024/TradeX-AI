@@ -12,6 +12,7 @@ import { LibraryTab } from "./tabs/LibraryTab";
 import { DashboardTab } from "./tabs/DashboardTab";
 import { RiskCenterTab } from "./tabs/RiskCenterTab";
 import { SimulationEngineTab } from "./tabs/SimulationEngineTab";
+import { SystemTelemetryTab } from "./tabs/SystemTelemetryTab";
 import { useMarketRegime } from "../contexts/MarketRegimeContext";
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
@@ -54,6 +55,8 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
               <RiskCenterTab />
             ) : activeTab === "Backtesting Engine" ? (
               <SimulationEngineTab />
+            ) : activeTab === "System Telemetry" ? (
+              <SystemTelemetryTab />
             ) : (
               <motion.div
                 key="clean-slate"
