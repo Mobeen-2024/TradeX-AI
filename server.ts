@@ -9,6 +9,7 @@ import { QuantWorker } from "./src/workers/quantWorker";
 import { RiskWorker } from "./src/workers/riskWorker";
 import { NewsWorker } from "./src/workers/newsWorker";
 import { EventRetryWorker } from "./src/workers/eventRetryWorker";
+import { TelemetryServer } from "./src/telemetry";
 
 import { GoogleGenAI } from "@google/genai";
 import { authRouter } from "./src/api/routes/auth";
@@ -169,9 +170,16 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`[TradeX OS Daemon] Listening on 0.0.0.0:${PORT}`);
   });
+
+  // Initialize Telemetry Server
+  try {
+    TelemetryServer.initialize(server);
+  } catch (e) {
+    console.error("Failed to load telemetry server", e);
+  }
 }
 
 startServer().catch((e) => {
