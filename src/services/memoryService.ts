@@ -29,4 +29,11 @@ export class MemoryService {
     const queryEmbedding = await provider.embedText(query);
     return MemoryRepository.searchSimilarity(queryEmbedding, 10, userId, portfolioId);
   }
+
+  static async getByCorrelation(
+    correlationId: string,
+    agentName: string
+  ): Promise<SemanticMemoryLog | null> {
+    return MemoryRepository.getByCorrelation(correlationId, agentName);
+  }
 }

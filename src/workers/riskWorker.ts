@@ -7,6 +7,11 @@ export class RiskWorker {
       console.log(`[RiskWorker] Received risk validation request for portfolio ${payload.portfolioId}`);
       try {
         await RiskGuardian.evaluateRisk(payload.portfolioId, payload.userId, payload.correlationId);
+        await EventDispatcher.emit(EventType.NEWS_PROCESSING_REQUESTED, {
+          portfolioId: payload.portfolioId,
+          userId: payload.userId,
+          correlationId: payload.correlationId
+        });
       } catch (err) {
         console.error(`[RiskWorker] error:`, err);
         throw err;

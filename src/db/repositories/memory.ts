@@ -124,4 +124,18 @@ export class MemoryRepository {
     const result = await pool.query(query, params);
     return result.rows as SemanticMemoryLog[];
   }
+
+  static async getByCorrelation(
+    correlationId: string,
+    agentName: string
+  ): Promise<SemanticMemoryLog | null> {
+    const pool = getPool();
+    const result = await pool.query(
+      `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at 
+       FROM semantic_memory_logs 
+       WHERE correlation_id = $1 AND agent_name = $2`,
+      [correlationId, agentName]
+    );
+    return result.rows.length > 0 ? (result.rows[0] as SemanticMemoryLog) : null;
+  }
 }

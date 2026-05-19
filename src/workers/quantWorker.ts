@@ -7,6 +7,11 @@ export class QuantWorker {
       console.log(`[QuantWorker] Received request for portfolio ${payload.portfolioId}`);
       try {
         await QuantAgent.analyzeMarket(payload.portfolioId, payload.userId, payload.correlationId);
+        await EventDispatcher.emit(EventType.RISK_VALIDATION_REQUESTED, {
+          portfolioId: payload.portfolioId,
+          userId: payload.userId,
+          correlationId: payload.correlationId
+        });
       } catch (err) {
         console.error(`[QuantWorker] error:`, err);
         throw err;
