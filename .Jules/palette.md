@@ -1,0 +1,3 @@
+## 2025-02-23 - Custom Auth Form Accessibility
+**Learning:** Custom UI components for authentication frequently miss explicit HTML linkings (`htmlFor` with `id`) between labels and inputs, and lack explicitly defined `aria-label` attributes on icon-only interactive elements like password visibility toggles and biometric buttons.
+**Action:** When implementing or reviewing custom forms or inputs, explicitly verify the presence of label-input associations (`htmlFor`/`id`), explicit semantic types (`type="button"`), keyboard focus indicators, and `aria-label`s for icon-only actions.
