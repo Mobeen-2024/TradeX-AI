@@ -3,6 +3,7 @@ import { MemoryRepository } from "../db/repositories/memory";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { MemoryService } from "../services/memoryService";
 import { GoogleGenAI } from "@google/genai";
+import { EventDispatcher, EventType } from "../events";
 
 export class RiskGuardian {
   static async evaluateRisk(portfolioId: string, userId: string) {
@@ -108,6 +109,8 @@ Format exactly as JSON:
         user_id: userId,
         portfolio_id: portfolioId
       });
+
+      await EventDispatcher.emit(EventType.RISK_VALIDATED, { portfolioId, riskLevel: riskEvaluation.riskLevel });
 
       return {
         newRiskEvaluation: loggedMemory,

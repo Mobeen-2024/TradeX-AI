@@ -3,6 +3,8 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { checkDbConnection } from "./src/db/connection";
+import { EventListener } from "./src/events";
+import { Coordinator } from "./src/agents/coordinator";
 
 import { GoogleGenAI } from "@google/genai";
 import { authRouter } from "./src/api/routes/auth";
@@ -31,6 +33,17 @@ async function startServer() {
       throw new Error("FATAL: Database connection failed during production startup.");
     }
     console.log("[TradeX OS Daemon] Database connected successfully.");
+  } else {
+    // Also try to connect in dev to initialize EventListener correctly
+    await checkDbConnection();
+  }
+
+  try {
+    console.log("[TradeX OS Daemon] Initializing EventListener...");
+    await EventListener.initialize();
+    Coordinator.initialize();
+  } catch (e) {
+    console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);
   }
 
   const app = express();

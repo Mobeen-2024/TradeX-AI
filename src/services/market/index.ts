@@ -1,6 +1,7 @@
 import { MarketProvider } from "./provider";
 import { BinanceProvider } from "./binance";
 import { MarketTickRepository } from "../../db/repositories/marketTicks";
+import { EventDispatcher, EventType } from "../../events";
 
 export const getMarketProvider = (providerName: string = "binance"): MarketProvider => {
   if (providerName.toLowerCase() === "binance") {
@@ -14,13 +15,22 @@ export class MarketService {
     const provider = getMarketProvider(providerName);
     const tick = await provider.getTicker(symbol);
     
-    return await MarketTickRepository.insert(
+    const dbRecord = await MarketTickRepository.insert(
       tick.provider,
       tick.symbol,
       tick.price,
       tick.volume24h,
       tick.timestamp
     );
+
+    await EventDispatcher.emit(EventType.MARKET_TICK_RECEIVED, { 
+      assetId: tick.symbol, 
+      price: tick.price, 
+      source: tick.provider, 
+      timestamp: tick.timestamp 
+    });
+
+    return dbRecord;
   }
 
   static async getLatestTick(symbol?: string) {

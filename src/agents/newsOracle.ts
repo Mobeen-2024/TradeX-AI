@@ -3,6 +3,7 @@ import { MemoryService } from "../services/memoryService";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { getNewsProvider } from "../services/news";
 import { GoogleGenAI } from "@google/genai";
+import { EventDispatcher, EventType } from "../events";
 
 export class NewsOracle {
   static async analyzeSentiment(portfolioId: string, userId: string) {
@@ -112,6 +113,8 @@ Format exactly as JSON:
         user_id: userId,
         portfolio_id: portfolioId
       });
+
+      await EventDispatcher.emit(EventType.NEWS_PROCESSED, { portfolioId, sentiment: sentimentEvaluation.sentiment });
 
       return {
         newAnalysis: loggedMemory,

@@ -4,8 +4,24 @@ import { NewsOracle } from "./newsOracle";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { MemoryService } from "../services/memoryService";
 import { GoogleGenAI } from "@google/genai";
+import { EventListener, EventType } from "../events";
 
 export class Coordinator {
+  static initialize() {
+    EventListener.subscribe(EventType.MARKET_TICK_RECEIVED, (payload) => {
+      console.log(`[Coordinator] Received MARKET_TICK_RECEIVED:`, payload);
+    });
+    EventListener.subscribe(EventType.QUANT_ANALYSIS_COMPLETED, (payload) => {
+      console.log(`[Coordinator] Received QUANT_ANALYSIS_COMPLETED:`, payload);
+    });
+    EventListener.subscribe(EventType.RISK_VALIDATED, (payload) => {
+      console.log(`[Coordinator] Received RISK_VALIDATED:`, payload);
+    });
+    EventListener.subscribe(EventType.NEWS_PROCESSED, (payload) => {
+      console.log(`[Coordinator] Received NEWS_PROCESSED:`, payload);
+    });
+  }
+
   static async runCycle(portfolioId: string, userId: string) {
     const startTimestamp = new Date();
     try {

@@ -3,6 +3,7 @@ import { PositionRepository } from "../db/repositories/positions";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { MemoryService } from "../services/memoryService";
 import { GoogleGenAI } from "@google/genai";
+import { EventDispatcher, EventType } from "../events";
 
 export class QuantAgent {
   static async analyzeMarket(portfolioId: string, userId: string) {
@@ -106,6 +107,8 @@ Output your response as JSON in the exact format:
         user_id: userId,
         portfolio_id: portfolioId
       });
+
+      await EventDispatcher.emit(EventType.QUANT_ANALYSIS_COMPLETED, { portfolioId, marketRegime: analysisResult.marketRegime });
 
       return {
         newAnalysis: loggedMemory,
