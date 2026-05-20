@@ -56,6 +56,7 @@ export function AIVoiceAssistant() {
       {/* Floating Button */}
       <motion.button
         onClick={() => setIsOpen(true)}
+        aria-label="Open voice assistant"
         className="fixed bottom-36 right-6 md:bottom-8 md:right-8 z-50 w-14 h-14 bg-[#050505] border border-[#a855f7]/50 rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(168,85,247,0.2)] hover:scale-105 transition-transform"
         whileHover={{
           boxShadow: "0 0 30px rgba(168,85,247,0.4)",
@@ -97,6 +98,7 @@ export function AIVoiceAssistant() {
               </div>
               <button
                 onClick={() => setIsOpen(false)}
+                aria-label="Close voice assistant"
                 className="text-gray-500 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -165,6 +167,7 @@ export function AIVoiceAssistant() {
 
               <button
                 onClick={handleMicClick}
+                aria-label={isListening ? "Stop listening" : "Start listening"}
                 className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                   isListening
                     ? "bg-[#a855f7] text-white shadow-[0_0_20px_#a855f7] scale-110"
