@@ -1,0 +1,3 @@
+## 2024-05-21 - Icon-only buttons accessibility and focus states
+**Learning:** Found multiple icon-only buttons (Notifications, Maximize, Voice Assistant) across the main interface that lacked ARIA labels, title tooltips, and keyboard focus indicators. Since the app heavily uses a dark theme, native focus outlines are often hard to see or disabled.
+**Action:** Always add `aria-label` and `title` to icon-only buttons, and use Tailwind's `focus-visible:ring-2` with a color that matches the component's theme (e.g., `#a855f7` for AI voice, `#00f0ff` for system tools) to ensure proper keyboard navigation.

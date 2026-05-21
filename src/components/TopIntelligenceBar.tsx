@@ -75,7 +75,11 @@ export function TopIntelligenceBar() {
             ⌘K
           </span>
         </div>
-        <button className="text-gray-500 hover:text-white transition-colors relative cursor-pointer">
+        <button
+          aria-label="View notifications"
+          title="Notifications"
+          className="text-gray-500 hover:text-white transition-colors relative cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4500] rounded-sm p-1"
+        >
           <Bell className="w-4 h-4" />
           <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff4500] rounded-full border border-[#020202]"></span>
         </button>
