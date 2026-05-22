@@ -95,8 +95,8 @@ export function RiskCenterTab() {
   useEffect(() => {
     // Sync stress level based on real risk level if available
     if (riskState) {
-      if (riskState.level === "CRITICAL") setStressLevel(90);
-      else if (riskState.level === "ELEVATED") setStressLevel(65);
+      if (riskState.state === "CRITICAL") setStressLevel(90);
+      else if (riskState.state === "ELEVATED") setStressLevel(65);
       else setStressLevel(30);
     }
   }, [riskState]);
@@ -142,10 +142,10 @@ export function RiskCenterTab() {
               AI Risk Status
             </span>
             <span
-              className={`${riskState?.level === "CRITICAL" ? "text-red-500" : riskState?.level === "ELEVATED" ? "text-yellow-400" : "text-[#39ff14]"} text-xs font-bold uppercase flex items-center gap-2`}
+              className={`${riskState?.state === "CRITICAL" ? "text-red-500" : riskState?.state === "ELEVATED" ? "text-yellow-400" : "text-[#39ff14]"} text-xs font-bold uppercase flex items-center gap-2`}
             >
               <ShieldCheck className="w-3.5 h-3.5" />
-              {loading ? "Checking..." : riskState?.level || "IDLE"}
+              {loading ? "Checking..." : riskState?.state || "IDLE"}
             </span>
           </div>
           <button
@@ -199,9 +199,9 @@ export function RiskCenterTab() {
               Tail Risk Warning
             </span>
             <span
-              className={`${riskState?.level === "CRITICAL" ? "text-red-500" : "text-[#39ff14]"} font-bold uppercase tracking-widest`}
+              className={`${riskState?.state === "CRITICAL" ? "text-red-500" : "text-[#39ff14]"} font-bold uppercase tracking-widest`}
             >
-              {riskState?.level || "Evaluating..."}
+              {riskState?.state || "Evaluating..."}
             </span>
           </div>
         </div>
@@ -220,9 +220,15 @@ export function RiskCenterTab() {
                 Margin Risk
               </span>
               <span
-                className={`${riskState?.marginRisk === "SAFE" ? "text-[#39ff14]" : riskState?.marginRisk === "WARNING" ? "text-yellow-400" : riskState?.marginRisk === "CRITICAL" ? "text-red-500" : "text-white"} text-2xl font-bold font-sans tracking-tight`}
+                className={`${riskState?.state === "NORMAL" ? "text-[#39ff14]" : riskState?.state === "ELEVATED" ? "text-yellow-400" : riskState?.state === "CRITICAL" ? "text-red-500" : "text-white"} text-2xl font-bold font-sans tracking-tight`}
               >
-                {riskState?.marginRisk || "UNKNOWN"}
+                {riskState?.state === "NORMAL"
+                  ? "SAFE"
+                  : riskState?.state === "ELEVATED"
+                    ? "WARNING"
+                    : riskState?.state === "CRITICAL"
+                      ? "CRITICAL"
+                      : "UNKNOWN"}
               </span>
             </div>
             <div className="flex flex-col">
@@ -230,8 +236,8 @@ export function RiskCenterTab() {
                 Max Drawdown
               </span>
               <span className="text-white text-2xl font-bold font-sans tracking-tight">
-                {riskState?.maxDrawdown !== undefined
-                  ? `${riskState.maxDrawdown.toFixed(2)}%`
+                {riskState?.drawdown !== undefined
+                  ? `${riskState.drawdown.toFixed(2)}%`
                   : "0.00%"}
               </span>
             </div>
@@ -248,8 +254,12 @@ export function RiskCenterTab() {
           </div>
 
           <div className="text-gray-300 text-sm font-mono z-10 mb-4 bg-black/40 p-3 rounded-lg border border-white/5">
-            <div className="text-[#39ff14] mb-1">↳ AI Rationale:</div>
-            {riskState?.aiRationale || "Awaiting risk check..."}
+            <div className="text-[#39ff14] mb-1">↳ System Feedback:</div>
+            {riskState?.state === "CRITICAL"
+              ? "CRITICAL RISK: Suspending new allocations."
+              : riskState?.state === "ELEVATED"
+                ? "ELEVATED RISK: Reducing exposure size."
+                : "System operating optimally within parameters."}
           </div>
 
           <div className="h-48 w-full z-10">

@@ -14,7 +14,7 @@ interface SystemState {
   portfolios: PortfolioMetrics[];
   globalMetrics: GlobalMetrics;
   riskState: RiskMetrics;
-  strategyScores: StrategyMetrics[];
+  strategyScores: Record<string, StrategyMetrics>;
   agentStates: Record<string, AgentState>;
   telemetryFeed: TradeEvent[];
   wsConnected: boolean;
@@ -24,7 +24,7 @@ interface SystemState {
   setPortfolios: (portfolios: PortfolioMetrics[]) => void;
   setGlobalMetrics: (metrics: GlobalMetrics) => void;
   setRiskState: (risk: RiskMetrics) => void;
-  setStrategyScores: (scores: StrategyMetrics[]) => void;
+  setStrategyScores: (scores: Record<string, StrategyMetrics>) => void;
   updateAgentState: (agent: string, state: AgentState) => void;
   addTelemetryEvent: (event: TradeEvent) => void;
   setWsConnected: (connected: boolean) => void;
@@ -53,7 +53,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     volatility: 0,
     riskMultiplier: 1.0,
   },
-  strategyScores: [],
+  strategyScores: {},
   agentStates: {
     QuantAgent: { status: "idle" },
     RiskGuardian: { status: "idle" },

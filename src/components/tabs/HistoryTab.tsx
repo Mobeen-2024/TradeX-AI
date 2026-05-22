@@ -52,7 +52,7 @@ export function HistoryTab() {
   const [memories, setMemories] = useState<RealMemoryEvent[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { telemetryFeed, setSelectedCorrelationId } = useSystemStore();
+  const { telemetryFeed } = useSystemStore();
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -63,7 +63,6 @@ export function HistoryTab() {
           setMemories(data.memories || []);
           if (data.memories && data.memories.length > 0) {
             setSelectedMemory(data.memories[0].id);
-            setSelectedCorrelationId(data.memories[0].correlation_id || null);
           }
         }
       } catch (err) {
@@ -77,7 +76,6 @@ export function HistoryTab() {
 
   const handleSelectMemory = (memory: RealMemoryEvent) => {
     setSelectedMemory(memory.id);
-    setSelectedCorrelationId(memory.correlation_id || null);
   };
 
   const activeMemory = memories.find((m) => m.id === selectedMemory);
@@ -261,9 +259,7 @@ export function HistoryTab() {
                           )}
                         </div>
                         <div className="text-xs text-gray-300 font-mono break-words leading-relaxed truncate">
-                          {event.action ||
-                            event.message ||
-                            JSON.stringify(event.payload)}
+                          {event.message || JSON.stringify(event.metadata)}
                         </div>
                       </div>
                     </div>
@@ -305,9 +301,7 @@ export function HistoryTab() {
                           {ev.type}
                         </span>
                         <span className="text-gray-300 break-words flex-1 whitespace-pre-wrap">
-                          {ev.message ||
-                            ev.action ||
-                            JSON.stringify(ev.payload, null, 2)}
+                          {ev.message || JSON.stringify(ev.metadata, null, 2)}
                         </span>
                       </div>
                     </div>

@@ -116,7 +116,7 @@ export function SystemTelemetryTab() {
                 className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 p-2 bg-[#111] rounded border border-[#222]"
               >
                 <span
-                  className={`text-[10px] uppercase font-bold tracking-widest shrink-0 w-24 ${log.type === "ERROR" ? "text-[#ff4500]" : log.type === "WARNING" ? "text-[#facc15]" : "text-gray-500"}`}
+                  className={`text-[10px] uppercase font-bold tracking-widest shrink-0 w-32 ${log.type === "RISK_ALERT" ? "text-[#ff4500]" : log.type === "AGENT_DECISION" ? "text-[#a855f7]" : log.type === "EXECUTION" ? "text-[#39ff14]" : "text-gray-500"}`}
                 >
                   [{log.type}]
                 </span>
