@@ -31,9 +31,30 @@ export function TopIntelligenceBar() {
   };
 
   const handleApplyOverrides = () => {
-    console.log("Applying overrides payload: ", overrideState);
-    // UI just shows feedback or triggers local mock log
-    alert("Overrides formulated. Ready for backend execution proxy.");
+    if (!overrideState.action) {
+      alert("Please select an override action first.");
+      return;
+    }
+
+    const { addOverrideRecord, activeCorrelationId } =
+      useSystemStore.getState();
+
+    addOverrideRecord({
+      id: Math.random().toString(36).substring(7),
+      correlationId: activeCorrelationId || "SIM-" + Date.now(),
+      timestamp: Date.now(),
+      aiDecision: "HOLD", // Would be derived from correlation context in real app
+      userOverride: overrideState.action,
+      strategyId: "Global",
+      regime,
+      simulatedOutcome: (Math.random() > 0.4 ? 1 : -1) * (Math.random() * 5000), // Simulated Pnl for demonstration
+      actualOutcome: null,
+    });
+
+    console.log("Applied overrides payload: ", overrideState);
+    alert(
+      "Simulation Overrides Processed. Telemetry captured in Adaptation Layer.",
+    );
   };
 
   return (

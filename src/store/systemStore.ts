@@ -37,6 +37,19 @@ interface SystemState {
     emergencyThrottle: number;
   };
 
+  // LAYER 4: FEEDBACK & ADAPTATION
+  overrideHistory: {
+    id: string;
+    correlationId: string;
+    timestamp: number;
+    aiDecision: string;
+    userOverride: string | null;
+    strategyId: string;
+    regime: string;
+    simulatedOutcome: number;
+    actualOutcome: number | null;
+  }[];
+
   // ACTIONS
   setActivePortfolio: (portfolio: PortfolioMetrics | null) => void;
   setPortfolios: (portfolios: PortfolioMetrics[]) => void;
@@ -54,6 +67,7 @@ interface SystemState {
     overrides: Partial<SystemState["strategyOverrides"][string]>,
   ) => void;
   setRiskOverride: (overrides: Partial<SystemState["riskOverrides"]>) => void;
+  addOverrideRecord: (record: SystemState["overrideHistory"][0]) => void;
 
   // LAYER 2: WEBSOCKET ORCHESTRATION
   connectWebSocket: () => void;
@@ -102,6 +116,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     volSensitivity: 1.0,
     emergencyThrottle: 1.0,
   },
+  overrideHistory: [],
 
   setActivePortfolio: (portfolio) => set({ activePortfolio: portfolio }),
   setPortfolios: (portfolios) => set({ portfolios }),
@@ -131,6 +146,8 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     set((state) => ({
       riskOverrides: { ...state.riskOverrides, ...overrides },
     })),
+  addOverrideRecord: (record) =>
+    set((state) => ({ overrideHistory: [record, ...state.overrideHistory] })),
 
   updateAgentState: (agent, state) =>
     set((prev) => ({

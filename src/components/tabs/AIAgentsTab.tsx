@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 import { useSystemStore } from "../../store/systemStore";
+import { OverrideAnalyticsPanel } from "../ui/OverrideAnalyticsPanel";
 
 const AGENT_DEFINITIONS = [
   {
@@ -370,6 +371,11 @@ export function AIAgentsTab() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* OVERRIDE FEEDBACK LAYER */}
+      <div className="mb-8">
+        <OverrideAnalyticsPanel />
       </div>
 
       {/* BOTTOM SECTION: DECISION FLOW TIMELINE */}
