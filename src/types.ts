@@ -20,6 +20,7 @@ export interface StrategyMetrics {
   portfolioId: string;
   name?: string;
   winRate: number;
+  totalTrades?: number;
   expectancy: number;
   regimeScore: number;
   baseScore: number;

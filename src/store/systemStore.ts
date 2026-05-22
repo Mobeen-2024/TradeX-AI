@@ -370,11 +370,12 @@ export const useSystemStore = create<SystemState>((set, get) => ({
         try {
           const data = JSON.parse(event.data);
 
+          // Legacy formats if any exist
           if (data.type === "AGENT_UPDATE" && data.payload) {
             get().updateAgentState(data.payload.agent, data.payload.state);
 
             get().addTelemetryEvent({
-              id: Math.random().toString(36).substring(7),
+              id: crypto.randomUUID(),
               type: "AGENT_DECISION",
               message: `${data.payload.agent}: ${data.payload.state.lastMessage || "Status updated"}`,
               timestamp: Date.now(),
@@ -383,13 +384,12 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
           if (data.type === "EXECUTION_UPDATE" && data.payload) {
             get().addTelemetryEvent({
-              id: Math.random().toString(36).substring(7),
+              id: crypto.randomUUID(),
               type: "EXECUTION",
               message: data.payload.message || "Execution event",
               timestamp: Date.now(),
             });
 
-            // Re-fetch portfolios on execution updates to keep UI perfectly in sync
             get().fetchInitialData();
           }
 
@@ -398,7 +398,6 @@ export const useSystemStore = create<SystemState>((set, get) => ({
               get().setGlobalMetrics(data.payload.globalMetrics);
             if (data.payload.portfolios) {
               get().setPortfolios(data.payload.portfolios);
-              // Keep active portfolio reference updated
               const currentActive = get().activePortfolio;
               if (currentActive) {
                 const updatedActive = data.payload.portfolios.find(
@@ -412,15 +411,61 @@ export const useSystemStore = create<SystemState>((set, get) => ({
             if (data.payload.strategyScores)
               get().setStrategyScores(data.payload.strategyScores);
           }
+
+          // Unified Event Mapping from Backend TelemetryServer
+          if (data.eventType) {
+            const agentMapping: Record<string, string> = {
+              QuantAgent: "QuantAgent",
+              RiskGuardian: "RiskGuardian",
+              NewsOracle: "NewsOracle",
+              Coordinator: "Coordinator",
+              ExecutionAgent: "ExecutionAgent",
+            };
+
+            const agentId = agentMapping[data.agent_name];
+            if (agentId) {
+              get().updateAgentState(agentId, {
+                status: data.status === "completed" ? "idle" : "running",
+                lastMessage: data.summary,
+              });
+            }
+
+            if (data.eventType === "ORDER_EXECUTED") {
+              get().addTelemetryEvent({
+                id: crypto.randomUUID(),
+                type: "EXECUTION",
+                message: data.summary || "Order Executed",
+                timestamp: new Date(data.timestamp).getTime(),
+              });
+              get().fetchInitialData();
+            } else {
+              get().addTelemetryEvent({
+                id: crypto.randomUUID(),
+                type: "AGENT_DECISION",
+                message: `[${data.agent_name}] ${data.summary}`,
+                timestamp: new Date(data.timestamp).getTime(),
+              });
+            }
+
+            // Pull specific state objects if we completed a risk or quant task
+            if (data.eventType === "RISK_VALIDATED") {
+              // Can re-fetch risk specifically here, or let initial fetch handle
+              get().fetchInitialData();
+            }
+          }
         } catch (e) {
           console.error("WebSocket parse error", e);
         }
       };
 
+      // Reconnect logic
       wsSocket.onclose = () => {
         get().setWsConnected(false);
         wsSocket = null;
-        // Optional: Reconnect logic
+        setTimeout(() => {
+          const state = get();
+          if (!state.wsConnected) state.connectWebSocket();
+        }, 5000);
       };
     } catch (e) {
       console.error("Failed to connect WebSocket", e);

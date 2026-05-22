@@ -53,15 +53,15 @@ export function TopIntelligenceBar() {
       useSystemStore.getState();
 
     addOverrideRecord({
-      id: Math.random().toString(36).substring(7),
+      id: crypto.randomUUID(),
       correlationId: activeCorrelationId || "SIM-" + Date.now(),
       timestamp: Date.now(),
       aiDecision: "HOLD", // Would be derived from correlation context in real app
       userOverride: overrideState.action,
       strategyId: "Global",
       regime,
-      simulatedOutcome: (Math.random() > 0.4 ? 1 : -1) * (Math.random() * 5000), // Simulated Pnl for demonstration
-      actualOutcome: (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 3000),
+      simulatedOutcome: 0, // Should be computed by backend simulation engine
+      actualOutcome: null,
     });
 
     console.log("Applied overrides payload: ", overrideState);

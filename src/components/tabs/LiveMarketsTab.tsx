@@ -24,88 +24,18 @@ import {
   createSeriesMarkers,
 } from "lightweight-charts";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
+import { useSystemStore } from "../../store/systemStore";
+import { useMarketStore } from "../../store/marketStore";
 
 function ExecutionLog() {
-  const [logs, setLogs] = useState<
-    {
-      timestamp: string;
-      type: string;
-      text: string;
-      color: string;
-      value?: number;
-    }[]
-  >([]);
+  const { whaleAlerts } = useMarketStore();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@aggTrade");
-    let isMounted = true;
-
-    const initialLogs = [
-      {
-        timestamp: new Date().toISOString().split("T")[1].slice(0, -1),
-        type: "SYSTEM",
-        text: "INITIALIZING QUANT-V4 KERNEL...",
-        color: "text-gray-400",
-      },
-      {
-        timestamp: new Date().toISOString().split("T")[1].slice(0, -1),
-        type: "RISK_ENGINE",
-        text: "CHECKING MARGIN ALLOCATION. NORMAL.",
-        color: "text-[#84cc16]",
-      },
-      {
-        timestamp: new Date().toISOString().split("T")[1].slice(0, -1),
-        type: "AGENT",
-        text: "CONNECTING TO BINANCE WSS FEED...",
-        color: "text-[#0ea5e9]",
-      },
-    ];
-    setLogs(initialLogs);
-
-    ws.onmessage = (event) => {
-      if (!isMounted) return;
-
-      const data = JSON.parse(event.data);
-      if (data && data.e === "aggTrade") {
-        const price = parseFloat(data.p);
-        const qty = parseFloat(data.q);
-        const isBuyerMaker = data.m; // true means sell
-        const usdValue = price * qty;
-
-        if (usdValue > 100000) {
-          // Large trade > 100k
-          const side = isBuyerMaker ? "SELL" : "BUY";
-          const color = side === "BUY" ? "text-[#39ff14]" : "text-[#ff4500]";
-
-          setLogs((prev) => {
-            const newLog = {
-              timestamp: new Date(data.T)
-                .toISOString()
-                .split("T")[1]
-                .slice(0, -1),
-              type: "WHALE_TRACKER",
-              text: `DETECTED ${usdValue >= 500000 ? "MASSIVE " : ""}${side}: ${qty.toFixed(2)} BTC @ $${price.toFixed(2)} ($${(usdValue / 1000).toFixed(0)}k)`,
-              color: color,
-              value: usdValue,
-            };
-            return [...prev, newLog].slice(-50);
-          });
-        }
-      }
-    };
-
-    return () => {
-      isMounted = false;
-      ws.close();
-    };
-  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [whaleAlerts]);
 
   return (
     <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-[160px] max-h-[220px]">
@@ -113,7 +43,7 @@ function ExecutionLog() {
       <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-2 pb-2 flex items-center justify-between border-b border-[#1a1a1a] relative z-10 w-full">
         <div className="flex items-center gap-2">
           <Activity className="w-3.5 h-3.5 text-[#0ea5e9]" />
-          Execution Feed
+          Whale Tracker
         </div>
         <div className="flex gap-1.5 shrink-0">
           <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse"></span>
@@ -131,38 +61,38 @@ function ExecutionLog() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 scroll-smooth relative z-10 break-words pr-1 mt-1"
       >
-        {logs.map((log, i) => (
-          <div
-            key={i}
-            className={`flex items-start gap-1 group cursor-pointer hover:bg-[#111] p-1 rounded transition-colors ${log.value && log.value >= 500000 ? "bg-[#ff4500]/10 border border-[#ff4500]/30" : ""}`}
-          >
-            <span className="text-gray-600 shrink-0 select-none">
-              [{log.timestamp}]
-            </span>
-            <span
-              className={`uppercase break-words whitespace-normal leading-[1.3] ${log.color}`}
+        {[...whaleAlerts].reverse().map((log, i) => {
+          if (log.price === 0) return null; // skip dummy
+          const time =
+            log.timestamp.split("T")[1]?.slice(0, -1) || log.timestamp;
+          const color =
+            log.side === "BUY" ? "text-[#39ff14]" : "text-[#ff4500]";
+          return (
+            <div
+              key={log.id || i}
+              className={`flex items-start gap-1 group cursor-pointer hover:bg-[#111] p-1 rounded transition-colors ${log.usdValue >= 500000 ? (log.side === "BUY" ? "bg-[#39ff14]/10 border border-[#39ff14]/30" : "bg-[#ff4500]/10 border border-[#ff4500]/30") : ""}`}
             >
-              <span
-                className={`font-bold mr-1 ${
-                  log.type === "AGENT"
-                    ? "text-[#0ea5e9]"
-                    : log.type === "SYSTEM"
-                      ? "text-gray-500"
-                      : log.type === "WHALE_TRACKER" &&
-                          log.color.includes("39ff14")
-                        ? "text-[#39ff14]"
-                        : log.type === "WHALE_TRACKER" &&
-                            log.color.includes("ff4500")
-                          ? "text-[#ff4500]"
-                          : "text-white"
-                }`}
-              >
-                [{log.type}]
+              <span className="text-gray-600 shrink-0 select-none">
+                [{time}]
               </span>
-              {log.text}
-            </span>
+              <span
+                className={`uppercase break-words whitespace-normal leading-[1.3] text-gray-300`}
+              >
+                <span className={`font-bold mr-1 ${color}`}>
+                  [WHALE_{log.side}]
+                </span>
+                DETECTED {log.usdValue >= 500000 ? "MASSIVE " : ""}
+                {log.side}: {log.qty.toFixed(2)} BTC @ ${log.price.toFixed(2)}{" "}
+                (${(log.usdValue / 1000).toFixed(0)}k)
+              </span>
+            </div>
+          );
+        })}
+        {whaleAlerts.length <= 1 && (
+          <div className="text-gray-600 italic mt-2 text-center">
+            Waiting for large orders...
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -729,6 +659,7 @@ function MarketChart({
     const binanceInterval = getBinanceInterval(activeTimeframe);
     const intervalSeconds = getTimeframeSeconds(activeTimeframe);
     let aborted = false;
+    let unsubscribeKline: (() => void) | null = null;
     let activeWs: WebSocket | null = null;
 
     const detectPatterns = (data: any[]) => {
@@ -870,141 +801,6 @@ function MarketChart({
           }
         }
       }
-      if (data.length > 50) {
-        const types = [
-          {
-            text: "Double Top Detected",
-            position: "aboveBar",
-            color: "#ff4500",
-            shape: "arrowDown",
-            bias: "Bearish",
-          },
-          {
-            text: "Double Bottom",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "arrowUp",
-            bias: "Bullish",
-          },
-          {
-            text: "Inv Head & Shoulders",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "arrowUp",
-            bias: "Bullish",
-          },
-          {
-            text: "Head & Shoulders",
-            position: "aboveBar",
-            color: "#ff4500",
-            shape: "arrowDown",
-            bias: "Bearish",
-          },
-          {
-            text: "Ascending Triangle",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "circle",
-            bias: "Bullish",
-          },
-          {
-            text: "Descending Triangle",
-            position: "aboveBar",
-            color: "#ff4500",
-            shape: "circle",
-            bias: "Bearish",
-          },
-          {
-            text: "Bullish Flag",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "arrowUp",
-            bias: "Bullish",
-          },
-          {
-            text: "Bearish Flag",
-            position: "aboveBar",
-            color: "#ff4500",
-            shape: "arrowDown",
-            bias: "Bearish",
-          },
-          {
-            text: "Bullish Pennant",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "arrowUp",
-            bias: "Bullish",
-          },
-          {
-            text: "Bearish Pennant",
-            position: "aboveBar",
-            color: "#ff4500",
-            shape: "arrowDown",
-            bias: "Bearish",
-          },
-          {
-            text: "Ascending Channel",
-            position: "belowBar",
-            color: "#a855f7",
-            shape: "arrowUp",
-            bias: "Neutral",
-          },
-          {
-            text: "Descending Channel",
-            position: "aboveBar",
-            color: "#a855f7",
-            shape: "arrowDown",
-            bias: "Neutral",
-          },
-          {
-            text: "Cup and Handle",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "circle",
-            bias: "Bullish",
-          },
-          {
-            text: "Rising Wedge",
-            position: "aboveBar",
-            color: "#ff4500",
-            shape: "arrowDown",
-            bias: "Bearish",
-          },
-          {
-            text: "Falling Wedge",
-            position: "belowBar",
-            color: "#39ff14",
-            shape: "arrowUp",
-            bias: "Bullish",
-          },
-        ];
-
-        for (let j = 0; j < 3; j++) {
-          const pat = types[Math.floor(Math.random() * types.length)];
-          const historicalDataPointIndex = Math.floor(
-            Math.random() * (data.length - 10) + 5,
-          );
-          const dataPoint = data[historicalDataPointIndex];
-
-          detected.push({
-            time: dataPoint.time,
-            position: pat.position,
-            color: pat.color,
-            shape: pat.shape,
-            text: pat.text,
-            size: 1.8,
-            type: "Structural",
-            bias: pat.bias,
-            confidence: Math.floor(Math.random() * 30) + 60,
-            historicalRate: Math.floor(Math.random() * 25) + 55,
-          });
-
-          // Highlight the structural candle
-          dataPoint.color = pat.color;
-          dataPoint.borderColor = pat.color;
-          dataPoint.wickColor = pat.color;
-        }
-      }
       detected.sort((a, b) => a.time - b.time);
       return detected;
     };
@@ -1128,343 +924,142 @@ function MarketChart({
             ? historicalData[historicalData.length - 1].time
             : 0;
 
-        // Connect to Real-Time WebSocket
-        activeWs = new WebSocket(
-          `wss://stream.binance.com:9443/ws/btcusdt@kline_${binanceInterval}`,
-        );
+        // Connect to Real-Time WebSocket via strict store boundary
+        unsubscribeKline = useMarketStore
+          .getState()
+          .subscribeKline("btcusdt", binanceInterval, (kline: any) => {
+            if (aborted) return;
+            if (!candlestickSeriesRef.current) return;
+            try {
+              const rtTime = Math.floor(kline.t / 1000);
 
-        activeWs.onmessage = (event) => {
-          if (aborted) return;
-          if (!candlestickSeriesRef.current) return;
-          try {
-            const message = JSON.parse(event.data);
-            if (!message.k) return;
-            const kline = message.k;
-            const rtTime = Math.floor(kline.t / 1000);
+              if (rtTime < lastKnownTime) return;
+              lastKnownTime = rtTime;
 
-            if (rtTime < lastKnownTime) return;
-            lastKnownTime = rtTime;
+              const rtClose = parseFloat(kline.c);
+              const rtHigh = parseFloat(kline.h);
+              const rtLow = parseFloat(kline.l);
 
-            const rtClose = parseFloat(kline.c);
-            const rtHigh = parseFloat(kline.h);
-            const rtLow = parseFloat(kline.l);
+              candlestickSeriesRef.current.update({
+                time: rtTime as any,
+                open: parseFloat(kline.o),
+                high: rtHigh,
+                low: rtLow,
+                close: rtClose,
+              });
 
-            candlestickSeriesRef.current.update({
-              time: rtTime as any,
-              open: parseFloat(kline.o),
-              high: rtHigh,
-              low: rtLow,
-              close: rtClose,
-            });
-
-            // Occasional AI simulated actions
-            if (tickCount > 0 && tickCount % 15 === 0) {
-              setAiInsight(
-                insights[Math.floor(Math.random() * insights.length)],
-              );
-
-              if (showPatterns) {
-                const currentMarkers = markersRef.current;
-                currentMarkers.push({
-                  time: rtTime as any,
-                  position: tickCount % 30 === 0 ? "aboveBar" : "belowBar",
-                  color: tickCount % 30 === 0 ? "#ff4500" : "#39ff14",
-                  shape: tickCount % 30 === 0 ? "arrowDown" : "arrowUp",
-                  text:
-                    tickCount % 30 === 0 ? "Micro Resistance" : "Micro Support",
-                  size: 1.0,
-                  type: "Candlestick",
-                });
-                if (markerPluginRef.current) {
-                  try {
-                    markerPluginRef.current.setMarkers(currentMarkers);
-                  } catch (e) {}
+              if (tickCount > 0 && tickCount % 15 === 0) {
+                if (showPatterns) {
+                  const currentMarkers = markersRef.current;
+                  currentMarkers.push({
+                    time: rtTime as any,
+                    position: tickCount % 30 === 0 ? "aboveBar" : "belowBar",
+                    color: tickCount % 30 === 0 ? "#ff4500" : "#39ff14",
+                    shape: tickCount % 30 === 0 ? "arrowDown" : "arrowUp",
+                    text:
+                      tickCount % 30 === 0
+                        ? "Micro Resistance"
+                        : "Micro Support",
+                    size: 1.0,
+                    type: "Candlestick",
+                  });
+                  if (markerPluginRef.current) {
+                    try {
+                      markerPluginRef.current.setMarkers(currentMarkers);
+                    } catch (e) {}
+                  }
                 }
               }
+
+              // Adaptive Support/Resistance bounds
+              const recentData = historicalData.slice(-50);
+              if (recentData.length > 0) {
+                const minLow = Math.min(
+                  ...recentData.map((d: any) => d.low),
+                  rtLow,
+                );
+                const maxHigh = Math.max(
+                  ...recentData.map((d: any) => d.high),
+                  rtHigh,
+                );
+
+                const srTimeStart = recentData[0].time as number;
+                const srTimeEnd = rtTime + intervalSeconds * 10; // project into future
+
+                supportSeries.setData([
+                  { time: srTimeStart as any, value: minLow },
+                  { time: srTimeEnd as any, value: minLow },
+                ]);
+                resistanceSeries.setData([
+                  { time: srTimeStart as any, value: maxHigh },
+                  { time: srTimeEnd as any, value: maxHigh },
+                ]);
+
+                const firstData = recentData[0];
+                const midData = recentData[Math.floor(recentData.length / 2)];
+                const lastData = recentData[recentData.length - 1];
+
+                const isUptrend = lastData.close > firstData.close;
+                const trendStartPrice = isUptrend ? minLow : maxHigh;
+                const trendEndPrice = isUptrend
+                  ? minLow + (rtLow - minLow) * 0.8
+                  : maxHigh - (maxHigh - rtHigh) * 0.8;
+
+                trendlineSeries.setData([
+                  { time: srTimeStart as any, value: trendStartPrice },
+                  {
+                    time: srTimeEnd as any,
+                    value:
+                      trendEndPrice + (trendEndPrice - trendStartPrice) * 0.2,
+                  },
+                ]);
+
+                const liquidityZone =
+                  minLow + (maxHigh - minLow) * (isUptrend ? 0.3 : 0.7);
+                liquiditySeries.setData([
+                  { time: midData.time as any, value: liquidityZone },
+                  { time: srTimeEnd as any, value: liquidityZone },
+                ]);
+
+                const breakoutLvl = isUptrend
+                  ? maxHigh - (maxHigh - minLow) * 0.1
+                  : minLow + (maxHigh - minLow) * 0.1;
+                breakoutSeries.setData([
+                  { time: srTimeStart as any, value: breakoutLvl },
+                  { time: srTimeEnd as any, value: breakoutLvl },
+                ]);
+
+                activeLinesRef.current = {
+                  support: minLow,
+                  resistance: maxHigh,
+                  liquidity: liquidityZone,
+                  breakout: breakoutLvl,
+                  trendlineStartPrice: trendStartPrice,
+                  trendlineEndPrice: trendEndPrice,
+                  timeStart: srTimeStart,
+                  timeEnd: srTimeEnd,
+                };
+              }
+
+              // Removed adaptive prediction mock lines for true determinism
+
+              tickCount++;
+            } catch (e) {
+              console.error("Kline ws error", e);
             }
-
-            // Adaptive Support/Resistance bounds
-            const recentData = historicalData.slice(-50);
-            if (recentData.length > 0) {
-              const minLow = Math.min(
-                ...recentData.map((d: any) => d.low),
-                rtLow,
-              );
-              const maxHigh = Math.max(
-                ...recentData.map((d: any) => d.high),
-                rtHigh,
-              );
-
-              const srTimeStart = recentData[0].time as number;
-              const srTimeEnd = rtTime + intervalSeconds * 10; // project into future
-
-              supportSeries.setData([
-                { time: srTimeStart as any, value: minLow },
-                { time: srTimeEnd as any, value: minLow },
-              ]);
-              resistanceSeries.setData([
-                { time: srTimeStart as any, value: maxHigh },
-                { time: srTimeEnd as any, value: maxHigh },
-              ]);
-
-              const firstData = recentData[0];
-              const midData = recentData[Math.floor(recentData.length / 2)];
-              const lastData = recentData[recentData.length - 1];
-
-              const isUptrend = lastData.close > firstData.close;
-              const trendStartPrice = isUptrend ? minLow : maxHigh;
-              const trendEndPrice = isUptrend
-                ? minLow + (rtLow - minLow) * 0.8
-                : maxHigh - (maxHigh - rtHigh) * 0.8;
-
-              trendlineSeries.setData([
-                { time: srTimeStart as any, value: trendStartPrice },
-                {
-                  time: srTimeEnd as any,
-                  value:
-                    trendEndPrice + (trendEndPrice - trendStartPrice) * 0.2,
-                },
-              ]);
-
-              const liquidityZone =
-                minLow + (maxHigh - minLow) * (isUptrend ? 0.3 : 0.7);
-              liquiditySeries.setData([
-                { time: midData.time as any, value: liquidityZone },
-                { time: srTimeEnd as any, value: liquidityZone },
-              ]);
-
-              const breakoutLvl = isUptrend
-                ? maxHigh - (maxHigh - minLow) * 0.1
-                : minLow + (maxHigh - minLow) * 0.1;
-              breakoutSeries.setData([
-                { time: srTimeStart as any, value: breakoutLvl },
-                { time: srTimeEnd as any, value: breakoutLvl },
-              ]);
-
-              activeLinesRef.current = {
-                support: minLow,
-                resistance: maxHigh,
-                liquidity: liquidityZone,
-                breakout: breakoutLvl,
-                trendlineStartPrice: trendStartPrice,
-                trendlineEndPrice: trendEndPrice,
-                timeStart: srTimeStart,
-                timeEnd: srTimeEnd,
-              };
-            }
-
-            // Adaptive Prediction Line Recalculation
-            let pBaseTime = rtTime;
-
-            let mostLikelyData = [{ time: rtTime as any, value: rtClose }];
-            let coneUpperData = [{ time: rtTime as any, value: rtClose }];
-            let coneLowerData = [{ time: rtTime as any, value: rtClose }];
-            let mlVal = rtClose;
-
-            let altData = [{ time: rtTime as any, value: rtClose }];
-            let altVal = rtClose;
-
-            let riskData = [{ time: rtTime as any, value: rtClose }];
-            let riskVal = rtClose;
-
-            const aiOptimism = Math.random() > 0.5 ? 1 : -1;
-
-            for (let j = 1; j <= 15; j++) {
-              pBaseTime += intervalSeconds;
-
-              // Most likely (stable trend)
-              mlVal += aiOptimism * 8 + (Math.random() * 15 - 7.5);
-              mostLikelyData.push({ time: pBaseTime as any, value: mlVal });
-
-              // Confidence cone expands over time
-              const coneWidth = j * 2 + Math.random() * 5;
-              coneUpperData.push({
-                time: pBaseTime as any,
-                value: mlVal + coneWidth,
-              });
-              coneLowerData.push({
-                time: pBaseTime as any,
-                value: mlVal - coneWidth,
-              });
-
-              // Alternative (counter trend or sideways)
-              altVal += -aiOptimism * 5 + (Math.random() * 25 - 12.5);
-              altData.push({ time: pBaseTime as any, value: altVal });
-
-              // High risk (extreme volatility)
-              riskVal += -aiOptimism * 20 + (Math.random() * 60 - 30);
-              riskData.push({ time: pBaseTime as any, value: riskVal });
-            }
-
-            predictionSeries.setData(mostLikelyData);
-            coneUpperSeries.setData(coneUpperData);
-            coneLowerSeries.setData(coneLowerData);
-            altTargetSeries.setData(altData);
-            highRiskSeries.setData(riskData);
-
-            tickCount++;
-          } catch (e) {
-            console.error("Kline ws error", e);
-          }
-        };
+          });
       })
       .catch((err: any) => {
         console.error(
-          "Error fetching binance klines, falling back to synthetic data",
+          "Error fetching binance klines. No synthetic fallback in production.",
           err,
         );
-        if (aborted || !candlestickSeriesRef.current || !chartRef.current)
-          return;
-
-        let lastClose = 64000;
-        let currentTime = Math.floor(Date.now() / 1000) - 100 * intervalSeconds;
-
-        const syntheticData = Array(100)
-          .fill(0)
-          .map((_, i) => {
-            const open = lastClose + (Math.random() * 20 - 10);
-            const close = open + (Math.random() * 100 - 50);
-            const high = Math.max(open, close) + Math.random() * 50;
-            const low = Math.min(open, close) - Math.random() * 50;
-            lastClose = close;
-            const t = currentTime;
-            currentTime += intervalSeconds;
-            return { time: t as any, open, high, low, close };
-          });
-
-        candlestickSeriesRef.current.setData(syntheticData as any);
-
-        if (syntheticData.length > 0) {
-          const recentData = syntheticData.slice(-50);
-          const minLow = Math.min(...recentData.map((d: any) => d.low));
-          const maxHigh = Math.max(...recentData.map((d: any) => d.high));
-
-          const srTimeStart = recentData[0].time as number;
-          const srTimeEnd =
-            (recentData[recentData.length - 1].time as number) +
-            intervalSeconds * 10;
-          const rtLow = recentData[recentData.length - 1].low;
-          const rtHigh = recentData[recentData.length - 1].high;
-
-          supportSeries.setData([
-            { time: srTimeStart as any, value: minLow },
-            { time: srTimeEnd as any, value: minLow },
-          ]);
-          resistanceSeries.setData([
-            { time: srTimeStart as any, value: maxHigh },
-            { time: srTimeEnd as any, value: maxHigh },
-          ]);
-
-          const firstData = recentData[0];
-          const midData = recentData[Math.floor(recentData.length / 2)];
-          const lastData = recentData[recentData.length - 1];
-
-          const isUptrend = lastData.close > firstData.close;
-          const trendStartPrice = isUptrend ? minLow : maxHigh;
-          const trendEndPrice = isUptrend
-            ? minLow + (rtLow - minLow) * 0.8
-            : maxHigh - (maxHigh - rtHigh) * 0.8;
-
-          trendlineSeries.setData([
-            { time: srTimeStart as any, value: trendStartPrice },
-            {
-              time: srTimeEnd as any,
-              value: trendEndPrice + (trendEndPrice - trendStartPrice) * 0.2,
-            },
-          ]);
-
-          const liquidityZone =
-            minLow + (maxHigh - minLow) * (isUptrend ? 0.3 : 0.7);
-          liquiditySeries.setData([
-            { time: midData.time as any, value: liquidityZone },
-            { time: srTimeEnd as any, value: liquidityZone },
-          ]);
-
-          const breakoutLvl = isUptrend
-            ? maxHigh - (maxHigh - minLow) * 0.1
-            : minLow + (maxHigh - minLow) * 0.1;
-          breakoutSeries.setData([
-            { time: srTimeStart as any, value: breakoutLvl },
-            { time: srTimeEnd as any, value: breakoutLvl },
-          ]);
-
-          activeLinesRef.current = {
-            support: minLow,
-            resistance: maxHigh,
-            liquidity: liquidityZone,
-            breakout: breakoutLvl,
-            trendlineStartPrice: trendStartPrice,
-            trendlineEndPrice: trendEndPrice,
-            timeStart: srTimeStart,
-            timeEnd: srTimeEnd,
-          };
-
-          let pBaseTime = recentData[recentData.length - 1].time as number;
-          let mlVal = recentData[recentData.length - 1].close;
-          let altVal = mlVal;
-          let riskVal = mlVal;
-          let mostLikelyData = [{ time: pBaseTime as any, value: mlVal }];
-          let coneUpperData = [{ time: pBaseTime as any, value: mlVal }];
-          let coneLowerData = [{ time: pBaseTime as any, value: mlVal }];
-          let altData = [{ time: pBaseTime as any, value: mlVal }];
-          let riskData = [{ time: pBaseTime as any, value: mlVal }];
-          const aiOptimism = Math.random() > 0.5 ? 1 : -1;
-
-          for (let j = 1; j <= 15; j++) {
-            pBaseTime += intervalSeconds;
-            mlVal += aiOptimism * 8 + (Math.random() * 15 - 7.5);
-            mostLikelyData.push({ time: pBaseTime as any, value: mlVal });
-
-            const coneWidth = j * 2 + Math.random() * 5;
-            coneUpperData.push({
-              time: pBaseTime as any,
-              value: mlVal + coneWidth,
-            });
-            coneLowerData.push({
-              time: pBaseTime as any,
-              value: mlVal - coneWidth,
-            });
-
-            altVal += -aiOptimism * 5 + (Math.random() * 25 - 12.5);
-            altData.push({ time: pBaseTime as any, value: altVal });
-
-            riskVal += -aiOptimism * 20 + (Math.random() * 60 - 30);
-            riskData.push({ time: pBaseTime as any, value: riskVal });
-          }
-
-          predictionSeries.setData(mostLikelyData);
-          coneUpperSeries.setData(coneUpperData);
-          coneLowerSeries.setData(coneLowerData);
-          altTargetSeries.setData(altData);
-          highRiskSeries.setData(riskData);
-        }
-
-        const detectedPatterns = detectPatterns(syntheticData);
-        markersRef.current = detectedPatterns;
-
-        if (!markerPluginRef.current && candlestickSeriesRef.current) {
-          markerPluginRef.current = createSeriesMarkers(
-            candlestickSeriesRef.current,
-            [],
-          );
-        }
-
-        if (showPatterns && markerPluginRef.current) {
-          try {
-            markerPluginRef.current.setMarkers(detectedPatterns);
-          } catch (e) {}
-        }
-
-        if (onPatternsDetected) {
-          onPatternsDetected(detectedPatterns);
-        }
       });
 
     return () => {
       aborted = true;
-      if (activeWs) {
-        activeWs.close();
-      }
+      if (unsubscribeKline) unsubscribeKline();
+
       resizeObserver.disconnect();
       try {
         chart.remove();
@@ -2055,52 +1650,18 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
 }
 
 function L2OrderBook() {
-  const [bids, setBids] = useState<[string, string][]>([]);
-  const [asks, setAsks] = useState<[string, string][]>([]);
-  const [spread, setSpread] = useState<string>("0.0");
-  const [midPrice, setMidPrice] = useState<string>("0.0");
-  const [maxVolume, setMaxVolume] = useState<number>(1);
+  const { orderBook } = useMarketStore();
 
-  useEffect(() => {
-    let ws = new WebSocket(
-      "wss://stream.binance.com:9443/ws/btcusdt@depth10@100ms",
-    );
-    let isMounted = true;
+  const bids = orderBook.bids.slice(0, 7);
+  const asks = orderBook.asks.slice(0, 7).reverse();
+  const maxVolume = orderBook.maxTotal || 1;
 
-    ws.onmessage = (event) => {
-      if (!isMounted) return;
-      const data = JSON.parse(event.data);
-      if (data && data.bids && data.asks) {
-        setBids(data.bids.slice(0, 7));
-        setAsks(data.asks.slice(0, 7).reverse());
-
-        let localMax = 0;
-        data.bids
-          .slice(0, 7)
-          .forEach(
-            (b: any) => (localMax = Math.max(localMax, parseFloat(b[1]))),
-          );
-        data.asks
-          .slice(0, 7)
-          .forEach(
-            (a: any) => (localMax = Math.max(localMax, parseFloat(a[1]))),
-          );
-        setMaxVolume(localMax * 1.2 || 1);
-
-        if (data.bids[0] && data.asks[0]) {
-          const bestBid = parseFloat(data.bids[0][0]);
-          const bestAsk = parseFloat(data.asks[0][0]);
-          setSpread((bestAsk - bestBid).toFixed(2));
-          setMidPrice(((bestAsk + bestBid) / 2).toFixed(2));
-        }
-      }
-    };
-
-    return () => {
-      isMounted = false;
-      ws.close();
-    };
-  }, []);
+  const bestBid = bids.length > 0 ? bids[0].price : 0;
+  const bestAsk = asks.length > 0 ? asks[asks.length - 1].price : 0;
+  const spread =
+    bestAsk > 0 && bestBid > 0 ? (bestAsk - bestBid).toFixed(2) : "0.0";
+  const midPrice =
+    bestAsk > 0 && bestBid > 0 ? ((bestAsk + bestBid) / 2).toFixed(2) : "0.0";
 
   return (
     <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[350px] shrink-0">
@@ -2119,15 +1680,10 @@ function L2OrderBook() {
       <div className="flex-1 flex flex-col justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
         {asks.length > 0
           ? asks.map((ask, i) => {
-              const price = parseFloat(ask[0]).toFixed(1);
-              const size = parseFloat(ask[1]).toFixed(3);
-              const sum =
-                ((parseFloat(ask[1]) * parseFloat(ask[0])) / 1000).toFixed(1) +
-                "k";
-              const depth = Math.min(
-                (parseFloat(ask[1]) / maxVolume) * 100,
-                100,
-              );
+              const price = ask.price.toFixed(1);
+              const size = ask.size.toFixed(3);
+              const sum = ((ask.size * ask.price) / 1000).toFixed(1) + "k";
+              const depth = Math.min((ask.size / maxVolume) * 100, 100);
               return (
                 <div
                   key={`ask-${i}`}
@@ -2173,15 +1729,10 @@ function L2OrderBook() {
       <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
         {bids.length > 0
           ? bids.map((bid, i) => {
-              const price = parseFloat(bid[0]).toFixed(1);
-              const size = parseFloat(bid[1]).toFixed(3);
-              const sum =
-                ((parseFloat(bid[1]) * parseFloat(bid[0])) / 1000).toFixed(1) +
-                "k";
-              const depth = Math.min(
-                (parseFloat(bid[1]) / maxVolume) * 100,
-                100,
-              );
+              const price = bid.price.toFixed(1);
+              const size = bid.size.toFixed(3);
+              const sum = ((bid.size * bid.price) / 1000).toFixed(1) + "k";
+              const depth = Math.min((bid.size / maxVolume) * 100, 100);
               return (
                 <div
                   key={`bid-${i}`}
@@ -2215,38 +1766,8 @@ function L2OrderBook() {
 }
 
 function RecentTrades() {
-  const [trades, setTrades] = useState<
-    { price: string; quantity: string; time: string; isBuyerMaker: boolean }[]
-  >([]);
-
-  useEffect(() => {
-    let ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@trade");
-    let isMounted = true;
-
-    ws.onmessage = (event) => {
-      if (!isMounted) return;
-      const data = JSON.parse(event.data);
-      if (data && data.e === "trade") {
-        const t = new Date(data.T);
-        const timeStr = `${t.getHours().toString().padStart(2, "0")}:${t.getMinutes().toString().padStart(2, "0")}:${t.getSeconds().toString().padStart(2, "0")}`;
-
-        setTrades((prev) => {
-          const newTrade = {
-            price: parseFloat(data.p).toFixed(1),
-            quantity: parseFloat(data.q).toFixed(4),
-            time: timeStr,
-            isBuyerMaker: data.m, // true = sell, false = buy
-          };
-          return [newTrade, ...prev].slice(0, 20); // Keep last 20 trades
-        });
-      }
-    };
-
-    return () => {
-      isMounted = false;
-      ws.close();
-    };
-  }, []);
+  const { recentTrades } = useMarketStore();
+  const trades = recentTrades.slice(0, 20);
 
   return (
     <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[220px] shrink-0">
@@ -2279,9 +1800,9 @@ function RecentTrades() {
                       : "text-[#39ff14] font-bold"
                   }
                 >
-                  {trade.price}
+                  {trade.price.toFixed(1)}
                 </span>
-                <span className="text-gray-300">{trade.quantity}</span>
+                <span className="text-gray-300">{trade.qty.toFixed(4)}</span>
                 <span className="text-gray-600">{trade.time}</span>
               </div>
             ))
@@ -2301,11 +1822,13 @@ function RecentTrades() {
 }
 
 export function LiveMarketsTab() {
-  const [dataStream, setDataStream] = useState<number[]>(Array(50).fill(64200));
-  const [priceStats, setPriceStats] = useState({
-    changePercent: 2.14,
-    isPositive: true,
-  });
+  const { ticker, connectBinanceFeeds } = useMarketStore();
+  const dataStream = ticker.dataStream;
+  const priceStats = {
+    changePercent: ticker.changePercent,
+    isPositive: ticker.isPositive,
+  };
+
   const [activeTimeframe, setActiveTimeframe] = useState("1D");
   const [isTimeframeDropdownOpen, setIsTimeframeDropdownOpen] = useState(false);
   const [ivRank, setIvRank] = useState(78.4);
@@ -2322,37 +1845,8 @@ export function LiveMarketsTab() {
   );
 
   useEffect(() => {
-    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data && data.c) {
-          const currentPrice = parseFloat(data.c);
-          const changePercent = parseFloat(data.P);
-
-          setDataStream((prev) => {
-            return [
-              ...(prev.slice(1).length
-                ? prev.slice(1)
-                : Array(49).fill(currentPrice)),
-              currentPrice,
-            ];
-          });
-          setPriceStats({
-            changePercent: Math.abs(changePercent),
-            isPositive: changePercent >= 0,
-          });
-        }
-      } catch (e) {
-        console.error("Error parsing WebSocket data:", e);
-      }
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, []);
+    connectBinanceFeeds();
+  }, [connectBinanceFeeds]);
 
   return (
     <motion.div
