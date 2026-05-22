@@ -10,6 +10,7 @@ import { BottomSystemTerminal } from "./components/BottomSystemTerminal";
 import { AuthFlow } from "./components/auth/AuthFlow";
 import { MobileApp } from "./components/MobileApp";
 import { AIVoiceAssistant } from "./components/AIVoiceAssistant";
+import { DecisionTracePanel } from "./components/ui/DecisionTracePanel";
 import { useState } from "react";
 import { useMarketRegime } from "./contexts/MarketRegimeContext";
 
@@ -70,6 +71,7 @@ export default function App() {
         </div>
         <div className="relative z-50">
           <AIVoiceAssistant />
+          <DecisionTracePanel />
         </div>
       </div>
     </SystemInitializer>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { useSystemStore } from "../../store/systemStore";
-import { DecisionInspector } from "../ui/DecisionInspector";
 import {
   Filter,
   Search,
@@ -13,6 +12,7 @@ import {
   AlertTriangle,
   Activity,
   Zap,
+  Network,
 } from "lucide-react";
 
 type RealMemoryEvent = {
@@ -52,7 +52,7 @@ export function HistoryTab() {
   const [memories, setMemories] = useState<RealMemoryEvent[]>([]);
   const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { telemetryFeed } = useSystemStore();
+  const { telemetryFeed, setActiveCorrelationId } = useSystemStore();
 
   useEffect(() => {
     const fetchMemories = async () => {
@@ -308,8 +308,6 @@ export function HistoryTab() {
                   ))}
               </div>
             </div>
-          ) : activeMemory?.correlation_id ? (
-            <DecisionInspector correlationId={activeMemory.correlation_id} />
           ) : activeMemory ? (
             <AnimatePresence mode="wait">
               <motion.div
@@ -377,17 +375,30 @@ export function HistoryTab() {
                 </div>
 
                 <div className="bg-[#0a0a0a]/80 border border-white/5 rounded-xl p-6 mb-6 shadow-inner relative z-10 backdrop-blur-sm">
-                  <h3 className="text-[10px] uppercase font-bold tracking-widest mb-3 text-gray-400 flex items-center gap-2">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{
-                        backgroundColor: MemoryColor({
-                          score: activeMemory.metadata?.score,
-                        }),
-                      }}
-                    ></span>
-                    Context & Deep Analysis
-                  </h3>
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-[10px] uppercase font-bold tracking-widest text-gray-400 flex items-center gap-2">
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{
+                          backgroundColor: MemoryColor({
+                            score: activeMemory.metadata?.score,
+                          }),
+                        }}
+                      ></span>
+                      Context & Deep Analysis
+                    </h3>
+                    {activeMemory.correlation_id && (
+                      <button
+                        onClick={() =>
+                          setActiveCorrelationId(activeMemory.correlation_id!)
+                        }
+                        className="flex items-center gap-2 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-3 py-1.5 rounded text-[10px] uppercase tracking-widest font-bold transition-all shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+                      >
+                        <Network className="w-3.5 h-3.5" />
+                        Inspect Full Trace
+                      </button>
+                    )}
+                  </div>
                   <p className="text-base text-gray-300 leading-relaxed font-sans">
                     {activeMemory.ai_rationale}
                   </p>

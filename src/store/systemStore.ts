@@ -18,6 +18,7 @@ interface SystemState {
   agentStates: Record<string, AgentState>;
   telemetryFeed: TradeEvent[];
   wsConnected: boolean;
+  activeCorrelationId: string | null;
 
   // ACTIONS
   setActivePortfolio: (portfolio: PortfolioMetrics | null) => void;
@@ -28,6 +29,7 @@ interface SystemState {
   updateAgentState: (agent: string, state: AgentState) => void;
   addTelemetryEvent: (event: TradeEvent) => void;
   setWsConnected: (connected: boolean) => void;
+  setActiveCorrelationId: (id: string | null) => void;
 
   // LAYER 2: WEBSOCKET ORCHESTRATION
   connectWebSocket: () => void;
@@ -63,12 +65,14 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   },
   telemetryFeed: [],
   wsConnected: false,
+  activeCorrelationId: null,
 
   setActivePortfolio: (portfolio) => set({ activePortfolio: portfolio }),
   setPortfolios: (portfolios) => set({ portfolios }),
   setGlobalMetrics: (metrics) => set({ globalMetrics: metrics }),
   setRiskState: (risk) => set({ riskState: risk }),
   setStrategyScores: (scores) => set({ strategyScores: scores }),
+  setActiveCorrelationId: (id) => set({ activeCorrelationId: id }),
 
   updateAgentState: (agent, state) =>
     set((prev) => ({

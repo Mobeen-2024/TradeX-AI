@@ -48,7 +48,8 @@ const AGENT_DEFINITIONS = [
 
 export function AIAgentsTab() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("Coordinator");
-  const { agentStates, telemetryFeed } = useSystemStore();
+  const { agentStates, telemetryFeed, setActiveCorrelationId } =
+    useSystemStore();
 
   const selectedAgentDef =
     AGENT_DEFINITIONS.find((a) => a.id === selectedAgentId) ||
@@ -312,20 +313,34 @@ export function AIAgentsTab() {
                         borderLeftColor: selectedAgentDef.color,
                       }}
                     >
-                      <div className="text-[10px] text-gray-500 mb-1 flex items-center gap-2">
-                        <Command
-                          className="w-3 h-3"
-                          style={{ color: selectedAgentDef.color }}
-                        />
-                        <span style={{ color: selectedAgentDef.color }}>
-                          {new Date(log.timestamp).toLocaleTimeString([], {
-                            hour12: false,
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                            fractionalSecondDigits: 3,
-                          })}
-                        </span>
+                      <div className="text-[10px] text-gray-500 mb-1 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Command
+                            className="w-3 h-3"
+                            style={{ color: selectedAgentDef.color }}
+                          />
+                          <span style={{ color: selectedAgentDef.color }}>
+                            {new Date(log.timestamp).toLocaleTimeString([], {
+                              hour12: false,
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                              fractionalSecondDigits: 3,
+                            })}
+                          </span>
+                        </div>
+                        {log.metadata?.correlation_id && (
+                          <button
+                            onClick={() =>
+                              setActiveCorrelationId(
+                                log.metadata.correlation_id,
+                              )
+                            }
+                            className="bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-2 py-0.5 rounded text-[8px] uppercase tracking-widest flex items-center gap-1 transition-colors"
+                          >
+                            <Network className="w-2.5 h-2.5" /> Trace
+                          </button>
+                        )}
                       </div>
                       <div className="text-gray-300">
                         {log.message.replace(`${selectedAgentId}: `, "")}

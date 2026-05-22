@@ -14,11 +14,16 @@ import {
   BrainCircuit,
   Play,
   Save,
+  Network,
 } from "lucide-react";
 import { useSystemStore } from "../../store/systemStore";
 
 export function AutoTradingTab() {
-  const { activePortfolio: portfolio } = useSystemStore();
+  const {
+    activePortfolio: portfolio,
+    telemetryFeed,
+    setActiveCorrelationId,
+  } = useSystemStore();
 
   const [osMode, setOsMode] = useState<
     "Manual" | "Assisted" | "Semi-Auto" | "Autonomous"
@@ -250,6 +255,48 @@ export function AutoTradingTab() {
               exposure.
             </p>
           </div>
+        </div>
+      </div>
+
+      <div className="mb-4 bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 relative overflow-hidden">
+        <h3 className="text-gray-500 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2">
+          <Activity className="w-4 h-4 text-[#39ff14]" />
+          Execution Agent Telemetry
+        </h3>
+        <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto no-scrollbar">
+          {telemetryFeed.filter((t) => t.type === "EXECUTION").length === 0 && (
+            <div className="text-gray-600 text-xs text-center font-mono py-4">
+              No recent executions in current session.
+            </div>
+          )}
+          {telemetryFeed
+            .filter((t) => t.type === "EXECUTION")
+            .map((ev) => (
+              <div
+                key={ev.id}
+                className="flex justify-between items-center bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a] hover:border-[#333] transition-colors"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] text-gray-500 font-mono">
+                    {new Date(ev.timestamp).toLocaleTimeString()}
+                  </span>
+                  <span className="text-xs text-gray-300 font-sans">
+                    {ev.message}
+                  </span>
+                </div>
+                {ev.metadata?.correlation_id && (
+                  <button
+                    onClick={() =>
+                      setActiveCorrelationId(ev.metadata.correlation_id)
+                    }
+                    className="flex items-center gap-2 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-widest transition-all"
+                  >
+                    <Network className="w-3.5 h-3.5" />
+                    Trace
+                  </button>
+                )}
+              </div>
+            ))}
         </div>
       </div>
     </motion.div>

@@ -11,6 +11,7 @@ import {
   Briefcase,
   List,
   PlayCircle,
+  Network,
 } from "lucide-react";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 import { useSystemStore } from "../../store/systemStore";
@@ -20,6 +21,7 @@ export function DashboardTab() {
     activePortfolio: portfolio,
     globalMetrics,
     strategyScores,
+    setActiveCorrelationId,
   } = useSystemStore();
 
   const isAutonomous = true; // Can be derived from portfolio or config later
@@ -427,7 +429,7 @@ export function DashboardTab() {
                     </span>
                     <span className="text-gray-500 uppercase">{time}</span>
                   </div>
-                  <div className="flex flex-col text-right">
+                  <div className="flex flex-col text-right items-end gap-1">
                     {isClosed ? (
                       <span
                         className={`font-bold ${isWin ? "text-[#39ff14]" : "text-[#ff4500]"}`}
@@ -437,6 +439,17 @@ export function DashboardTab() {
                       </span>
                     ) : (
                       <span className="text-[#0ea5e9] font-bold">OPEN</span>
+                    )}
+                    {trade.correlation_id && (
+                      <button
+                        onClick={() =>
+                          setActiveCorrelationId(trade.correlation_id)
+                        }
+                        className="flex items-center gap-1 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-1.5 py-0.5 rounded text-[8px] uppercase font-bold transition-all"
+                      >
+                        <Network className="w-2.5 h-2.5" />
+                        Trace
+                      </button>
                     )}
                   </div>
                 </div>
