@@ -82,7 +82,7 @@ export class EvaluationService {
       duration_impact: durationImpact
     });
 
-    const embedding = await getEmbeddingProvider().embedText(rationale).catch(() => new Array(1536).fill(0));
+    const embedding = await getEmbeddingProvider().embedText(rationale).catch(() => new Array(768).fill(0));
     const score = pnl > 0 ? 1 : (pnl < 0 ? -1 : 0);
 
     // Accuracy Score logic

@@ -12,8 +12,14 @@ export interface AuthRequest extends Request {
 
 export async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
   const authHeader = req.headers.authorization;
+  const isProduction = process.env.NODE_ENV === "production";
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (isProduction) {
+      res.status(401).json({ error: "Access denied. No authentication token provided." });
+      return;
+    }
+
     // Permissive auth for dev: auto-create a user if none exists
     if (!process.env.DATABASE_URL) {
       req.user = { userId: "dev-mock-user-id" };

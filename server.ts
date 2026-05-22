@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { checkDbConnection } from "./src/db/connection";
+import { runMigrations } from "./src/db/migrate";
 import { EventListener } from "./src/events";
 import { Coordinator } from "./src/agents/coordinator";
 import { QuantWorker } from "./src/workers/quantWorker";
@@ -25,7 +26,9 @@ dotenv.config();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function startServer() {
-  if (process.env.NODE_ENV === "production") {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  if (isProduction) {
     console.log("[TradeX OS Daemon] Production mode detected. Validating environment...");
     if (!process.env.GEMINI_API_KEY) {
       throw new Error("FATAL: GEMINI_API_KEY is missing during production startup.");
@@ -33,17 +36,25 @@ async function startServer() {
     if (!process.env.JWT_SECRET) {
       throw new Error("FATAL: JWT_SECRET is missing during production startup.");
     }
-
-    console.log("[TradeX OS Daemon] Validating db connection...");
-    const isConnected = await checkDbConnection();
-    if (!isConnected) {
-      throw new Error("FATAL: Database connection failed during production startup.");
-    }
-    console.log("[TradeX OS Daemon] Database connected successfully.");
-  } else {
-    // Also try to connect in dev to initialize EventListener correctly
-    await checkDbConnection();
   }
+
+  console.log("[TradeX OS Daemon] Validating db connection...");
+  const isConnected = await checkDbConnection();
+  
+  if (isConnected) {
+    console.log("[TradeX OS Daemon] Database connected successfully. Running migrations...");
+    const migrationSuccess = await runMigrations();
+    if (!migrationSuccess && isProduction) {
+      throw new Error("FATAL: Database migrations failed during production startup.");
+    }
+  } else {
+    if (isProduction) {
+      throw new Error("FATAL: Database connection failed during production startup.");
+    } else {
+      console.warn("[TradeX OS Daemon] Database is not reachable. Running with in-memory mock DB fallback.");
+    }
+  }
+
 
   if (process.env.DATABASE_URL) {
     try {
