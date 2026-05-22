@@ -553,6 +553,18 @@ export class ExecutionService {
       ).catch((err) => {
         console.error("[ExecutionService] Post-trade evaluation failed:", err);
       });
+      const {
+        StrategyEvolutionService,
+      } = require("./strategyEvolutionService");
+      StrategyEvolutionService.processClosedTrade(
+        closedTradeId,
+        request.portfolioId,
+      ).catch((err) => {
+        console.error(
+          "[ExecutionService] Post-trade strategy evolution failed:",
+          err,
+        );
+      });
     }
 
     const simMetrics = (request as any).simMetrics;
