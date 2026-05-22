@@ -38,8 +38,8 @@ function ExecutionLog() {
   }, [whaleAlerts]);
 
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-40 max-h-55">
-      <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-r from-transparent to-[#0ea5e9]/5 pointer-events-none"></div>
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-[160px] max-h-[220px]">
+      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-r from-transparent to-[#0ea5e9]/5 pointer-events-none"></div>
       <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-2 pb-2 flex items-center justify-between border-b border-[#1a1a1a] relative z-10 w-full">
         <div className="flex items-center gap-2">
           <Activity className="w-3.5 h-3.5 text-[#0ea5e9]" />
@@ -59,7 +59,7 @@ function ExecutionLog() {
       </h3>
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 scroll-smooth relative z-10 wrap-break-word pr-1 mt-1"
+        className="flex-1 overflow-y-auto no-scrollbar flex flex-col gap-0.5 scroll-smooth relative z-10 break-words pr-1 mt-1"
       >
         {[...whaleAlerts].reverse().map((log, i) => {
           if (log.price === 0) return null; // skip dummy
@@ -76,7 +76,7 @@ function ExecutionLog() {
                 [{time}]
               </span>
               <span
-                className={`uppercase wrap-break-word whitespace-normal leading-[1.3] text-gray-300`}
+                className={`uppercase break-words whitespace-normal leading-[1.3] text-gray-300`}
               >
                 <span className={`font-bold mr-1 ${color}`}>
                   [WHALE_{log.side}]
@@ -220,8 +220,8 @@ function AIPatternScanner({ detectedPatterns }: { detectedPatterns: any[] }) {
   ];
 
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-55">
-      <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-r from-transparent to-[#facc15]/5 pointer-events-none"></div>
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-[220px]">
+      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-r from-transparent to-[#facc15]/5 pointer-events-none"></div>
       <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-3 flex items-center justify-between border-b border-[#1a1a1a] pb-2 relative z-10">
         <div className="flex items-center gap-2">
           <SearchCode className="w-3.5 h-3.5 text-[#facc15]" />
@@ -264,7 +264,7 @@ function AIPatternScanner({ detectedPatterns }: { detectedPatterns: any[] }) {
                 </span>
               </div>
               <span
-                className="text-[9px] px-1.5 py-px rounded font-bold"
+                className="text-[9px] px-1.5 py-[1px] rounded font-bold"
                 style={{ backgroundColor: `${pat.color}15`, color: pat.color }}
               >
                 {pat.bias}
@@ -319,7 +319,7 @@ function AIPatternScanner({ detectedPatterns }: { detectedPatterns: any[] }) {
                         .slice(0, -5)}
                     </span>
                     <span
-                      className={`text-[9px] px-1.5 py-px rounded ${p.position === "belowBar" ? "bg-[#39ff14]/10 text-[#39ff14]" : p.position === "aboveBar" ? "bg-[#ff4500]/10 text-[#ff4500]" : "bg-[#facc15]/10 text-[#facc15]"}`}
+                      className={`text-[9px] px-1.5 py-[1px] rounded ${p.position === "belowBar" ? "bg-[#39ff14]/10 text-[#39ff14]" : p.position === "aboveBar" ? "bg-[#ff4500]/10 text-[#ff4500]" : "bg-[#facc15]/10 text-[#facc15]"}`}
                     >
                       {p.position === "belowBar"
                         ? "BULL"
@@ -1085,12 +1085,12 @@ function MarketChart({
   }, [showPatterns]);
 
   return (
-    <div className="relative w-full h-101.75 ml-0">
+    <div className="relative w-full h-[407px] ml-0">
       <div ref={chartContainerRef} className="w-full h-full absolute inset-0" />
 
       {activeTooltip.visible && (
         <div
-          className="absolute z-30 bg-[#050505]/90 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-2xl pointer-events-none transform -translate-x-1/2 translate-y-[-120%]"
+          className="absolute z-30 bg-[#050505]/90 backdrop-blur-md border border-white/10 rounded-lg p-3 shadow-2xl pointer-events-none transform -translate-x-1/2 -translate-y-[120%]"
           style={{ left: activeTooltip.x, top: activeTooltip.y }}
         >
           <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/5">
@@ -1130,7 +1130,7 @@ function MarketChart({
       )}
 
       {/* Legend / Overlay info */}
-      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[9px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded w-45 font-bold leading-2.75">
+      <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none z-10 font-mono text-[9px] uppercase tracking-widest bg-black/40 p-2 backdrop-blur-sm rounded w-[180px] font-bold leading-[11px]">
         <div className="flex items-center gap-2 text-[#00f0ff]">
           <div className="w-4 border-b-2 border-dashed border-[#00f0ff]"></div>
           Most Likely Path
@@ -1212,14 +1212,14 @@ function MarketChart({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">AI Outlook:</span>
-                <span className="text-white font-bold text-right max-w-30">
+                <span className="text-white font-bold text-right max-w-[120px]">
                   {aiInsight.outlook}
                 </span>
               </div>
             </div>
           </div>
           <div
-            className="w-full h-0.5"
+            className="w-full h-[2px]"
             style={{
               background:
                 aiInsight.theme === "green"
@@ -1262,7 +1262,7 @@ function MarketChart({
           </div>
 
           {/* Smart Alignment */}
-          <div className="p-3 bg-linear-to-b from-[#111]/80 to-transparent">
+          <div className="p-3 bg-gradient-to-b from-[#111]/80 to-transparent">
             <div className="flex justify-between items-end mb-3 border-b border-white/5 pb-2">
               <div className="text-[9px] font-mono font-bold text-gray-500 uppercase">
                 Alignment Score
@@ -1421,7 +1421,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
   ).toFixed(2);
 
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-full font-sans shadow-2xl relative overflow-hidden max-h-225">
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col h-full font-sans shadow-2xl relative overflow-hidden max-h-[900px]">
       {/* Decorative background glow */}
       <div
         className={`absolute -top-20 -right-20 w-40 h-40 blur-[80px] rounded-full pointer-events-none opacity-20 ${side === "buy" ? "bg-[#39ff14]" : "bg-[#ff4500]"}`}
@@ -1608,7 +1608,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
 
         {/* Summary */}
         <div className="bg-[#111] p-3 rounded-sm border border-[#222] space-y-2 mt-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-16 h-16 bg-linear-to-br from-transparent to-[#1a1a1a] pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-transparent to-[#1a1a1a] pointer-events-none"></div>
           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
             <span>Required Margin</span>
             <span className="text-white font-bold">
@@ -1630,7 +1630,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
         className={`w-full py-3.5 rounded-sm font-bold tracking-widest uppercase text-sm mt-4 transition-all flex items-center justify-center gap-2 relative overflow-hidden group shrink-0 ${isExecuting ? "bg-gray-600 text-gray-300" : side === "buy" ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.15)] hover:brightness-110" : "bg-[#ff4500] text-white shadow-[0_0_15px_rgba(255,69,0,0.15)] hover:brightness-110"}`}
       >
         {!isExecuting && (
-          <div className="absolute inset-0 w-[150%] h-full bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
+          <div className="absolute inset-0 w-[150%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
         )}
         {executionResult ? (
           <span className="text-xs">{executionResult}</span>
@@ -1664,7 +1664,7 @@ function L2OrderBook() {
     bestAsk > 0 && bestBid > 0 ? ((bestAsk + bestBid) / 2).toFixed(2) : "0.0";
 
   return (
-    <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-87.5 shrink-0">
+    <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[350px] shrink-0">
       <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
         <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
           <Eye className="w-4 h-4 text-[#00f0ff]" />
@@ -1677,9 +1677,9 @@ function L2OrderBook() {
       </div>
 
       {/* Asks (Red) */}
-      <div className="flex-1 flex flex-col justify-end gap-px font-mono text-[10px] overflow-hidden">
+      <div className="flex-1 flex flex-col justify-end gap-[1px] font-mono text-[10px] overflow-hidden">
         {asks.length > 0
-          ? asks.map((ask: any, i: number) => {
+          ? asks.map((ask, i) => {
               const price = ask.price.toFixed(1);
               const size = ask.size.toFixed(3);
               const sum = ((ask.size * ask.price) / 1000).toFixed(1) + "k";
@@ -1714,7 +1714,7 @@ function L2OrderBook() {
       </div>
 
       {/* Spread Display */}
-      <div className="py-1.5 my-1 flex justify-between items-center text-[11px] font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
+      <div className="py-1.5 border-y border-[#222] my-1 flex justify-between items-center text-[11px] font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
         <span className="text-[#39ff14] flex items-center">
           <ArrowUpRight className="w-3.5 h-3.5 mr-1" />{" "}
           {midPrice !== "0.0" ? midPrice : "..."}
@@ -1726,9 +1726,9 @@ function L2OrderBook() {
       </div>
 
       {/* Bids (Green/Teal) */}
-      <div className="flex-1 flex flex-col gap-px font-mono text-[10px] overflow-hidden">
+      <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-hidden">
         {bids.length > 0
-          ? bids.map((bid: any, i: number) => {
+          ? bids.map((bid, i) => {
               const price = bid.price.toFixed(1);
               const size = bid.size.toFixed(3);
               const sum = ((bid.size * bid.price) / 1000).toFixed(1) + "k";
@@ -1770,7 +1770,7 @@ function RecentTrades() {
   const trades = recentTrades.slice(0, 20);
 
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-55 shrink-0">
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-3 flex flex-col relative overflow-hidden shadow-none max-h-[220px] shrink-0">
       <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
         <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
           <Activity className="w-4 h-4 text-[#0ea5e9]" />
@@ -1786,9 +1786,9 @@ function RecentTrades() {
         <span>AMOUNT [BTC]</span>
         <span>TIME</span>
       </div>
-      <div className="flex-1 flex flex-col gap-px font-mono text-[10px] overflow-y-auto no-scrollbar">
+      <div className="flex-1 flex flex-col gap-[1px] font-mono text-[10px] overflow-y-auto no-scrollbar">
         {trades.length > 0
-          ? trades.map((trade: any, i: number) => (
+          ? trades.map((trade, i) => (
               <div
                 key={i}
                 className="flex justify-between py-0.5 px-1 hover:bg-white/5 cursor-pointer"
@@ -1837,11 +1837,7 @@ export function LiveMarketsTab() {
   const [heatmapBlocks, setHeatmapBlocks] = useState<number[][]>(() =>
     Array(6)
       .fill(0)
-      .map(() =>
-        Array(10)
-          .fill(0)
-          .map(() => Math.random()),
-      ),
+      .map(() => Array(10).fill(0.2)),
   );
 
   useEffect(() => {
@@ -1860,7 +1856,7 @@ export function LiveMarketsTab() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4 p-4 bg-[#050505]/40 backdrop-blur-xl border border-white/5 rounded-xl shadow-[0_4px_30px_rgba(0,0,0,0.5)] relative overflow-hidden">
         {/* Decorative background glow */}
         <div className="absolute -top-10 -left-10 w-40 h-40 bg-[#0ea5e9]/10 blur-[50px] rounded-full pointer-events-none"></div>
-        <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-[#39ff14]/5 to-transparent pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#39ff14]/5 to-transparent pointer-events-none"></div>
 
         <div className="flex flex-col xl:flex-row xl:items-center gap-4 relative z-10 w-full md:w-auto">
           <div>
@@ -1868,7 +1864,7 @@ export function LiveMarketsTab() {
               <div className="w-8 h-8 rounded-lg bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.2)]">
                 <Radio className="w-4 h-4 text-[#0ea5e9] animate-pulse" />
               </div>
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-gray-400">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
                 Live Market Feed
               </h1>
             </div>
@@ -1880,7 +1876,7 @@ export function LiveMarketsTab() {
             </div>
           </div>
 
-          <div className="hidden xl:block h-10 w-px bg-linear-to-b from-transparent via-white/15 to-transparent"></div>
+          <div className="hidden xl:block h-10 w-[1px] bg-gradient-to-b from-transparent via-white/15 to-transparent"></div>
 
           <div className="flex flex-col items-start xl:items-start xl:pl-2">
             <div className="flex items-center gap-2 mb-0.5">
@@ -1901,9 +1897,9 @@ export function LiveMarketsTab() {
                 className={`text-xs flex items-center ${priceStats.isPositive ? "text-[#39ff14]" : "text-[#ff4500]"}`}
               >
                 {priceStats.isPositive ? (
-                  <ArrowUpRight className="w-3.5 h-3.5 stroke-3" />
+                  <ArrowUpRight className="w-3.5 h-3.5 stroke-[3]" />
                 ) : (
-                  <ArrowUpRight className="w-3.5 h-3.5 stroke-3 rotate-90" />
+                  <ArrowUpRight className="w-3.5 h-3.5 stroke-[3] rotate-90" />
                 )}
                 {priceStats.changePercent.toFixed(2)}%
               </span>
@@ -1923,7 +1919,7 @@ export function LiveMarketsTab() {
               </span>
             </div>
           </div>
-          <div className="hidden md:block h-6 w-px bg-linear-to-b from-transparent via-white/10 to-transparent"></div>
+          <div className="hidden md:block h-6 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
           <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
             <span className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">
               Latency
@@ -1932,7 +1928,7 @@ export function LiveMarketsTab() {
               2.4ms
             </span>
           </div>
-          <div className="hidden md:block h-6 w-px bg-linear-to-b from-transparent via-white/10 to-transparent"></div>
+          <div className="hidden md:block h-6 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent"></div>
           <div className="flex flex-col items-start md:items-end flex-1 md:flex-auto">
             <span className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">
               Network
@@ -1952,8 +1948,8 @@ export function LiveMarketsTab() {
         <div className="col-span-1 xl:col-span-9 flex flex-col gap-6">
           <div className="bg-[#020202] border border-white/10 rounded-2xl p-6 flex flex-col shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
             {/* Glassmorphic/Cyberpunk decorative glow */}
-            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#0ea5e9]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
-            <div className="absolute bottom-[-20%] left-[-10%] w-[40%] h-[40%] bg-[#39ff14]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+            <div className="absolute -top-[20%] -right-[10%] w-[50%] h-[50%] bg-[#0ea5e9]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+            <div className="absolute -bottom-[20%] -left-[10%] w-[40%] h-[40%] bg-[#39ff14]/5 blur-[80px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
 
             <div className="flex justify-between items-center w-full mb-6 relative z-10">
               <div className="flex gap-2 bg-[#0a0a0a]/50 p-1.5 border border-white/5 rounded-lg backdrop-blur-md relative">
@@ -1981,7 +1977,7 @@ export function LiveMarketsTab() {
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute top-full left-0 mt-2 w-45 bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#222] rounded-lg shadow-xl overflow-hidden z-50 grid grid-cols-3 gap-1 p-2"
+                      className="absolute top-full left-0 mt-2 w-[180px] bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#222] rounded-lg shadow-xl overflow-hidden z-50 grid grid-cols-3 gap-1 p-2"
                     >
                       {[
                         "1m",
@@ -2051,7 +2047,7 @@ export function LiveMarketsTab() {
 
             {/* TradingView / lightweight-charts Instance */}
             <div className="w-full border border-white/5 rounded-xl bg-[#030303]/80 relative flex flex-col pt-1 shadow-inner overflow-hidden flex-1">
-              <div className="absolute inset-0 bg-linear-to-b from-transparent to-[#0ea5e9]/2 pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#0ea5e9]/[0.02] pointer-events-none"></div>
               <MarketChart
                 activeTimeframe={activeTimeframe}
                 onPatternsDetected={setDetectedPatterns}
@@ -2062,8 +2058,8 @@ export function LiveMarketsTab() {
 
           <div className="grid grid-cols-2 gap-6">
             {/* Liquidity Heatmap */}
-            <div className="bg-[#020202] border border-white/10 rounded-2xl p-5 flex flex-col h-50 shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
-              <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#a855f7]/5 blur-[60px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+            <div className="bg-[#020202] border border-white/10 rounded-2xl p-5 flex flex-col h-[200px] shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
+              <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[#a855f7]/5 blur-[60px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
                 <Activity className="w-4 h-4 text-[#a855f7]" />
                 Liquidity Heatmap
@@ -2086,7 +2082,7 @@ export function LiveMarketsTab() {
                       return (
                         <div
                           key={c}
-                          className={`flex-1 rounded-xs opacity-90 transition-colors duration-500 hover:opacity-100 ${color}`}
+                          className={`flex-1 rounded-[2px] opacity-90 transition-colors duration-500 hover:opacity-100 ${color}`}
                         ></div>
                       );
                     })}
@@ -2102,8 +2098,8 @@ export function LiveMarketsTab() {
             </div>
 
             {/* Volatility Meter */}
-            <div className="bg-[#020202] border border-white/10 rounded-2xl p-5 flex flex-col h-50 shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
-              <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-[#ff00f0]/5 blur-[60px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
+            <div className="bg-[#020202] border border-white/10 rounded-2xl p-5 flex flex-col h-[200px] shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl relative overflow-hidden group">
+              <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[#ff00f0]/5 blur-[60px] rounded-full pointer-events-none transition-opacity duration-1000 opacity-40 group-hover:opacity-80"></div>
               <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest mb-4 flex items-center gap-2 relative z-10">
                 <Cpu className="w-4 h-4 text-[#ff00f0]" />
                 Implied Volatility
@@ -2115,7 +2111,7 @@ export function LiveMarketsTab() {
                   </div>
                   <div className="flex-1 h-2.5 bg-[#0a0a0a] rounded-full overflow-hidden relative shadow-inner border border-white/5">
                     <div
-                      className="absolute top-0 left-0 h-full bg-linear-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full shadow-[0_0_10px_rgba(255,69,0,0.5)] transition-all duration-1000 ease-out"
+                      className="absolute top-0 left-0 h-full bg-gradient-to-r from-[#00f0ff] via-[#facc15] to-[#ff4500] rounded-full shadow-[0_0_10px_rgba(255,69,0,0.5)] transition-all duration-1000 ease-out"
                       style={{ width: `${ivRank}%` }}
                     ></div>
                   </div>
@@ -2124,7 +2120,7 @@ export function LiveMarketsTab() {
                   </div>
                 </div>
                 <div className="mt-5 text-center flex flex-col items-center">
-                  <span className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-linear-to-b from-white to-gray-400 tracking-tight drop-shadow-sm transition-all duration-500">
+                  <span className="text-4xl font-bold font-sans text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400 tracking-tight drop-shadow-sm transition-all duration-500">
                     {ivRank.toFixed(1)}
                   </span>
                   <span className="text-[#ff00f0] font-mono text-[9px] uppercase tracking-widest mt-1 border border-[#ff00f0]/30 bg-[#ff00f0]/10 px-2 py-0.5 rounded shadow-[0_0_8px_rgba(255,0,240,0.2)]">

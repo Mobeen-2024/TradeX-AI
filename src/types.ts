@@ -57,6 +57,8 @@ export interface SystemInsight {
 export interface TradeEvent {
   id: string;
   type: "EXECUTION" | "AGENT_DECISION" | "RISK_ALERT" | "SYSTEM";
+  agent?: string;
+  correlationId?: string;
   message: string;
   portfolioId?: string;
   metadata?: any;

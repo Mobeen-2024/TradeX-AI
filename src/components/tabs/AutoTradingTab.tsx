@@ -284,11 +284,9 @@ export function AutoTradingTab() {
                     {ev.message}
                   </span>
                 </div>
-                {ev.metadata?.correlation_id && (
+                {ev.correlationId && (
                   <button
-                    onClick={() =>
-                      setActiveCorrelationId(ev.metadata.correlation_id)
-                    }
+                    onClick={() => setActiveCorrelationId(ev.correlationId!)}
                     className="flex items-center gap-2 bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-3 py-1.5 rounded text-[10px] uppercase font-bold tracking-widest transition-all"
                   >
                     <Network className="w-3.5 h-3.5" />
