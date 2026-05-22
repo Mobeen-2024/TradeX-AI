@@ -87,7 +87,12 @@ const heatmapData = [
 ];
 
 export function RiskCenterTab() {
-  const { activePortfolio: portfolio, riskState } = useSystemStore();
+  const {
+    activePortfolio: portfolio,
+    riskState,
+    riskOverrides,
+    setRiskOverride,
+  } = useSystemStore();
 
   const [stressLevel, setStressLevel] = useState(68);
   const [loading, setLoading] = useState(false);
@@ -524,59 +529,79 @@ export function RiskCenterTab() {
             </div>
           </button>
 
-          {/* Auto Shutdown */}
-          <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between">
-            <div className="flex justify-between items-start mb-2">
+          {/* Auto Shutdown -> Replaced by Risk Controls */}
+          <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between col-span-1 md:col-span-2 xl:col-span-2">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Terminal className="w-4 h-4 text-gray-400" />
                 <span className="text-white font-bold uppercase tracking-widest text-xs">
-                  Auto Shutdown
+                  Risk Controls
                 </span>
               </div>
-              <div className="w-8 h-4 bg-[#39ff14]/20 rounded-full flex items-center p-0.5 border border-[#39ff14]/30 cursor-pointer transition-colors">
-                <div className="w-3 h-3 bg-[#39ff14] rounded-full translate-x-4 shadow-[0_0_5px_rgba(57,255,20,0.8)] transition-transform"></div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-2">
+                  <span>Drawdown Cap</span>
+                  <span className="text-[#ff4500]">
+                    {riskOverrides.drawdownCap.toFixed(1)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="1"
+                  max="25"
+                  step="0.5"
+                  value={riskOverrides.drawdownCap}
+                  onChange={(e) =>
+                    setRiskOverride({ drawdownCap: parseFloat(e.target.value) })
+                  }
+                  className="w-full accent-[#ff4500]"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-2">
+                  <span>Vol Sensitivity</span>
+                  <span className="text-[#facc15]">
+                    {riskOverrides.volSensitivity.toFixed(1)}x
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="3"
+                  step="0.1"
+                  value={riskOverrides.volSensitivity}
+                  onChange={(e) =>
+                    setRiskOverride({
+                      volSensitivity: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full accent-[#facc15]"
+                />
+              </div>
+              <div>
+                <div className="flex justify-between text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-2">
+                  <span>Emergency Throttle</span>
+                  <span className="text-[#00f0ff]">
+                    {riskOverrides.emergencyThrottle.toFixed(2)}x
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.1"
+                  max="1"
+                  step="0.1"
+                  value={riskOverrides.emergencyThrottle}
+                  onChange={(e) =>
+                    setRiskOverride({
+                      emergencyThrottle: parseFloat(e.target.value),
+                    })
+                  }
+                  className="w-full accent-[#00f0ff]"
+                />
               </div>
             </div>
-            <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
-              Threshold Config
-            </div>
-            <div className="bg-[#111] rounded p-2 text-[10px] font-mono text-gray-400 border border-[#222]">
-              <div className="flex justify-between mb-1">
-                <span>Drawdown &gt;</span>
-                <span className="text-[#ff4500]">5.0%</span>
-              </div>
-              <div className="flex justify-between mb-1">
-                <span>Spread &gt;</span>
-                <span className="text-[#facc15]">0.8%</span>
-              </div>
-              <div className="flex justify-between">
-                <span>VIX &gt;</span>
-                <span className="text-[#00f0ff]">85.0</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Manual Override */}
-          <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute -right-4 -top-4 w-16 h-16 bg-gray-500/10 rounded-full blur-xl"></div>
-            <div className="flex justify-between items-start mb-2 relative z-10">
-              <div className="flex items-center gap-2">
-                <Flame className="w-4 h-4 text-gray-400" />
-                <span className="text-white font-bold uppercase tracking-widest text-xs">
-                  Manual Override
-                </span>
-              </div>
-              <div className="w-8 h-4 bg-[#111] rounded-full flex items-center p-0.5 border border-[#333] cursor-pointer transition-colors">
-                <div className="w-3 h-3 bg-gray-600 rounded-full transition-transform"></div>
-              </div>
-            </div>
-            <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-3 relative z-10">
-              Bypass AI Engine
-            </div>
-            <p className="text-[9px] text-gray-600 leading-relaxed font-mono uppercase relative z-10">
-              Engaging manual override disables algorithmic execution. Director,
-              Quant, and Risk agents will be suspended.
-            </p>
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ import { AuthFlow } from "./components/auth/AuthFlow";
 import { MobileApp } from "./components/MobileApp";
 import { AIVoiceAssistant } from "./components/AIVoiceAssistant";
 import { DecisionTracePanel } from "./components/ui/DecisionTracePanel";
+import { SimulationOverlay } from "./components/ui/SimulationOverlay";
 import { useState } from "react";
 import { useMarketRegime } from "./contexts/MarketRegimeContext";
 
@@ -72,6 +73,7 @@ export default function App() {
         <div className="relative z-50">
           <AIVoiceAssistant />
           <DecisionTracePanel />
+          <SimulationOverlay />
         </div>
       </div>
     </SystemInitializer>
