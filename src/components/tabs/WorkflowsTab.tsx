@@ -1,21 +1,40 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useSystemStore } from "../../store/systemStore";
 import {
   Boxes,
   Cpu,
   Database,
   Link as LinkIcon,
   Play,
+  Pause,
   Radio,
   Plus,
   Layers,
   Network,
   ChevronDown,
   CheckCircle2,
+  Settings2,
 } from "lucide-react";
 
 export function WorkflowsTab() {
-  const [expertMode, setExpertMode] = useState(true);
+  const [expertMode, setExpertMode] = useState(false);
+  const { strategyScores, setStrategyScores } = useSystemStore();
+
+  const strategies = Object.values(strategyScores);
+
+  const toggleStrategy = (id: string) => {
+    const current = strategyScores[id];
+    if (current) {
+      setStrategyScores({
+        ...strategyScores,
+        [id]: {
+          ...current,
+          status: current.status === "ACTIVE" ? "DISABLED" : "ACTIVE",
+        },
+      });
+    }
+  };
 
   return (
     <motion.div
@@ -47,7 +66,7 @@ export function WorkflowsTab() {
                 : "text-gray-500 border border-transparent hover:text-gray-300"
             }`}
           >
-            Express Setup
+            Intelligence Layer
           </button>
           <button
             onClick={() => setExpertMode(true)}
@@ -58,7 +77,7 @@ export function WorkflowsTab() {
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
-            Expert Mode
+            Visual Editor
           </button>
         </div>
       </div>
@@ -71,52 +90,91 @@ export function WorkflowsTab() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 flex flex-col items-center justify-center pt-10"
+            className="flex-1 flex flex-col pt-4"
           >
-            <div className="max-w-2xl w-full text-center">
-              <div className="w-16 h-16 bg-[#ff00f0]/10 rounded-sm mx-auto flex items-center justify-center border border-[#ff00f0]/30 shadow-none mb-6">
-                <Play className="w-8 h-8 text-[#ff00f0] ml-1" />
-              </div>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Start Trading in 60 Seconds
+            <div className="w-full">
+              <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                <Settings2 className="w-5 h-5 text-[#ff00f0]" />
+                Strategy Execution Control
               </h2>
-              <p className="text-gray-400 text-sm mb-8 leading-relaxed max-w-lg mx-auto">
-                Select a pre-built algorithmic strategy templates. These are
-                curated by our quant team and automatically adapt to market
-                conditions.
+              <p className="text-gray-400 text-sm mb-8 leading-relaxed max-w-2xl">
+                Enable or disable specific strategies. Override the AI's
+                confidence scores manually to force specific allocations across
+                your multi-portfolio orchestration.
               </p>
 
-              <div className="grid grid-cols-2 gap-4 text-left">
-                <div className="bg-[#050505] hover:bg-[#0a0a0a] border border-[#1a1a1a] hover:border-[#ff00f0]/50 rounded-sm p-5 cursor-pointer transition-all group">
-                  <h3 className="text-white font-bold mb-1 group-hover:text-[#ff00f0] transition-colors">
-                    Momentum Scalper
-                  </h3>
-                  <p className="text-gray-500 text-xs mb-4">
-                    Capitalizes on short-term high-volume breakouts.
-                  </p>
-                  <div className="flex justify-between items-center text-[10px] font-mono border-t border-[#1a1a1a] pt-3">
-                    <span className="text-gray-600 uppercase">Risk Level</span>
-                    <span className="text-[#00f0ff]">Medium</span>
-                  </div>
+              {strategies.length === 0 ? (
+                <div className="text-center p-12 bg-[#050505] border border-[#1a1a1a] rounded-xl text-gray-500 font-mono text-sm uppercase tracking-widest">
+                  No strategies currently evaluated.
                 </div>
-                <div className="bg-[#050505] hover:bg-[#0a0a0a] border border-[#1a1a1a] hover:border-[#ff00f0]/50 rounded-sm p-5 cursor-pointer transition-all group">
-                  <div className="flex justify-between items-start mb-1">
-                    <h3 className="text-white font-bold group-hover:text-[#ff00f0] transition-colors">
-                      Grid Arbitration
-                    </h3>
-                    <span className="bg-[#39ff14]/10 text-[#39ff14] text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                      Popular
-                    </span>
-                  </div>
-                  <p className="text-gray-500 text-xs mb-4">
-                    Market-neutral strategy capturing sideways chop.
-                  </p>
-                  <div className="flex justify-between items-center text-[10px] font-mono border-t border-[#1a1a1a] pt-3">
-                    <span className="text-gray-600 uppercase">Risk Level</span>
-                    <span className="text-[#39ff14]">Low</span>
-                  </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {strategies.map((s) => (
+                    <div
+                      key={s.portfolioId}
+                      className={`bg-[#050505] border ${s.status === "ACTIVE" ? "border-[#ff00f0]/30 hover:border-[#ff00f0]/50" : "border-[#1a1a1a] opacity-60 grayscale"} rounded-sm p-6 cursor-pointer transition-all group relative overflow-hidden`}
+                    >
+                      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#ff00f0]/5 to-transparent pointer-events-none"></div>
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <h3
+                            className={`font-bold mb-1 ${s.status === "ACTIVE" ? "text-white" : "text-gray-400"}`}
+                          >
+                            {s.name || "Unnamed Strategy"}
+                          </h3>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-widest font-mono">
+                            ID: {s.portfolioId}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleStrategy(s.portfolioId)}
+                          className={`w-10 h-6 rounded-full flex items-center p-1 transition-colors ${s.status === "ACTIVE" ? "bg-[#ff00f0]/20 border border-[#ff00f0]/50" : "bg-[#111] border border-[#333]"}`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full transition-transform ${s.status === "ACTIVE" ? "translate-x-4 bg-[#ff00f0] shadow-[0_0_8px_#ff00f0]" : "translate-x-0 bg-gray-500"}`}
+                          ></div>
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 mt-6 border-t border-[#1a1a1a] pt-4">
+                        <div>
+                          <div className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                            Win Rate
+                          </div>
+                          <div className="text-lg font-mono font-bold text-white">
+                            {(s.winRate * 100).toFixed(1)}%
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] uppercase tracking-widest text-gray-500 mb-1">
+                            Expectancy
+                          </div>
+                          <div
+                            className={`text-lg font-mono font-bold ${s.expectancy > 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                          >
+                            {(s.expectancy * 100).toFixed(2)}%
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6">
+                        <div className="flex justify-between items-center text-[10px] uppercase tracking-widest text-gray-500 mb-2">
+                          <span>AI Confidence Score</span>
+                          <span className="text-[#00f0ff] font-bold">
+                            {(s.baseScore * 100).toFixed(1)}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-[#111] rounded-full overflow-hidden border border-[#222]">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#ff00f0] to-[#00f0ff]"
+                            style={{ width: `${s.baseScore * 100}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </div>
+              )}
             </div>
           </motion.div>
         ) : (

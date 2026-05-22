@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Shield, AlertTriangle, Activity, Crosshair, Lock, ShieldCheck, Boxes, Radar as RadarIcon, LineChart as LineChartIcon, Power, AlertOctagon, Terminal, Flame, Ban } from 'lucide-react';
+import {
+  Shield,
+  AlertTriangle,
+  Activity,
+  Crosshair,
+  Lock,
+  ShieldCheck,
+  Boxes,
+  Radar as RadarIcon,
+  LineChart as LineChartIcon,
+  Power,
+  AlertOctagon,
+  Terminal,
+  Flame,
+  Ban,
+} from "lucide-react";
 import {
   Radar,
   RadarChart,
@@ -16,6 +31,7 @@ import {
   AreaChart,
   ReferenceLine,
 } from "recharts";
+import { useSystemStore } from "../../store/systemStore";
 
 const radarData = [
   { subject: "Directional Bias", A: 85, fullMark: 100 },
@@ -71,38 +87,30 @@ const heatmapData = [
 ];
 
 export function RiskCenterTab() {
+  const { activePortfolio: portfolio, riskState } = useSystemStore();
+
   const [stressLevel, setStressLevel] = useState(68);
-  const [portfolio, setPortfolio] = useState<any>(null);
-  const [riskData, setRiskData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/portfolio/me")
-      .then(res => res.json())
-      .then(data => {
-        if (data.portfolio) setPortfolio(data.portfolio);
-      })
-      .catch(console.error);
-  }, []);
-
-  useEffect(() => {
-    // Stress level should be tied to absolute portfolio total risk
-    // Or from the new system intelligence
-  }, []);
+    // Sync stress level based on real risk level if available
+    if (riskState) {
+      if (riskState.level === "CRITICAL") setStressLevel(90);
+      else if (riskState.level === "ELEVATED") setStressLevel(65);
+      else setStressLevel(30);
+    }
+  }, [riskState]);
 
   const runRiskCheck = async () => {
     if (!portfolio) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/intelligence/risk", {
+      await fetch("/api/intelligence/risk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ portfolioId: portfolio.id })
+        body: JSON.stringify({ portfolioId: portfolio.id }),
       });
-      const result = await res.json();
-      if (result.data?.rawOutput) {
-        setRiskData(result.data.rawOutput);
-      }
+      // The store will pick up telemetry updates via websocket
     } catch (e) {
       console.error(e);
     } finally {
@@ -133,12 +141,14 @@ export function RiskCenterTab() {
             <span className="text-[10px] text-gray-500 uppercase tracking-widest">
               AI Risk Status
             </span>
-            <span className={`${riskData?.riskLevel === 'HIGH' || riskData?.riskLevel === 'CRITICAL' ? 'text-red-500' : 'text-[#39ff14]'} text-xs font-bold uppercase flex items-center gap-2`}>
+            <span
+              className={`${riskState?.level === "CRITICAL" ? "text-red-500" : riskState?.level === "ELEVATED" ? "text-yellow-400" : "text-[#39ff14]"} text-xs font-bold uppercase flex items-center gap-2`}
+            >
               <ShieldCheck className="w-3.5 h-3.5" />
-              {loading ? "Checking..." : (riskData?.riskLevel || "IDLE")}
+              {loading ? "Checking..." : riskState?.level || "IDLE"}
             </span>
           </div>
-          <button 
+          <button
             onClick={runRiskCheck}
             disabled={loading}
             className="flex items-center gap-2 bg-[#39ff14]/10 border border-[#39ff14]/30 hover:bg-[#39ff14]/20 text-[#39ff14] px-4 py-2 rounded-sm text-xs font-bold transition-colors shadow-[0_0_15px_rgba(57,255,20,0.15)] uppercase tracking-widest disabled:opacity-50"
@@ -188,8 +198,10 @@ export function RiskCenterTab() {
             <span className="text-gray-500 uppercase tracking-widest">
               Tail Risk Warning
             </span>
-            <span className={`${riskData?.riskLevel === 'HIGH' || riskData?.riskLevel === 'CRITICAL' ? 'text-red-500' : 'text-[#39ff14]'} font-bold uppercase tracking-widest`}>
-              {riskData?.riskLevel || "Evaluating..."}
+            <span
+              className={`${riskState?.level === "CRITICAL" ? "text-red-500" : "text-[#39ff14]"} font-bold uppercase tracking-widest`}
+            >
+              {riskState?.level || "Evaluating..."}
             </span>
           </div>
         </div>
@@ -207,31 +219,37 @@ export function RiskCenterTab() {
               <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
                 Margin Risk
               </span>
-              <span className={`${riskData?.marginRisk === 'SAFE' ? 'text-[#39ff14]' : riskData?.marginRisk === 'WARNING' ? 'text-yellow-400' : riskData?.marginRisk === 'DANGER' ? 'text-red-500' : 'text-white'} text-2xl font-bold font-sans tracking-tight`}>
-                {riskData?.marginRisk || "UNKNOWN"}
+              <span
+                className={`${riskState?.marginRisk === "SAFE" ? "text-[#39ff14]" : riskState?.marginRisk === "WARNING" ? "text-yellow-400" : riskState?.marginRisk === "CRITICAL" ? "text-red-500" : "text-white"} text-2xl font-bold font-sans tracking-tight`}
+              >
+                {riskState?.marginRisk || "UNKNOWN"}
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Max Drawdown (24h)
+                Max Drawdown
               </span>
               <span className="text-white text-2xl font-bold font-sans tracking-tight">
-                -2.40%
+                {riskState?.maxDrawdown !== undefined
+                  ? `${riskState.maxDrawdown.toFixed(2)}%`
+                  : "0.00%"}
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Allowed Position Size
+                Risk Multiplier
               </span>
               <span className="text-[#00f0ff] text-2xl font-bold font-sans tracking-tight">
-                {riskData?.position_size !== undefined ? (riskData.position_size * 100).toFixed(0) + "%" : "100%"}
+                {riskState?.riskMultiplier !== undefined
+                  ? riskState.riskMultiplier.toFixed(1) + "x"
+                  : "1.0x"}
               </span>
             </div>
           </div>
 
           <div className="text-gray-300 text-sm font-mono z-10 mb-4 bg-black/40 p-3 rounded-lg border border-white/5">
             <div className="text-[#39ff14] mb-1">↳ AI Rationale:</div>
-            {riskData?.aiRationale || "Awaiting risk check..."}
+            {riskState?.aiRationale || "Awaiting risk check..."}
           </div>
 
           <div className="h-48 w-full z-10">
@@ -440,82 +458,116 @@ export function RiskCenterTab() {
       <div className="bg-[#050505] border border-[#ff4500]/30 rounded flex flex-col p-6 mt-2 relative overflow-hidden shadow-[0_0_20px_rgba(255,69,0,0.05)]">
         {/* Animated hazard stripes top border */}
         <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-[#ff4500] via-[#ef4444] to-[#ff4500]"></div>
-        <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #ff4500 0, #ff4500 2px, transparent 2px, transparent 16px)' }}></div>
-        
+        <div
+          className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, #ff4500 0, #ff4500 2px, transparent 2px, transparent 16px)",
+          }}
+        ></div>
+
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-[#ff4500]/20 pb-4">
-           <div>
-             <h3 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-3 font-sans">
-               <AlertOctagon className="w-6 h-6 text-[#ff4500]" />
-               Emergency Control System
-             </h3>
-             <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-1">Terminal Overrides & Immediate Halt Protocols</p>
-           </div>
-           
-           <div className="mt-4 md:mt-0 px-3 py-1.5 bg-[#ff4500]/10 border border-[#ff4500]/30 rounded text-[#ff4500] text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 animate-pulse">
-             <div className="w-1.5 h-1.5 rounded-full bg-[#ff4500]"></div>
-             Authorization Level: Alpha
-           </div>
+          <div>
+            <h3 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-3 font-sans">
+              <AlertOctagon className="w-6 h-6 text-[#ff4500]" />
+              Emergency Control System
+            </h3>
+            <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-1">
+              Terminal Overrides & Immediate Halt Protocols
+            </p>
+          </div>
+
+          <div className="mt-4 md:mt-0 px-3 py-1.5 bg-[#ff4500]/10 border border-[#ff4500]/30 rounded text-[#ff4500] text-[10px] uppercase tracking-widest font-bold flex items-center gap-2 animate-pulse">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#ff4500]"></div>
+            Authorization Level: Alpha
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-10">
-           {/* Kill Switch */}
-           <button className="group bg-black border border-[#ff4500]/40 hover:border-[#ff4500] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#ff4500]/5 relative overflow-hidden">
-              <div className="w-12 h-12 rounded-full border-2 border-[#ff4500]/50 group-hover:bg-[#ff4500]/20 flex items-center justify-center transition-all bg-[#111]">
-                 <Power className="w-5 h-5 text-[#ff4500]" />
+          {/* Kill Switch */}
+          <button className="group bg-black border border-[#ff4500]/40 hover:border-[#ff4500] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#ff4500]/5 relative overflow-hidden">
+            <div className="w-12 h-12 rounded-full border-2 border-[#ff4500]/50 group-hover:bg-[#ff4500]/20 flex items-center justify-center transition-all bg-[#111]">
+              <Power className="w-5 h-5 text-[#ff4500]" />
+            </div>
+            <div className="text-center">
+              <div className="text-white font-bold uppercase tracking-widest text-sm mb-1">
+                Kill Switch
               </div>
-              <div className="text-center">
-                 <div className="text-white font-bold uppercase tracking-widest text-sm mb-1">Kill Switch</div>
-                 <div className="text-[#ff4500] text-[10px] uppercase tracking-widest opacity-80">Stop All Trading</div>
+              <div className="text-[#ff4500] text-[10px] uppercase tracking-widest opacity-80">
+                Stop All Trading
               </div>
-           </button>
+            </div>
+          </button>
 
-           {/* Risk Lockdown */}
-           <button className="group bg-black border border-[#facc15]/40 hover:border-[#facc15] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#facc15]/5 relative overflow-hidden">
-              <div className="w-12 h-12 rounded-full border-2 border-[#facc15]/50 group-hover:bg-[#facc15]/20 flex items-center justify-center transition-all bg-[#111]">
-                 <Ban className="w-5 h-5 text-[#facc15]" />
+          {/* Risk Lockdown */}
+          <button className="group bg-black border border-[#facc15]/40 hover:border-[#facc15] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#facc15]/5 relative overflow-hidden">
+            <div className="w-12 h-12 rounded-full border-2 border-[#facc15]/50 group-hover:bg-[#facc15]/20 flex items-center justify-center transition-all bg-[#111]">
+              <Ban className="w-5 h-5 text-[#facc15]" />
+            </div>
+            <div className="text-center">
+              <div className="text-white font-bold uppercase tracking-widest text-sm mb-1">
+                Risk Lockdown
               </div>
-              <div className="text-center">
-                 <div className="text-white font-bold uppercase tracking-widest text-sm mb-1">Risk Lockdown</div>
-                 <div className="text-[#facc15] text-[10px] uppercase tracking-widest opacity-80">Close Open Positions</div>
+              <div className="text-[#facc15] text-[10px] uppercase tracking-widest opacity-80">
+                Close Open Positions
               </div>
-           </button>
+            </div>
+          </button>
 
-           {/* Auto Shutdown */}
-           <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between">
-              <div className="flex justify-between items-start mb-2">
-                 <div className="flex items-center gap-2">
-                    <Terminal className="w-4 h-4 text-gray-400" />
-                    <span className="text-white font-bold uppercase tracking-widest text-xs">Auto Shutdown</span>
-                 </div>
-                 <div className="w-8 h-4 bg-[#39ff14]/20 rounded-full flex items-center p-0.5 border border-[#39ff14]/30 cursor-pointer transition-colors">
-                    <div className="w-3 h-3 bg-[#39ff14] rounded-full translate-x-4 shadow-[0_0_5px_rgba(57,255,20,0.8)] transition-transform"></div>
-                 </div>
+          {/* Auto Shutdown */}
+          <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between">
+            <div className="flex justify-between items-start mb-2">
+              <div className="flex items-center gap-2">
+                <Terminal className="w-4 h-4 text-gray-400" />
+                <span className="text-white font-bold uppercase tracking-widest text-xs">
+                  Auto Shutdown
+                </span>
               </div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Threshold Config</div>
-              <div className="bg-[#111] rounded p-2 text-[10px] font-mono text-gray-400 border border-[#222]">
-                 <div className="flex justify-between mb-1"><span>Drawdown &gt;</span><span className="text-[#ff4500]">5.0%</span></div>
-                 <div className="flex justify-between mb-1"><span>Spread &gt;</span><span className="text-[#facc15]">0.8%</span></div>
-                 <div className="flex justify-between"><span>VIX &gt;</span><span className="text-[#00f0ff]">85.0</span></div>
+              <div className="w-8 h-4 bg-[#39ff14]/20 rounded-full flex items-center p-0.5 border border-[#39ff14]/30 cursor-pointer transition-colors">
+                <div className="w-3 h-3 bg-[#39ff14] rounded-full translate-x-4 shadow-[0_0_5px_rgba(57,255,20,0.8)] transition-transform"></div>
               </div>
-           </div>
+            </div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">
+              Threshold Config
+            </div>
+            <div className="bg-[#111] rounded p-2 text-[10px] font-mono text-gray-400 border border-[#222]">
+              <div className="flex justify-between mb-1">
+                <span>Drawdown &gt;</span>
+                <span className="text-[#ff4500]">5.0%</span>
+              </div>
+              <div className="flex justify-between mb-1">
+                <span>Spread &gt;</span>
+                <span className="text-[#facc15]">0.8%</span>
+              </div>
+              <div className="flex justify-between">
+                <span>VIX &gt;</span>
+                <span className="text-[#00f0ff]">85.0</span>
+              </div>
+            </div>
+          </div>
 
-           {/* Manual Override */}
-           <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between relative overflow-hidden">
-              <div className="absolute -right-4 -top-4 w-16 h-16 bg-gray-500/10 rounded-full blur-xl"></div>
-              <div className="flex justify-between items-start mb-2 relative z-10">
-                 <div className="flex items-center gap-2">
-                    <Flame className="w-4 h-4 text-gray-400" />
-                    <span className="text-white font-bold uppercase tracking-widest text-xs">Manual Override</span>
-                 </div>
-                 <div className="w-8 h-4 bg-[#111] rounded-full flex items-center p-0.5 border border-[#333] cursor-pointer transition-colors">
-                    <div className="w-3 h-3 bg-gray-600 rounded-full transition-transform"></div>
-                 </div>
+          {/* Manual Override */}
+          <div className="bg-black border border-[#1a1a1a] rounded p-4 flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute -right-4 -top-4 w-16 h-16 bg-gray-500/10 rounded-full blur-xl"></div>
+            <div className="flex justify-between items-start mb-2 relative z-10">
+              <div className="flex items-center gap-2">
+                <Flame className="w-4 h-4 text-gray-400" />
+                <span className="text-white font-bold uppercase tracking-widest text-xs">
+                  Manual Override
+                </span>
               </div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-3 relative z-10">Bypass AI Engine</div>
-              <p className="text-[9px] text-gray-600 leading-relaxed font-mono uppercase relative z-10">
-                 Engaging manual override disables algorithmic execution. Director, Quant, and Risk agents will be suspended.
-              </p>
-           </div>
+              <div className="w-8 h-4 bg-[#111] rounded-full flex items-center p-0.5 border border-[#333] cursor-pointer transition-colors">
+                <div className="w-3 h-3 bg-gray-600 rounded-full transition-transform"></div>
+              </div>
+            </div>
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-3 relative z-10">
+              Bypass AI Engine
+            </div>
+            <p className="text-[9px] text-gray-600 leading-relaxed font-mono uppercase relative z-10">
+              Engaging manual override disables algorithmic execution. Director,
+              Quant, and Risk agents will be suspended.
+            </p>
+          </div>
         </div>
       </div>
     </motion.div>

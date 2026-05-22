@@ -1,8 +1,11 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Wallet, Sparkles, TrendingUp } from 'lucide-react';
+import React from "react";
+import { motion } from "motion/react";
+import { Wallet, Sparkles, TrendingUp, BarChart3 } from "lucide-react";
+import { useSystemStore } from "../../store/systemStore";
 
 export function AlphaGenerationTab() {
+  const { strategyScores } = useSystemStore();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -14,34 +17,86 @@ export function AlphaGenerationTab() {
           <Wallet className="w-5 h-5 text-[#00f0ff]" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-white tracking-wide">Alpha Generation</h2>
-          <p className="text-sm text-gray-400 font-mono">Yield exploration and capital opportunities</p>
+          <h2 className="text-xl font-bold text-white tracking-wide">
+            Alpha Generation
+          </h2>
+          <p className="text-sm text-gray-400 font-mono">
+            Real-time strategy intelligence & scoring
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Placeholder cards for Alpha Generation */}
-        <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-200">Arbitrage Scan</h3>
-            <Sparkles className="w-4 h-4 text-[#0ea5e9]" />
+        {Object.keys(strategyScores).length === 0 && (
+          <div className="col-span-full border border-dashed border-[#222] p-8 text-center text-gray-500 font-mono rounded">
+            Awating Strategy Intelligence
           </div>
-          <p className="text-[11px] text-gray-500 font-mono mb-4">Cross-exchange spread detection running.</p>
-          <div className="h-2 bg-[#111] rounded-full overflow-hidden">
-             <div className="h-full bg-gradient-to-r from-[#0ea5e9] to-[#00f0ff] w-[45%]" />
+        )}
+
+        {Object.values(strategyScores).map((score) => (
+          <div
+            key={score.portfolioId}
+            className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5 hover:border-[#333] transition-colors"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-gray-200">
+                {score.name || "Unnamed Strategy"}
+              </h3>
+              {score.allocationWeight > 0.5 ? (
+                <TrendingUp className="w-4 h-4 text-[#39ff14]" />
+              ) : (
+                <BarChart3 className="w-4 h-4 text-[#0ea5e9]" />
+              )}
+            </div>
+
+            <div className="flex justify-between items-end mb-4">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-500 uppercase font-mono tracking-widest">
+                  Confidence
+                </span>
+                <span className="text-xl font-bold text-white">
+                  {(score.baseScore * 100).toFixed(1)}%
+                </span>
+              </div>
+              <div className="text-right flex flex-col">
+                <span className="text-[10px] text-gray-500 uppercase font-mono tracking-widest">
+                  Target Weight
+                </span>
+                <span className="text-sm text-gray-300 font-mono">
+                  {(score.allocationWeight * 100).toFixed(1)}%
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2 mt-4 pt-4 border-t border-[#1a1a1a]">
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-gray-500">Regime Fit</span>
+                <span className="text-[#39ff14]">
+                  {(score.regimeScore * 100).toFixed(0)}%
+                </span>
+              </div>
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-gray-500">Expectancy</span>
+                <span className="text-[#00f0ff]">
+                  {score.expectancy.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between text-[11px] font-mono">
+                <span className="text-gray-500">Win Rate</span>
+                <span className="text-[#a855f7]">
+                  {(score.winRate * 100).toFixed(0)}%
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-4 h-1.5 bg-[#111] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#0ea5e9] to-[#00f0ff]"
+                style={{ width: `${score.baseScore * 100}%` }}
+              />
+            </div>
           </div>
-        </div>
-        
-        <div className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-gray-200">Yield Farming</h3>
-            <TrendingUp className="w-4 h-4 text-[#39ff14]" />
-          </div>
-          <p className="text-[11px] text-gray-500 font-mono mb-4">DeFi liquidity pool tracking.</p>
-          <div className="h-2 bg-[#111] rounded-full overflow-hidden">
-             <div className="h-full bg-gradient-to-r from-[#39ff14] to-emerald-400 w-[60%]" />
-          </div>
-        </div>
+        ))}
       </div>
     </motion.div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { motion } from "motion/react";
 import {
   Brain,
@@ -13,90 +13,19 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
+import { useSystemStore } from "../../store/systemStore";
 
 export function DashboardTab() {
-  const [portfolio, setPortfolio] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [telemetryLogs, setTelemetryLogs] = useState<any[]>([]);
-  const [strategyState, setStrategyState] = useState({
-    regime: "Unknown",
-    confidence: 0,
-    decision: "No data",
-    rationale: "Initializing..."
-  });
+  const {
+    activePortfolio: portfolio,
+    globalMetrics,
+    strategyScores,
+  } = useSystemStore();
 
-  const fetchPortfolio = async () => {
-    try {
-      const res = await fetch("/api/portfolio/me");
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        console.error("Non-JSON response received from /api/portfolio/me, ignoring", await res.text());
-        return;
-      }
-      const data = await res.json();
-      if (data.portfolios && data.portfolios.length > 0) {
-        setPortfolio(data.portfolios[0]);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const isAutonomous = true; // Can be derived from portfolio or config later
 
-  useEffect(() => {
-    fetchPortfolio();
-    const interval = setInterval(fetchPortfolio, 5000); // Polling as fallback / update limits
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    // Determine WS protocol
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/ws/agent-telemetry`;
-
-    const socket = new WebSocket(wsUrl);
-    
-    socket.onopen = () => console.log("Connected to AI Telemetry");
-    
-    socket.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        
-        setTelemetryLogs(prev => [msg, ...prev].slice(0, 20));
-
-        if (msg.eventType === "QUANT_ANALYSIS_COMPLETED" && msg.summary) {
-           const regimeMatch = msg.summary.match(/Regime: (.*)/);
-           if (regimeMatch) {
-             setStrategyState(s => ({ ...s, regime: regimeMatch[1] }));
-           }
-        }
-        if (msg.eventType === "COORDINATOR_DECISION_COMPLETED" && msg.summary) {
-           const decMatch = msg.summary.match(/Decision: (.*)/);
-           if (decMatch) {
-             setStrategyState(s => ({ 
-               ...s, 
-               decision: decMatch[1],
-               confidence: msg.decision?.confidenceScore ? msg.decision.confidenceScore * 100 : 85,
-               rationale: msg.summary 
-             }));
-           }
-        }
-      } catch(e) {
-        // ignore
-      }
-    };
-
-    return () => {
-      socket.close();
-    };
-  }, []);
-
-  if (loading) return <div>Loading System Telemetry...</div>;
-
-  const totalValue = portfolio ? portfolio.cash + portfolio.totalUnrealizedPnl + portfolio.totalRealizedPnl : 0;
-  const isAutonomous = portfolio?.is_trading_enabled;
+  const strategies = Object.values(strategyScores);
+  const activeStrategy = strategies.length > 0 ? strategies[0] : null;
 
   return (
     <motion.div
@@ -117,8 +46,10 @@ export function DashboardTab() {
               <Brain className="w-4 h-4 text-[#0ea5e9]" />
               Nexus Core Status
             </h3>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${isAutonomous ? 'bg-[#0ea5e9]/10 text-[#0ea5e9] border-[#0ea5e9]/20' : 'bg-gray-500/10 text-gray-400 border-gray-500/20'}`}>
-              {isAutonomous ? 'Autonomous Mode' : 'Manual Mode'}
+            <span
+              className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${isAutonomous ? "bg-[#0ea5e9]/10 text-[#0ea5e9] border-[#0ea5e9]/20" : "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}
+            >
+              {isAutonomous ? "Autonomous Mode" : "Manual Mode"}
             </span>
           </div>
 
@@ -128,23 +59,29 @@ export function DashboardTab() {
                 Confidence
               </span>
               <div className="flex items-center gap-3">
-                <AIConfidenceRing confidence={strategyState.confidence || 87.4} size={48} theme="cyan" />
+                <AIConfidenceRing
+                  confidence={
+                    activeStrategy ? activeStrategy.baseScore * 100 : 87.4
+                  }
+                  size={48}
+                  theme="cyan"
+                />
               </div>
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] text-gray-500 uppercase">
-                Regime
+                Expectancy
               </span>
               <span className="text-sm text-gray-200 font-sans font-bold">
-                {strategyState.regime}
+                {activeStrategy ? activeStrategy.expectancy.toFixed(2) : "N/A"}
               </span>
             </div>
             <div className="flex flex-col">
               <span className="text-[10px] text-gray-500 uppercase">
-                Last Decision
+                Last Strategy
               </span>
               <span className="text-sm text-[#00f0ff] font-sans font-bold">
-                {strategyState.decision}
+                {activeStrategy?.name || "Initializing..."}
               </span>
             </div>
             <div className="flex flex-col">
@@ -167,20 +104,55 @@ export function DashboardTab() {
 
           <div className="grid grid-cols-4 gap-4 flex-1 items-end">
             {[
-              { pair: "BTC/USDT", price: "64,320.50", change: "+2.4%", up: true, rsi: "68" },
-              { pair: "ETH/USDT", price: "3,450.20", change: "+1.8%", up: true, rsi: "62" },
-              { pair: "SOL/USDT", price: "142.75", change: "-0.5%", up: false, rsi: "45" },
-              { pair: "TOTAL CAP", price: "$2.4T", change: "+1.2%", up: true, flex: true },
+              {
+                pair: "BTC/USDT",
+                price: "64,320.50",
+                change: "+2.4%",
+                up: true,
+                rsi: "68",
+              },
+              {
+                pair: "ETH/USDT",
+                price: "3,450.20",
+                change: "+1.8%",
+                up: true,
+                rsi: "62",
+              },
+              {
+                pair: "SOL/USDT",
+                price: "142.75",
+                change: "-0.5%",
+                up: false,
+                rsi: "45",
+              },
+              {
+                pair: "TOTAL CAP",
+                price: "$2.4T",
+                change: "+1.2%",
+                up: true,
+                flex: true,
+              },
             ].map((market, i) => (
-              <div key={i} className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
-                <span className="text-gray-400 text-[10px] font-bold">{market.pair}</span>
-                <span className="text-white font-sans font-bold text-lg">{market.price}</span>
+              <div
+                key={i}
+                className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm"
+              >
+                <span className="text-gray-400 text-[10px] font-bold">
+                  {market.pair}
+                </span>
+                <span className="text-white font-sans font-bold text-lg">
+                  {market.price}
+                </span>
                 <div className="flex items-center justify-between mt-1">
-                  <span className={`text-[10px] font-bold ${market.up ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
+                  <span
+                    className={`text-[10px] font-bold ${market.up ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                  >
                     {market.change}
                   </span>
                   {market.rsi && (
-                    <span className="text-[9px] text-gray-600">RSI: {market.rsi}</span>
+                    <span className="text-[9px] text-gray-600">
+                      RSI: {market.rsi}
+                    </span>
                   )}
                 </div>
               </div>
@@ -202,19 +174,34 @@ export function DashboardTab() {
               Total Balance
             </span>
             <span className="text-3xl text-white font-sans font-bold tracking-tight">
-              ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              $
+              {(portfolio?.totalValue || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
             </span>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`text-xs font-bold ${portfolio?.totalRealizedPnl >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
-                {portfolio?.totalRealizedPnl >= 0 ? "+" : ""}{Number(portfolio?.totalRealizedPnl || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+              <span
+                className={`text-xs font-bold ${(portfolio?.realizedPnl || 0) >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+              >
+                {(portfolio?.realizedPnl || 0) >= 0 ? "+" : ""}
+                {Number(portfolio?.realizedPnl || 0).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                })}
               </span>
               <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
                 Realized PNL
               </span>
             </div>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`text-xs font-bold ${portfolio?.totalUnrealizedPnl >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
-                {portfolio?.totalUnrealizedPnl >= 0 ? "+" : ""}{Number(portfolio?.totalUnrealizedPnl || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
+              <span
+                className={`text-xs font-bold ${(portfolio?.unrealizedPnl || 0) >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+              >
+                {(portfolio?.unrealizedPnl || 0) >= 0 ? "+" : ""}
+                {Number(portfolio?.unrealizedPnl || 0).toLocaleString(
+                  undefined,
+                  { minimumFractionDigits: 2 },
+                )}
               </span>
               <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
                 Unrealized PNL
@@ -222,68 +209,27 @@ export function DashboardTab() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[#a855f7] text-xs font-bold">
-                {portfolio?.winRate ? Math.round(portfolio.winRate) : 0}%
+                {Math.round(globalMetrics.winRate * 100)}%
               </span>
               <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
                 Win Rate
               </span>
             </div>
-            {portfolio?.expectancy !== undefined && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-xs font-bold ${portfolio.expectancy >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
-                  ${portfolio.expectancy.toFixed(2)}
-                </span>
-                <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
-                   Expectancy
-                </span>
-              </div>
-            )}
-            {portfolio?.profitFactor !== undefined && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className={`text-xs font-bold ${portfolio.profitFactor >= 1.5 ? "text-[#39ff14]" : portfolio.profitFactor > 1 ? "text-gray-200" : "text-[#ff4500]"}`}>
-                  {portfolio.profitFactor === 999 ? "MAX" : portfolio.profitFactor.toFixed(2)}
-                </span>
-                <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
-                   Profit Factor
-                </span>
-              </div>
-            )}
-            {portfolio?.sharpeRatio !== undefined && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-gray-200 text-xs font-bold">
-                  {portfolio.sharpeRatio.toFixed(2)}
-                </span>
-                <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
-                   Sharpe Ratio
-                </span>
-              </div>
-            )}
-            {portfolio?.maxDrawdown !== undefined && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[#ff4500] text-xs font-bold">
-                  -${portfolio.maxDrawdown.toLocaleString(undefined, {minimumFractionDigits: 2})}
-                </span>
-                <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
-                   Max Drawdown
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 flex-1 items-end pb-2">
-            <div className="flex flex-col gap-1 border-t border-[#1a1a1a] pt-3">
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">
-                Max Position
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-gray-200 text-xs font-bold">
+                {globalMetrics.sharpeRatio.toFixed(2)}
               </span>
-              <span className="text-sm font-bold text-gray-200">
-                ${portfolio?.max_position_size || 0}
+              <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
+                Sharpe Ratio
               </span>
             </div>
-            <div className="flex flex-col gap-1 border-t border-[#1a1a1a] pt-3">
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">
-                Max Loss
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[#ff4500] text-xs font-bold">
+                -{(globalMetrics.globalDrawdown * 100).toFixed(2)}%
               </span>
-              <span className="text-sm font-bold text-[#ff4500]">${portfolio?.max_loss || 0}</span>
+              <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">
+                Max Drawdown
+              </span>
             </div>
           </div>
         </div>
@@ -309,7 +255,9 @@ export function DashboardTab() {
           </div>
 
           <div className="flex-1 w-full bg-[#0a0a0a] border border-[#111] rounded-sm relative flex items-center justify-center p-4">
-            <span className="text-gray-500 text-xs font-mono">Live chart data streamed via WebSocket...</span>
+            <span className="text-gray-500 text-xs font-mono">
+              Live chart data streamed via WebSocket...
+            </span>
           </div>
         </div>
 
@@ -325,9 +273,12 @@ export function DashboardTab() {
                 <Zap className="w-4 h-4 text-[#ff00f0]" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-white">Sentiment Core</span>
+                <span className="text-xs font-bold text-white">
+                  Sentiment Core
+                </span>
                 <span className="text-[9px] text-[#39ff14] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] opacity-80"></span> Analyzing News
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] opacity-80"></span>{" "}
+                  Analyzing News
                 </span>
               </div>
             </div>
@@ -337,15 +288,14 @@ export function DashboardTab() {
                 <TrendingUp className="w-4 h-4 text-[#a855f7]" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-bold text-white">Price Action LSTM</span>
+                <span className="text-xs font-bold text-white">
+                  Price Action LSTM
+                </span>
                 <span className="text-[9px] text-[#39ff14] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] opacity-80"></span> Forward Prop
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] opacity-80"></span>{" "}
+                  Forward Prop
                 </span>
               </div>
-            </div>
-
-            <div className="mt-auto px-2 py-1 bg-black border border-[#222] rounded-sm text-[9px] text-gray-500 font-mono text-center">
-              Agent Rationale: {strategyState.rationale.substring(0, 40)}...
             </div>
           </div>
         </div>
@@ -361,7 +311,7 @@ export function DashboardTab() {
               Active Open Positions
             </h3>
             <span className="text-[9px] text-gray-600 bg-[#111] px-2 py-0.5 rounded-sm">
-              {portfolio?.positions?.length || 0} Positions
+              {(portfolio as any)?.positions?.length || 0} Positions
             </span>
           </div>
 
@@ -369,39 +319,74 @@ export function DashboardTab() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-[#020202] text-[9px] uppercase tracking-widest text-gray-500">
-                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">Pair</th>
-                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">Side</th>
-                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">Size</th>
-                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">Entry</th>
-                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">Mark Price</th>
-                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a] text-right">Unrealized PNL</th>
+                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">
+                    Pair
+                  </th>
+                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">
+                    Side
+                  </th>
+                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">
+                    Size
+                  </th>
+                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">
+                    Entry
+                  </th>
+                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a]">
+                    Mark Price
+                  </th>
+                  <th className="px-3 py-2 font-semibold border-b border-[#1a1a1a] text-right">
+                    Unrealized PNL
+                  </th>
                 </tr>
               </thead>
               <tbody className="text-[11px] divide-y divide-[#111]">
-                {portfolio?.positions?.filter((p: any) => Number(p.size) !== 0).map((pos: any, i: number) => {
-                  const sizeDec = Number(pos.size);
-                  const isLong = sizeDec > 0;
-                  const upnl = Number(pos.unrealizedPnl || 0);
-                  return (
-                    <tr key={i} className="hover:bg-[#0a0a0a] transition-colors group cursor-pointer">
-                      <td className="px-3 py-2.5 font-bold font-sans text-gray-200">{pos.asset_id}</td>
-                      <td className="px-3 py-2.5">
-                        <span className={`font-bold ${isLong ? 'text-[#39ff14]' : 'text-[#ff4500]'}`}>
-                          {isLong ? 'LONG' : 'SHORT'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2.5 text-gray-400">{Math.abs(sizeDec)}</td>
-                      <td className="px-3 py-2.5 text-gray-400">{Number(pos.avg_entry_price).toFixed(2)}</td>
-                      <td className="px-3 py-2.5 text-gray-300">{Number(pos.currentPrice).toFixed(2)}</td>
-                      <td className={`px-3 py-2.5 font-bold text-right ${upnl >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
-                        {upnl >= 0 ? "+" : ""}{upnl.toFixed(2)}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!portfolio?.positions?.length && (
+                {(portfolio as any)?.positions
+                  ?.filter((p: any) => Number(p.size) !== 0)
+                  .map((pos: any, i: number) => {
+                    const sizeDec = Number(pos.size);
+                    const isLong = sizeDec > 0;
+                    const upnl = Number(pos.unrealizedPnl || 0);
+                    return (
+                      <tr
+                        key={i}
+                        className="hover:bg-[#0a0a0a] transition-colors group cursor-pointer"
+                      >
+                        <td className="px-3 py-2.5 font-bold font-sans text-gray-200">
+                          {pos.asset_id}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className={`font-bold ${isLong ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                          >
+                            {isLong ? "LONG" : "SHORT"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-400">
+                          {Math.abs(sizeDec)}
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-400">
+                          {Number(pos.avg_entry_price).toFixed(2)}
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-300">
+                          {Number(pos.currentPrice).toFixed(2)}
+                        </td>
+                        <td
+                          className={`px-3 py-2.5 font-bold text-right ${upnl >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                        >
+                          {upnl >= 0 ? "+" : ""}
+                          {upnl.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                {!(portfolio as any)?.positions?.length && (
                   <tr>
-                    <td colSpan={6} className="text-center py-4 text-gray-500 font-mono text-xs">No active positions.</td>
+                    <td
+                      colSpan={6}
+                      className="text-center py-4 text-gray-500 font-mono text-xs"
+                    >
+                      No active positions.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -416,24 +401,39 @@ export function DashboardTab() {
             Recent Trade Performance
           </h3>
           <div className="flex flex-col gap-3 overflow-y-auto pr-2 no-scrollbar">
-            {portfolio?.recentTrades?.map((trade: any, i: number) => {
-              const time = new Date(trade.opened_at).toLocaleTimeString([], { hour12: false });
+            {(portfolio as any)?.recentTrades?.map((trade: any, i: number) => {
+              const time = new Date(trade.opened_at).toLocaleTimeString([], {
+                hour12: false,
+              });
               const isWin = Number(trade.pnl) > 0;
-              const isClosed = trade.status === 'CLOSED';
+              const isClosed = trade.status === "CLOSED";
               return (
-                <div key={i} className="flex justify-between items-center text-[10px]">
+                <div
+                  key={i}
+                  className="flex justify-between items-center text-[10px]"
+                >
                   <div className="flex flex-col">
                     <span className="font-bold text-gray-200">
-                      {trade.asset_id} <span className={Number(trade.size) > 0 ? "text-[#39ff14]" : "text-[#ff4500]"}>
-                        {Number(trade.size) > 0 ? 'LONG' : 'SHORT'}
+                      {trade.asset_id}{" "}
+                      <span
+                        className={
+                          Number(trade.size) > 0
+                            ? "text-[#39ff14]"
+                            : "text-[#ff4500]"
+                        }
+                      >
+                        {Number(trade.size) > 0 ? "LONG" : "SHORT"}
                       </span>
                     </span>
                     <span className="text-gray-500 uppercase">{time}</span>
                   </div>
                   <div className="flex flex-col text-right">
                     {isClosed ? (
-                      <span className={`font-bold ${isWin ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
-                        {isWin ? "+" : ""}{Number(trade.pnl).toFixed(2)}
+                      <span
+                        className={`font-bold ${isWin ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                      >
+                        {isWin ? "+" : ""}
+                        {Number(trade.pnl).toFixed(2)}
                       </span>
                     ) : (
                       <span className="text-[#0ea5e9] font-bold">OPEN</span>
@@ -442,8 +442,10 @@ export function DashboardTab() {
                 </div>
               );
             })}
-            {!portfolio?.recentTrades?.length && (
-              <div className="text-gray-500 text-xs italic text-center mt-4">No recent trades to display.</div>
+            {!(portfolio as any)?.recentTrades?.length && (
+              <div className="text-gray-500 text-xs italic text-center mt-4">
+                No recent trades to display.
+              </div>
             )}
           </div>
         </div>
