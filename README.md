@@ -60,6 +60,15 @@ Engineered to handle intensive real-time loads and continuous DOM mutations with
 
 ---
 
+## 📈 Recent Improvements
+
+- **Robust Event Bus:** Implemented a PostgreSQL-backed event bus with automatic mock-DB fallback and an event retry worker.
+- **Enhanced Configuration:** Injected a fetch override script and updated the document title to "TradeX AI".
+- **Performance Optimizations:** Optimized the `LiveMarketsTab` to stabilize mock data generation using `useMemo`.
+- **Accessibility & UX Enhancements:** Added comprehensive ARIA labels and improved focus states across components such as `AuthFlow`, `TopIntelligenceBar`, and `AIVoiceAssistant` to ensure a more accessible and user-friendly experience.
+
+---
+
 ## 🚀 Deployment & Installation
 
 ### Prerequisites
