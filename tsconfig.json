@@ -9,7 +9,7 @@
     "target": "ES2022",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
-    "module": "CommonJS",
+    "module": "esnext",
     "esModuleInterop": true,
     "lib": [
       "ES2022",
@@ -17,8 +17,7 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
-    "moduleResolution": "node",
-    "ignoreDeprecations": "5.0",
+    "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": false,
