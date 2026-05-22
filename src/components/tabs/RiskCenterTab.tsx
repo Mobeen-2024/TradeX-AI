@@ -16,42 +16,7 @@ import {
   Flame,
   Ban,
 } from "lucide-react";
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  Area,
-  AreaChart,
-  ReferenceLine,
-} from "recharts";
 import { useSystemStore } from "../../store/systemStore";
-
-const radarData = [
-  { subject: "Directional Bias", A: 85, fullMark: 100 },
-  { subject: "Liquidity Depth", A: 40, fullMark: 100 },
-  { subject: "Sector Exposure", A: 60, fullMark: 100 },
-  { subject: "Tail Risk", A: 90, fullMark: 100 },
-  { subject: "Slippage", A: 35, fullMark: 100 },
-  { subject: "Leverage", A: 75, fullMark: 100 },
-];
-
-const drawdownData = [
-  { time: "08:00", value: 0 },
-  { time: "09:00", value: -0.5 },
-  { time: "10:00", value: -1.2 },
-  { time: "11:00", value: -0.8 },
-  { time: "12:00", value: -2.4 },
-  { time: "13:00", value: -1.5 },
-  { time: "14:00", value: -0.9 },
-  { time: "15:00", value: -0.8 },
-];
 
 const heatmapData = [
   {
@@ -205,170 +170,53 @@ export function RiskCenterTab() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-2">
-        {/* Exposure Radar */}
-        <div className="col-span-1 xl:col-span-4 bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-4">
-          <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-4 flex items-center gap-2">
-            <RadarIcon className="w-3.5 h-3.5 text-[#00f0ff]" />
-            Real-time Exposure Radar
+        <div className="bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-6">
+          <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-6 flex items-center gap-2">
+            <RadarIcon className="w-4 h-4 text-[#00f0ff]" />
+            System Drawdown & Factor Analysis
           </h3>
-          <div className="h-48 w-full flex-1">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={radarData}>
-                <PolarGrid stroke="#222" />
-                <PolarAngleAxis
-                  dataKey="subject"
-                  tick={{ fill: "#888", fontSize: 10, fontFamily: "monospace" }}
-                />
-                <PolarRadiusAxis
-                  angle={30}
-                  domain={[0, 100]}
-                  tick={{ fill: "#444", fontSize: 9 }}
-                />
-                <Radar
-                  name="Exposure"
-                  dataKey="A"
-                  stroke="#00f0ff"
-                  fill="#00f0ff"
-                  fillOpacity={0.2}
-                  dot={{ r: 3, fill: "#00f0ff" }}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 pt-4 border-t border-[#1a1a1a] flex justify-between items-center text-xs">
-            <span className="text-gray-500 uppercase tracking-widest">
-              Tail Risk Warning
-            </span>
-            <span
-              className={`${riskState?.state === "CRITICAL" ? "text-red-500" : "text-[#39ff14]"} font-bold uppercase tracking-widest`}
-            >
-              {riskState?.state || "Evaluating..."}
-            </span>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center border-b border-[#1a1a1a] pb-2">
+              <span className="text-xs text-gray-400 uppercase tracking-widest">
+                Max Drawdown
+              </span>
+              <span className="font-bold text-white text-xl">
+                {(riskState?.drawdown || 0).toFixed(2)}%
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b border-[#1a1a1a] pb-2">
+              <span className="text-xs text-gray-400 uppercase tracking-widest">
+                Risk Multiplier
+              </span>
+              <span className="font-bold text-[#00f0ff] text-xl">
+                {(riskState?.riskMultiplier || 1.0).toFixed(1)}x
+              </span>
+            </div>
+            <div className="flex justify-between items-center border-b border-[#1a1a1a] pb-2">
+              <span className="text-xs text-gray-400 uppercase tracking-widest">
+                State
+              </span>
+              <span
+                className={`font-bold text-xl uppercase ${riskState?.state === "CRITICAL" ? "text-red-500" : riskState?.state === "ELEVATED" ? "text-yellow-400" : "text-[#39ff14]"}`}
+              >
+                {riskState?.state || "NORMAL"}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Drawdown Monitor */}
-        <div className="col-span-1 xl:col-span-8 bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-full bg-linear-to-r from-transparent to-[#ff4500]/5 pointer-events-none"></div>
-          <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-4 flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5 text-[#ff4500]" />
-            Drawdown Monitor
-          </h3>
-
-          <div className="flex gap-8 mb-4 z-10">
-            <div className="flex flex-col">
-              <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Margin Risk
-              </span>
-              <span
-                className={`${riskState?.state === "NORMAL" ? "text-[#39ff14]" : riskState?.state === "ELEVATED" ? "text-yellow-400" : riskState?.state === "CRITICAL" ? "text-red-500" : "text-white"} text-2xl font-bold font-sans tracking-tight`}
-              >
-                {riskState?.state === "NORMAL"
-                  ? "SAFE"
-                  : riskState?.state === "ELEVATED"
-                    ? "WARNING"
-                    : riskState?.state === "CRITICAL"
-                      ? "CRITICAL"
-                      : "UNKNOWN"}
-              </span>
+        <div className="bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-6">
+          <div className="flex flex-col h-full justify-center">
+            <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-4 border-b border-[#1a1a1a] pb-2">
+              Actionable AI Feedback
+            </h3>
+            <div className="text-gray-300 text-lg font-mono mb-4 bg-black/40 p-4 rounded border border-white/5 h-24 flex items-center">
+              {riskState?.state === "CRITICAL"
+                ? "CRITICAL RISK: Suspending new allocations and accelerating deleveraging."
+                : riskState?.state === "ELEVATED"
+                  ? "ELEVATED RISK: Reducing exposure size and tightening stops."
+                  : "System operating optimally within parameters."}
             </div>
-            <div className="flex flex-col">
-              <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Max Drawdown
-              </span>
-              <span className="text-white text-2xl font-bold font-sans tracking-tight">
-                {riskState?.drawdown !== undefined
-                  ? `${riskState.drawdown.toFixed(2)}%`
-                  : "0.00%"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Risk Multiplier
-              </span>
-              <span className="text-[#00f0ff] text-2xl font-bold font-sans tracking-tight">
-                {riskState?.riskMultiplier !== undefined
-                  ? riskState.riskMultiplier.toFixed(1) + "x"
-                  : "1.0x"}
-              </span>
-            </div>
-          </div>
-
-          <div className="text-gray-300 text-sm font-mono z-10 mb-4 bg-black/40 p-3 rounded-lg border border-white/5">
-            <div className="text-[#39ff14] mb-1">↳ System Feedback:</div>
-            {riskState?.state === "CRITICAL"
-              ? "CRITICAL RISK: Suspending new allocations."
-              : riskState?.state === "ELEVATED"
-                ? "ELEVATED RISK: Reducing exposure size."
-                : "System operating optimally within parameters."}
-          </div>
-
-          <div className="h-48 w-full z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={drawdownData}
-                margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id="colorDrawdown"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="#ff4500" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#ff4500" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#111"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="time"
-                  stroke="#444"
-                  tick={{ fill: "#666", fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  stroke="#444"
-                  tick={{ fill: "#888", fontSize: 10 }}
-                  tickFormatter={(val) => `${val}%`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#0a0a0a",
-                    borderColor: "#1a1a1a",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                  }}
-                  itemStyle={{ color: "#ff4500" }}
-                  formatter={(val: any) => [`${val}%`, "Drawdown"] as any}
-                />
-                <ReferenceLine
-                  y={-5}
-                  stroke="#ff4500"
-                  strokeDasharray="3 3"
-                  label={{
-                    position: "insideTopLeft",
-                    value: "Hard Stop -5%",
-                    fill: "#ff4500",
-                    fontSize: 10,
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#ff4500"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#colorDrawdown)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
           </div>
         </div>
       </div>

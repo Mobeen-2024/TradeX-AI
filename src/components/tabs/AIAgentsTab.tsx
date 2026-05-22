@@ -90,27 +90,11 @@ export function AIAgentsTab() {
         <div className="flex gap-6 pr-4">
           <div className="flex flex-col">
             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
-              <Activity className="w-3 h-3 text-[#0ea5e9]" /> System Load
-            </span>
-            <span className="text-white font-mono text-xl">
-              24<span className="text-gray-500 text-sm">%</span>
-            </span>
-          </div>
-          <div className="w-px h-10 bg-[#1a1a1a]"></div>
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-[#facc15]" /> Latency
-            </span>
-            <span className="text-white font-mono text-xl">
-              12<span className="text-gray-500 text-sm">ms</span>
-            </span>
-          </div>
-          <div className="w-px h-10 bg-[#1a1a1a]"></div>
-          <div className="flex flex-col">
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1 flex items-center gap-1.5">
               <Network className="w-3 h-3 text-[#a855f7]" /> Active Tasks
             </span>
-            <span className="text-white font-mono text-xl">1,432</span>
+            <span className="text-white font-mono text-xl">
+              {telemetryFeed.length}
+            </span>
           </div>
         </div>
       </div>

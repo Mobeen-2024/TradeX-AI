@@ -15,7 +15,60 @@ import {
 } from "lucide-react";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 import { useSystemStore } from "../../store/systemStore";
-import { InsightsPanel } from "../InsightsPanel";
+import { useMarketStore } from "../../store/marketStore";
+import { InsightsPanel } from "../ui/InsightsPanel";
+
+function TickerData() {
+  const { ticker } = useMarketStore();
+
+  const currentPrice =
+    ticker.dataStream.length > 0
+      ? ticker.dataStream[ticker.dataStream.length - 1]
+      : 64320.5;
+
+  return (
+    <>
+      <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
+        <span className="text-gray-400 text-[10px] font-bold">BTC/USDT</span>
+        <span className="text-white font-sans font-bold text-lg">
+          {currentPrice.toFixed(2)}
+        </span>
+        <div className="flex items-center justify-between mt-1">
+          <span
+            className={`text-[10px] font-bold ${ticker.isPositive ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+          >
+            {ticker.isPositive ? "+" : ""}
+            {(ticker.changePercent || 2.4).toFixed(2)}%
+          </span>
+          <span className="text-[9px] text-gray-600">RSI: 68</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
+        <span className="text-gray-400 text-[10px] font-bold">ETH/USDT</span>
+        <span className="text-white font-sans font-bold text-lg">3,450.20</span>
+        <div className="flex items-center justify-between mt-1">
+          <span className={`text-[10px] font-bold text-[#39ff14]`}>+1.8%</span>
+          <span className="text-[9px] text-gray-600">RSI: 62</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
+        <span className="text-gray-400 text-[10px] font-bold">SOL/USDT</span>
+        <span className="text-white font-sans font-bold text-lg">142.75</span>
+        <div className="flex items-center justify-between mt-1">
+          <span className={`text-[10px] font-bold text-[#ff4500]`}>-0.5%</span>
+          <span className="text-[9px] text-gray-600">RSI: 45</span>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
+        <span className="text-gray-400 text-[10px] font-bold">TOTAL CAP</span>
+        <span className="text-white font-sans font-bold text-lg">$2.4T</span>
+        <div className="flex items-center justify-between mt-1">
+          <span className={`text-[10px] font-bold text-[#39ff14]`}>+1.2%</span>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export function DashboardTab() {
   const {
@@ -106,66 +159,13 @@ export function DashboardTab() {
           </h3>
 
           <div className="grid grid-cols-4 gap-4 flex-1 items-end">
-            {[
-              {
-                pair: "BTC/USDT",
-                price: "64,320.50",
-                change: "+2.4%",
-                up: true,
-                rsi: "68",
-              },
-              {
-                pair: "ETH/USDT",
-                price: "3,450.20",
-                change: "+1.8%",
-                up: true,
-                rsi: "62",
-              },
-              {
-                pair: "SOL/USDT",
-                price: "142.75",
-                change: "-0.5%",
-                up: false,
-                rsi: "45",
-              },
-              {
-                pair: "TOTAL CAP",
-                price: "$2.4T",
-                change: "+1.2%",
-                up: true,
-                flex: true,
-              },
-            ].map((market, i) => (
-              <div
-                key={i}
-                className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm"
-              >
-                <span className="text-gray-400 text-[10px] font-bold">
-                  {market.pair}
-                </span>
-                <span className="text-white font-sans font-bold text-lg">
-                  {market.price}
-                </span>
-                <div className="flex items-center justify-between mt-1">
-                  <span
-                    className={`text-[10px] font-bold ${market.up ? "text-[#39ff14]" : "text-[#ff4500]"}`}
-                  >
-                    {market.change}
-                  </span>
-                  {market.rsi && (
-                    <span className="text-[9px] text-gray-600">
-                      RSI: {market.rsi}
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
+            <TickerData />
           </div>
         </div>
       </div>
 
       {/* Middle Row: PORTFOLIO | LIVE CHART | AI PANEL */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-87.5">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[350px]">
         {/* Portfolio (1 col) */}
         <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col justify-between">
           <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 mb-4">
@@ -239,7 +239,7 @@ export function DashboardTab() {
 
         {/* Live Chart (2 col) */}
         <div className="lg:col-span-2 bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] bg-size-[20px_20px] opacity-10"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:20px_20px] opacity-10"></div>
           <div className="relative z-10 flex justify-between items-center mb-4">
             <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-white" />
@@ -265,7 +265,7 @@ export function DashboardTab() {
         </div>
 
         {/* Insights Panel (1 col) */}
-        <div className="lg:col-span-1 flex flex-col h-full max-h-87.5 overflow-y-auto no-scrollbar">
+        <div className="lg:col-span-1 flex flex-col h-full max-h-[350px] overflow-y-auto no-scrollbar">
           <InsightsPanel />
         </div>
       </div>
@@ -364,7 +364,7 @@ export function DashboardTab() {
         </div>
 
         {/* Agent Activity Feed -> Recent Trades Performance */}
-        <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col flex-1 h-50 overflow-hidden">
+        <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col flex-1 h-[200px] overflow-hidden">
           <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 mb-4 shrink-0 border-b border-[#1a1a1a] pb-3">
             <PlayCircle className="w-4 h-4 text-[#ff00f0]" />
             Recent Trade Performance

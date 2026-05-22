@@ -88,7 +88,7 @@ export function SimulationEngineTab() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(65);
   const [viewMode, setViewMode] = useState<"replay" | "compare">("compare");
-  
+
   const [showConfig, setShowConfig] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
@@ -98,46 +98,49 @@ export function SimulationEngineTab() {
   const [startingCapital, setStartingCapital] = useState("10000");
   const [leverage, setLeverage] = useState("1x");
   const [executionFee, setExecutionFee] = useState("0.02");
-  
-  const [realPerformanceData, setRealPerformanceData] = useState(performanceData);
+
+  const [realPerformanceData, setRealPerformanceData] =
+    useState(performanceData);
   const [realDecisionLog, setRealDecisionLog] = useState(decisionLog);
   const [realStats, setRealStats] = useState({
-      totalReturn: 20.1,
-      sharpe: 2.45,
-      maxDrawdown: 4.2,
-      winRate: 68,
-      totalTrades: 35
+    totalReturn: 20.1,
+    sharpe: 2.45,
+    maxDrawdown: 4.2,
+    winRate: 68,
+    totalTrades: 35,
   });
 
   const runBacktest = async () => {
     setIsOptimizing(true);
     setOptimizationProgress(10);
-    
+
     try {
-        const res = await fetch("/api/intelligence/backtest", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                symbol: "BTCUSDT",
-                limit: 30,
-                startingCapital: parseFloat(startingCapital) || 10000
-            })
-        });
-        
-        if (res.ok) {
-            const result = await res.json();
-            const { history, stats } = result.data;
-            if (history && history.length > 0) {
-               setRealPerformanceData(history);
-               setRealDecisionLog(history.filter((h: any) => h.action !== "NO ACTION"));
-               setRealStats(stats);
-            }
+      const res = await fetch("/api/intelligence/backtest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          symbol: "BTCUSDT",
+          limit: 30,
+          startingCapital: parseFloat(startingCapital) || 10000,
+        }),
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        const { history, stats } = result.data;
+        if (history && history.length > 0) {
+          setRealPerformanceData(history);
+          setRealDecisionLog(
+            history.filter((h: any) => h.action !== "NO ACTION"),
+          );
+          setRealStats(stats);
         }
+      }
     } catch (e) {
-        console.error("Backtest failed", e);
+      console.error("Backtest failed", e);
     } finally {
-        setOptimizationProgress(100);
-        setTimeout(() => setIsOptimizing(false), 500);
+      setOptimizationProgress(100);
+      setTimeout(() => setIsOptimizing(false), 500);
     }
   };
 
@@ -224,12 +227,15 @@ export function SimulationEngineTab() {
             <div className="bg-[#050505] border border-[#1a1a1a] rounded p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-gray-300 font-bold uppercase tracking-widest text-xs flex items-center gap-2">
-                  <Settings2 className="w-4 h-4 text-gray-500" /> Backtest Parameters
+                  <Settings2 className="w-4 h-4 text-gray-500" /> Backtest
+                  Parameters
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Date Range</label>
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">
+                    Date Range
+                  </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="date"
@@ -247,7 +253,9 @@ export function SimulationEngineTab() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Starting Capital (USD)</label>
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">
+                    Starting Capital (USD)
+                  </label>
                   <input
                     type="number"
                     value={startingCapital}
@@ -256,7 +264,9 @@ export function SimulationEngineTab() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Leverage</label>
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">
+                    Leverage
+                  </label>
                   <select
                     value={leverage}
                     onChange={(e) => setLeverage(e.target.value)}
@@ -269,7 +279,9 @@ export function SimulationEngineTab() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">Execution Fee (%)</label>
+                  <label className="text-[10px] uppercase text-gray-500 font-bold tracking-widest">
+                    Execution Fee (%)
+                  </label>
                   <input
                     type="number"
                     step="0.01"
@@ -303,9 +315,7 @@ export function SimulationEngineTab() {
                     </button>
                   )}
                 </div>
-                <button
-                  className="px-6 py-2 bg-white text-black rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors"
-                >
+                <button className="px-6 py-2 bg-white text-black rounded text-xs font-bold uppercase tracking-widest hover:bg-gray-200 transition-colors">
                   Apply & Reload
                 </button>
               </div>
@@ -351,16 +361,32 @@ export function SimulationEngineTab() {
               <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-4">
                 Total Simulated Return
               </h3>
-              <div className={`text-4xl font-bold font-sans tracking-tight mb-2 ${realStats.totalReturn >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
-                {realStats.totalReturn >= 0 ? "+" : ""}{realStats.totalReturn.toFixed(2)}%
+              <div
+                className={`text-4xl font-bold font-sans tracking-tight mb-2 ${realStats.totalReturn >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+              >
+                {realStats.totalReturn >= 0 ? "+" : ""}
+                {realStats.totalReturn.toFixed(2)}%
               </div>
               <div className="flex items-center gap-4 text-xs font-bold">
                 <span className="text-white flex items-center gap-1">
                   <ArrowUpRight className="w-3.5 h-3.5 text-[#39ff14]" /> Win
-                  Rate: {realStats.winRate.toFixed(1)}% ({realStats.totalTrades} Trades)
+                  Rate: {realStats.winRate.toFixed(1)}% ({realStats.totalTrades}{" "}
+                  Trades)
                 </span>
                 <span className="text-gray-500">
-                  vs BTC <span className="text-white font-sans">{realPerformanceData.length > 0 ? (realPerformanceData[realPerformanceData.length - 1].btc > 0 ? "+" : "") + realPerformanceData[realPerformanceData.length - 1].btc.toFixed(2) + "%" : "+0.0%"}</span>
+                  vs BTC{" "}
+                  <span className="text-white font-sans">
+                    {realPerformanceData.length > 0
+                      ? (realPerformanceData[realPerformanceData.length - 1]
+                          .btc > 0
+                          ? "+"
+                          : "") +
+                        realPerformanceData[
+                          realPerformanceData.length - 1
+                        ].btc.toFixed(2) +
+                        "%"
+                      : "+0.0%"}
+                  </span>
                 </span>
               </div>
             </div>
@@ -388,7 +414,10 @@ export function SimulationEngineTab() {
               </div>
               <div className="flex items-center gap-4 text-xs font-bold">
                 <span className="text-gray-400">
-                  Sortino: <span className="text-white">{(realStats.sharpe * 1.3).toFixed(2)}</span>
+                  Sortino:{" "}
+                  <span className="text-white">
+                    {(realStats.sharpe * 1.3).toFixed(2)}
+                  </span>
                 </span>
               </div>
             </div>
@@ -440,7 +469,7 @@ export function SimulationEngineTab() {
                       vertical={false}
                     />
                     <XAxis
-                      dataKey="day"
+                      dataKey="time"
                       stroke="#444"
                       tick={{ fill: "#666", fontSize: 10 }}
                       axisLine={false}
@@ -477,12 +506,12 @@ export function SimulationEngineTab() {
                       strokeWidth={2}
                       fill="none"
                     />
-                    {performanceData.map(
-                      (entry, index) =>
+                    {realPerformanceData.map(
+                      (entry: any, index: number) =>
                         entry.failure && (
                           <ReferenceDot
                             key={index}
-                            x={entry.day}
+                            x={entry.time}
                             y={entry.pnl}
                             r={6}
                             fill="#ff4500"
@@ -539,8 +568,8 @@ export function SimulationEngineTab() {
                       log.decision === "SELL"
                         ? "bg-[#ff4500]/5 border-[#ff4500]/30"
                         : log.decision === "BUY"
-                            ? "bg-[#39ff14]/5 border-[#39ff14]/20"
-                            : "bg-[#111] border-[#222]"
+                          ? "bg-[#39ff14]/5 border-[#39ff14]/20"
+                          : "bg-[#111] border-[#222]"
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
@@ -559,8 +588,8 @@ export function SimulationEngineTab() {
                             log.decision === "SELL"
                               ? "text-[#ff4500]"
                               : log.decision === "BUY"
-                                  ? "text-[#39ff14]"
-                                  : "text-gray-300"
+                                ? "text-[#39ff14]"
+                                : "text-gray-300"
                           }`}
                         >
                           {log.action}
@@ -570,10 +599,10 @@ export function SimulationEngineTab() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-400 leading-relaxed font-sans">
-                        {log.detail}
+                        {log.rationale || log.detail}
                       </p>
                       <div className="mt-2 text-[10px] uppercase tracking-widest text-gray-600 font-bold bg-black/20 px-1.5 py-0.5 rounded border border-white/5 inline-block">
-                        Source: {log.agent}
+                        Source: {log.agent || "QuantAgent"}
                       </div>
                     </div>
                   </div>
