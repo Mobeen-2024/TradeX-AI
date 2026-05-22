@@ -6,17 +6,19 @@ let currentOverridesMockDb: any[] = []; // simple mock memory storage, typically
 
 // POST /api/overrides/log
 overridesRouter.post("/log", async (req, res) => {
-    try {
-        const payload = req.body;
-        // Basic check for idempotency
-        const exists = currentOverridesMockDb.find(g => g.correlationId === payload.correlationId && g.id === payload.id);
-        
-        if (!exists) {
-            currentOverridesMockDb.push(payload);
-        }
+  try {
+    const payload = req.body;
+    // Basic check for idempotency
+    const exists = currentOverridesMockDb.find(
+      (g) => g.correlationId === payload.correlationId && g.id === payload.id,
+    );
 
-        res.json({ success: true, message: "Logged to override persistence" });
-    } catch (e) {
-        res.status(500).json({ error: "Failed to persist override log" });
+    if (!exists) {
+      currentOverridesMockDb.push(payload);
     }
+
+    res.json({ success: true, message: "Logged to override persistence" });
+  } catch (e) {
+    res.status(500).json({ error: "Failed to persist override log" });
+  }
 });
