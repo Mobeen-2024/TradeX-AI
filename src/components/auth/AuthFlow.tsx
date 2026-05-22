@@ -38,7 +38,7 @@ export function AuthFlow({ onAuthenticate }: { onAuthenticate: () => void }) {
           <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-[#0ea5e9]/50 to-transparent"></div>
           
           <AnimatePresence mode="wait" initial={false}>
-            {step === 'login' && <LoginForm setStep={setStep} onNext={() => setStep('2fa')} key="login" />}
+            {step === 'login' && <LoginForm setStep={setStep} onNext={() => setStep('2fa')} onAuthenticate={onAuthenticate} key="login" />}
             {step === 'register' && <RegisterForm setStep={setStep} key="register" />}
             {step === '2fa' && <TwoFactorForm onAuthenticate={onAuthenticate} setStep={setStep} key="2fa" />}
           </AnimatePresence>
@@ -56,7 +56,7 @@ export function AuthFlow({ onAuthenticate }: { onAuthenticate: () => void }) {
   );
 }
 
-function LoginForm({ setStep, onNext }: { setStep: (s: AuthStep) => void, onNext: () => void, key?: string }) {
+function LoginForm({ setStep, onNext, onAuthenticate }: { setStep: (s: AuthStep) => void, onNext: () => void, onAuthenticate: () => void, key?: string }) {
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -98,15 +98,24 @@ function LoginForm({ setStep, onNext }: { setStep: (s: AuthStep) => void, onNext
       </div>
 
       <div className="flex gap-3 mt-4">
-        <button onClick={onNext} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2">
+        <button onClick={onNext} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
           Initialize <ArrowRight className="w-4 h-4" />
         </button>
-        <button onClick={onNext} className="w-12 h-12 border border-[#1a1a1a] bg-black/40 hover:bg-black/80 rounded-xl flex items-center justify-center text-[#0ea5e9] hover:border-[#0ea5e9]/50 transition-all flex-shrink-0" title="Biometric Integration">
+        <button onClick={onAuthenticate} className="w-12 h-12 border border-[#1a1a1a] bg-black/40 hover:bg-black/80 rounded-xl flex items-center justify-center text-[#39ff14] hover:border-[#39ff14]/50 transition-all flex-shrink-0 cursor-pointer shadow-[0_0_15px_rgba(57,255,20,0.15)] animate-[pulse_3s_ease-in-out_infinite]" title="Biometric Bypass">
           <Fingerprint className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="flex items-center justify-center gap-2 mt-2 text-xs font-sans text-gray-500">
+      <div className="flex flex-col gap-3 mt-2">
+        <button
+          onClick={onAuthenticate}
+          className="w-full bg-gradient-to-r from-[#0ea5e9]/10 to-[#39ff14]/10 hover:from-[#0ea5e9]/20 hover:to-[#39ff14]/20 text-[#0ea5e9] hover:text-[#39ff14] border border-white/5 hover:border-[#39ff14]/40 font-mono text-[10px] uppercase tracking-widest py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(14,165,233,0.03)]"
+        >
+          <ShieldCheck className="w-3.5 h-3.5" /> [Dev Mode] Quick Bypass
+        </button>
+      </div>
+
+      <div className="flex items-center justify-center gap-2 mt-1 text-xs font-sans text-gray-500">
         New operator? <button onClick={() => setStep('register')} className="text-white hover:text-[#0ea5e9] font-bold transition-colors">Request Access</button>
       </div>
     </motion.div>
@@ -224,8 +233,8 @@ function TwoFactorForm({ onAuthenticate, setStep }: { onAuthenticate: () => void
       </div>
       
       <div className="flex items-center justify-center gap-2 text-xs text-gray-500 font-sans bg-[#111] p-3 rounded-lg border border-[#222]">
-        <ShieldAlert className="w-4 h-4 text-[#ff4500]" />
-        Verify physical token if prompted via YubiKey.
+        <ShieldCheck className="w-4 h-4 text-[#39ff14]" />
+        <span className="text-gray-400">Dev mode active. Enter any code or click below to proceed.</span>
       </div>
 
       <div className="flex flex-col gap-3 mt-4">

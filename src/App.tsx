@@ -34,7 +34,7 @@ export type TabType =
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("PnL Dashboard");
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState((import.meta as any).env?.DEV || false);
   const { regime } = useMarketRegime();
 
   if (!isAuthenticated) {
