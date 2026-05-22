@@ -1,8 +1,6 @@
 {
-  "name": "TradeX Terminal",
-  "description": "An intelligent financial command center and adaptive hedge-fund operating system.",
-  "requestFramePermissions": [
-    "microphone"
-  ],
-  "majorCapabilities": []
+  "name": "",
+  "description": "",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

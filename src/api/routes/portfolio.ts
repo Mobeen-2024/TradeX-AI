@@ -70,3 +70,30 @@ portfolioRouter.get("/:userId", async (req: AuthRequest, res: Response): Promise
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// POST /api/portfolio/:portfolioId/settings
+portfolioRouter.post("/:portfolioId/settings", async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const authUserId = req.user?.userId;
+    if (!authUserId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { is_trading_enabled, max_position_size, max_loss, emergency_halt } = req.body;
+    let enabled = is_trading_enabled;
+    if (emergency_halt === true) enabled = false;
+
+    const portfolio = await PortfolioService.updateSettings(
+        authUserId, 
+        req.params.portfolioId, 
+        enabled, 
+        max_position_size || 0, 
+        max_loss || 0
+    );
+    res.status(200).json({ message: "Settings updated", portfolio });
+  } catch (error: any) {
+    console.error("Update settings error:", error);
+    res.status(400).json({ error: error.message || "Internal server error" });
+  }
+});

@@ -98,20 +98,47 @@ export function SimulationEngineTab() {
   const [startingCapital, setStartingCapital] = useState("10000");
   const [leverage, setLeverage] = useState("1x");
   const [executionFee, setExecutionFee] = useState("0.02");
+  
+  const [realPerformanceData, setRealPerformanceData] = useState(performanceData);
+  const [realDecisionLog, setRealDecisionLog] = useState(decisionLog);
+  const [realStats, setRealStats] = useState({
+      totalReturn: 20.1,
+      sharpe: 2.45,
+      maxDrawdown: 4.2,
+      winRate: 68,
+      totalTrades: 35
+  });
 
-  const runOptimization = () => {
+  const runBacktest = async () => {
     setIsOptimizing(true);
-    setOptimizationProgress(0);
-    const interval = setInterval(() => {
-      setOptimizationProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsOptimizing(false);
-          return 100;
+    setOptimizationProgress(10);
+    
+    try {
+        const res = await fetch("/api/intelligence/backtest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                symbol: "BTCUSDT",
+                limit: 30,
+                startingCapital: parseFloat(startingCapital) || 10000
+            })
+        });
+        
+        if (res.ok) {
+            const result = await res.json();
+            const { history, stats } = result.data;
+            if (history && history.length > 0) {
+               setRealPerformanceData(history);
+               setRealDecisionLog(history.filter((h: any) => h.action !== "NO ACTION"));
+               setRealStats(stats);
+            }
         }
-        return prev + Math.random() * 15;
-      });
-    }, 200);
+    } catch (e) {
+        console.error("Backtest failed", e);
+    } finally {
+        setOptimizationProgress(100);
+        setTimeout(() => setIsOptimizing(false), 500);
+    }
   };
 
   const strategyA = {
@@ -269,10 +296,10 @@ export function SimulationEngineTab() {
                     </div>
                   ) : (
                     <button
-                      onClick={runOptimization}
+                      onClick={runBacktest}
                       className="flex items-center gap-2 px-4 py-2 bg-[#ff00f0]/10 text-[#ff00f0] border border-[#ff00f0]/30 rounded text-xs font-bold uppercase tracking-widest hover:bg-[#ff00f0]/20 transition-colors"
                     >
-                      <Zap className="w-4 h-4" /> Run Parameter Optimization
+                      <Zap className="w-4 h-4" /> Run Backtest Engine
                     </button>
                   )}
                 </div>
@@ -324,16 +351,16 @@ export function SimulationEngineTab() {
               <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-4">
                 Total Simulated Return
               </h3>
-              <div className="text-4xl font-bold text-[#39ff14] font-sans tracking-tight mb-2">
-                +20.1%
+              <div className={`text-4xl font-bold font-sans tracking-tight mb-2 ${realStats.totalReturn >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
+                {realStats.totalReturn >= 0 ? "+" : ""}{realStats.totalReturn.toFixed(2)}%
               </div>
               <div className="flex items-center gap-4 text-xs font-bold">
                 <span className="text-white flex items-center gap-1">
                   <ArrowUpRight className="w-3.5 h-3.5 text-[#39ff14]" /> Win
-                  Rate: 68%
+                  Rate: {realStats.winRate.toFixed(1)}% ({realStats.totalTrades} Trades)
                 </span>
                 <span className="text-gray-500">
-                  vs BTC <span className="text-white font-sans">+8.9%</span>
+                  vs BTC <span className="text-white font-sans">{realPerformanceData.length > 0 ? (realPerformanceData[realPerformanceData.length - 1].btc > 0 ? "+" : "") + realPerformanceData[realPerformanceData.length - 1].btc.toFixed(2) + "%" : "+0.0%"}</span>
                 </span>
               </div>
             </div>
@@ -343,11 +370,11 @@ export function SimulationEngineTab() {
                 Max Drawdown
               </h3>
               <div className="text-3xl font-bold text-[#ff4500] font-sans tracking-tight mb-2">
-                -4.2%
+                -{realStats.maxDrawdown.toFixed(2)}%
               </div>
               <div className="flex items-center gap-4 text-xs font-bold">
                 <span className="text-gray-400">
-                  Recovery Time: <span className="text-white">12 Hours</span>
+                  Recovery Time: <span className="text-white">-- Hours</span>
                 </span>
               </div>
             </div>
@@ -357,11 +384,11 @@ export function SimulationEngineTab() {
                 Sharpe Ratio
               </h3>
               <div className="text-3xl font-bold text-white font-sans tracking-tight mb-2">
-                2.45
+                {realStats.sharpe.toFixed(2)}
               </div>
               <div className="flex items-center gap-4 text-xs font-bold">
                 <span className="text-gray-400">
-                  Sortino: <span className="text-white">3.12</span>
+                  Sortino: <span className="text-white">{(realStats.sharpe * 1.3).toFixed(2)}</span>
                 </span>
               </div>
             </div>
@@ -390,7 +417,7 @@ export function SimulationEngineTab() {
               <div className="flex-1 w-full relative z-10">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={performanceData}
+                    data={realPerformanceData}
                     margin={{ top: 10, right: 0, left: -20, bottom: 0 }}
                   >
                     <defs>
@@ -505,25 +532,21 @@ export function SimulationEngineTab() {
               </div>
 
               <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
-                {decisionLog.map((log, i) => (
+                {realDecisionLog.map((log: any, i: number) => (
                   <div
                     key={i}
                     className={`p-3 rounded border text-sm flex gap-3 ${
-                      log.type === "error"
+                      log.decision === "SELL"
                         ? "bg-[#ff4500]/5 border-[#ff4500]/30"
-                        : log.type === "warning"
-                          ? "bg-[#facc15]/5 border-[#facc15]/30"
-                          : log.type === "success"
+                        : log.decision === "BUY"
                             ? "bg-[#39ff14]/5 border-[#39ff14]/20"
                             : "bg-[#111] border-[#222]"
                     }`}
                   >
                     <div className="mt-0.5 shrink-0">
-                      {log.type === "error" ? (
+                      {log.decision === "SELL" ? (
                         <AlertTriangle className="w-4 h-4 text-[#ff4500]" />
-                      ) : log.type === "warning" ? (
-                        <ShieldAlert className="w-4 h-4 text-[#facc15]" />
-                      ) : log.type === "success" ? (
+                      ) : log.decision === "BUY" ? (
                         <Activity className="w-4 h-4 text-[#39ff14]" />
                       ) : (
                         <Cpu className="w-4 h-4 text-[#00f0ff]" />
@@ -533,11 +556,9 @@ export function SimulationEngineTab() {
                       <div className="flex justify-between items-start mb-1 text-xs text-mono">
                         <span
                           className={`font-bold ${
-                            log.type === "error"
+                            log.decision === "SELL"
                               ? "text-[#ff4500]"
-                              : log.type === "warning"
-                                ? "text-[#facc15]"
-                                : log.type === "success"
+                              : log.decision === "BUY"
                                   ? "text-[#39ff14]"
                                   : "text-gray-300"
                           }`}

@@ -72,16 +72,43 @@ const heatmapData = [
 
 export function RiskCenterTab() {
   const [stressLevel, setStressLevel] = useState(68);
+  const [portfolio, setPortfolio] = useState<any>(null);
+  const [riskData, setRiskData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStressLevel((prev) => {
-        const delta = (Math.random() - 0.5) * 5;
-        return Math.min(100, Math.max(0, prev + delta));
-      });
-    }, 2000);
-    return () => clearInterval(interval);
+    fetch("/api/portfolio/me")
+      .then(res => res.json())
+      .then(data => {
+        if (data.portfolio) setPortfolio(data.portfolio);
+      })
+      .catch(console.error);
   }, []);
+
+  useEffect(() => {
+    // Stress level should be tied to absolute portfolio total risk
+    // Or from the new system intelligence
+  }, []);
+
+  const runRiskCheck = async () => {
+    if (!portfolio) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/intelligence/risk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ portfolioId: portfolio.id })
+      });
+      const result = await res.json();
+      if (result.data?.rawOutput) {
+        setRiskData(result.data.rawOutput);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <motion.div
@@ -104,13 +131,21 @@ export function RiskCenterTab() {
         <div className="flex gap-4 items-center">
           <div className="flex flex-col items-end">
             <span className="text-[10px] text-gray-500 uppercase tracking-widest">
-              System Status
+              AI Risk Status
             </span>
-            <span className="text-[#39ff14] text-xs font-bold uppercase flex items-center gap-2">
+            <span className={`${riskData?.riskLevel === 'HIGH' || riskData?.riskLevel === 'CRITICAL' ? 'text-red-500' : 'text-[#39ff14]'} text-xs font-bold uppercase flex items-center gap-2`}>
               <ShieldCheck className="w-3.5 h-3.5" />
-              Active Defense
+              {loading ? "Checking..." : (riskData?.riskLevel || "IDLE")}
             </span>
           </div>
+          <button 
+            onClick={runRiskCheck}
+            disabled={loading}
+            className="flex items-center gap-2 bg-[#39ff14]/10 border border-[#39ff14]/30 hover:bg-[#39ff14]/20 text-[#39ff14] px-4 py-2 rounded-sm text-xs font-bold transition-colors shadow-[0_0_15px_rgba(57,255,20,0.15)] uppercase tracking-widest disabled:opacity-50"
+          >
+            <Activity className="w-3.5 h-3.5" />
+            {loading ? "Analyzing..." : "Run Risk Check"}
+          </button>
           <button className="flex items-center gap-2 bg-[#ff4500]/10 border border-[#ff4500]/30 hover:bg-[#ff4500]/20 text-[#ff4500] px-4 py-2 rounded-sm text-xs font-bold transition-colors shadow-[0_0_15px_rgba(255,69,0,0.15)] uppercase tracking-widest">
             <Lock className="w-3.5 h-3.5" />
             Liquidate All
@@ -153,21 +188,29 @@ export function RiskCenterTab() {
             <span className="text-gray-500 uppercase tracking-widest">
               Tail Risk Warning
             </span>
-            <span className="text-[#ff4500] font-bold uppercase tracking-widest">
-              Elevated
+            <span className={`${riskData?.riskLevel === 'HIGH' || riskData?.riskLevel === 'CRITICAL' ? 'text-red-500' : 'text-[#39ff14]'} font-bold uppercase tracking-widest`}>
+              {riskData?.riskLevel || "Evaluating..."}
             </span>
           </div>
         </div>
 
         {/* Drawdown Monitor */}
         <div className="col-span-1 xl:col-span-8 bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-full bg-gradient-to-r from-transparent to-[#ff4500]/5 pointer-events-none"></div>
+          <div className="absolute top-0 right-0 w-64 h-full bg-linear-to-r from-transparent to-[#ff4500]/5 pointer-events-none"></div>
           <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest mb-4 flex items-center gap-2">
             <Activity className="w-3.5 h-3.5 text-[#ff4500]" />
             Drawdown Monitor
           </h3>
 
           <div className="flex gap-8 mb-4 z-10">
+            <div className="flex flex-col">
+              <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
+                Margin Risk
+              </span>
+              <span className={`${riskData?.marginRisk === 'SAFE' ? 'text-[#39ff14]' : riskData?.marginRisk === 'WARNING' ? 'text-yellow-400' : riskData?.marginRisk === 'DANGER' ? 'text-red-500' : 'text-white'} text-2xl font-bold font-sans tracking-tight`}>
+                {riskData?.marginRisk || "UNKNOWN"}
+              </span>
+            </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
                 Max Drawdown (24h)
@@ -178,20 +221,17 @@ export function RiskCenterTab() {
             </div>
             <div className="flex flex-col">
               <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Current Distance
+                Allowed Position Size
               </span>
-              <span className="text-[#39ff14] text-2xl font-bold font-sans tracking-tight">
-                1.50%
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">
-                Hard Stop Level
-              </span>
-              <span className="text-[#ff4500] text-2xl font-bold font-sans tracking-tight opacity-80">
-                -5.00%
+              <span className="text-[#00f0ff] text-2xl font-bold font-sans tracking-tight">
+                {riskData?.position_size !== undefined ? (riskData.position_size * 100).toFixed(0) + "%" : "100%"}
               </span>
             </div>
+          </div>
+
+          <div className="text-gray-300 text-sm font-mono z-10 mb-4 bg-black/40 p-3 rounded-lg border border-white/5">
+            <div className="text-[#39ff14] mb-1">↳ AI Rationale:</div>
+            {riskData?.aiRationale || "Awaiting risk check..."}
           </div>
 
           <div className="h-48 w-full z-10">
@@ -237,7 +277,7 @@ export function RiskCenterTab() {
                     fontSize: "12px",
                   }}
                   itemStyle={{ color: "#ff4500" }}
-                  formatter={(val: number) => [`${val}%`, "Drawdown"]}
+                  formatter={(val: any) => [`${val}%`, "Drawdown"] as any}
                 />
                 <ReferenceLine
                   y={-5}
@@ -264,7 +304,7 @@ export function RiskCenterTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[300px]">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-75">
         {/* Volatility Stress Meter */}
         <div className="col-span-1 xl:col-span-4 bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-6 items-center justify-center relative">
           <div className="absolute top-4 left-4">
@@ -313,7 +353,7 @@ export function RiskCenterTab() {
             </svg>
 
             {/* Inner Text */}
-            <div className="flex flex-col items-center justify-center z-10 w-[70px]">
+            <div className="flex flex-col items-center justify-center z-10 w-17.5">
               <span className="text-4xl font-bold text-white font-sans tracking-tighter tabular-nums">
                 {stressLevel.toFixed(0)}
               </span>
@@ -399,7 +439,7 @@ export function RiskCenterTab() {
       {/* Emergency Control System */}
       <div className="bg-[#050505] border border-[#ff4500]/30 rounded flex flex-col p-6 mt-2 relative overflow-hidden shadow-[0_0_20px_rgba(255,69,0,0.05)]">
         {/* Animated hazard stripes top border */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#ff4500] via-[#ef4444] to-[#ff4500]"></div>
+        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-[#ff4500] via-[#ef4444] to-[#ff4500]"></div>
         <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #ff4500 0, #ff4500 2px, transparent 2px, transparent 16px)' }}></div>
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-[#ff4500]/20 pb-4">

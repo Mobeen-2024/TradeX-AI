@@ -7,6 +7,12 @@ export interface EnrichedPortfolio extends Portfolio {
   cash: number;
   totalUnrealizedPnl: number;
   totalRealizedPnl: number;
+  recentTrades?: any[];
+  winRate?: number;
+  sharpeRatio?: number;
+  maxDrawdown?: number;
+  profitFactor?: number;
+  expectancy?: number;
 }
 
 export class PortfolioService {
@@ -18,6 +24,14 @@ export class PortfolioService {
       [portfolio.id, 100000.0]
     );
     return portfolio;
+  }
+
+  static async updateSettings(userId: string, portfolioId: string, is_trading_enabled: boolean, max_position_size: number, max_loss: number): Promise<Portfolio> {
+    const portfolio = await PortfolioRepository.findById(portfolioId);
+    if (!portfolio || portfolio.user_id !== userId) {
+      throw new Error("Portfolio not found or unauthorized");
+    }
+    return await PortfolioRepository.updateSettings(portfolioId, is_trading_enabled, max_position_size, max_loss);
   }
 
   static async getUserPortfolios(userId: string): Promise<EnrichedPortfolio[]> {
@@ -61,9 +75,82 @@ export class PortfolioService {
         });
       }
 
+      // Get recent trades
+      const tradesResult = await pool.query(
+        `SELECT id, asset_id, entry_price, close_price, size, pnl, opened_at, closed_at, status 
+         FROM trades WHERE portfolio_id = $1 ORDER BY opened_at DESC LIMIT 10`,
+        [portfolio.id]
+      );
+      
+      let winCount = 0;
+      let lossCount = 0;
+      let grossProfit = 0;
+      let grossLoss = 0;
+      let totalWinningPnl = 0;
+      let totalLosingPnl = 0;
+      const returns: number[] = [];
+
+      let peakPnl = 0;
+      let currentDrawdown = 0;
+      let maxDrawdown = 0;
+      let runningPnl = 0;
+
+      const allHistoricTrades = await pool.query(`SELECT pnl FROM trades WHERE portfolio_id = $1 AND status = 'CLOSED' ORDER BY closed_at ASC`, [portfolio.id]);
+      for (const t of allHistoricTrades.rows) {
+          const pnl = Number(t.pnl);
+          returns.push(pnl);
+          runningPnl += pnl;
+
+          if (runningPnl > peakPnl) {
+            peakPnl = runningPnl;
+          }
+          currentDrawdown = peakPnl - runningPnl;
+          if (currentDrawdown > maxDrawdown) {
+            maxDrawdown = currentDrawdown;
+          }
+
+          if (pnl > 0) {
+            winCount++;
+            grossProfit += pnl;
+            totalWinningPnl += pnl;
+          }
+          else if (pnl < 0) {
+            lossCount++;
+            grossLoss += Math.abs(pnl);
+            totalLosingPnl += Math.abs(pnl);
+          }
+      }
+      
+      const totalTrades = winCount + lossCount;
+      const winRate = totalTrades > 0 ? (winCount / totalTrades) * 100 : 0;
+      const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? 999 : 0);
+      
+      const averageWin = winCount > 0 ? totalWinningPnl / winCount : 0;
+      const averageLoss = lossCount > 0 ? totalLosingPnl / lossCount : 0;
+      const winProbability = totalTrades > 0 ? winCount / totalTrades : 0;
+      const lossProbability = totalTrades > 0 ? lossCount / totalTrades : 0;
+      const expectancy = (winProbability * averageWin) - (lossProbability * averageLoss);
+
+      // Simple Sharpe Ratio Approximation (Assuming risk-free rate = 0)
+      let sharpeRatio = 0;
+      if (returns.length > 1) {
+          const avgReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+          const variance = returns.reduce((a, b) => a + Math.pow(b - avgReturn, 2), 0) / (returns.length - 1);
+          const stdev = Math.sqrt(variance);
+          if (stdev > 0) {
+              sharpeRatio = avgReturn / stdev;
+          }
+      }
+
       enrichedPortfolios.push({
         ...portfolio,
         positions: enrichedPositions as Position[],
+        recentTrades: tradesResult.rows,
+        winRate,
+        sharpeRatio,
+        maxDrawdown,
+        profitFactor,
+        expectancy,
         cash,
         totalUnrealizedPnl,
         totalRealizedPnl

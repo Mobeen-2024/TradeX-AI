@@ -37,7 +37,7 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
       <div className="flex-1 overflow-y-auto w-full relative z-10 no-scrollbar pb-10 scroll-smooth">
         <div className="max-w-[1400px] mx-auto px-8 pt-[4vh]">
           <AnimatePresence mode="wait">
-            {activeTab === "Command Center" ? (
+            {activeTab === "PnL Dashboard" ? (
               <DashboardTab />
             ) : activeTab === "Market Intelligence" ? (
               <LiveMarketsTab />

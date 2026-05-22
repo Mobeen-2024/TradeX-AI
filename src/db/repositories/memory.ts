@@ -8,6 +8,8 @@ export interface SemanticMemoryLog {
   market_regime: string | null;
   ai_rationale: string | null;
   created_at: Date;
+  metadata?: any;
+  strategy_id?: string | null;
 }
 
 export class MemoryRepository {
@@ -18,7 +20,9 @@ export class MemoryRepository {
     userId?: string | null,
     portfolioId?: string | null,
     correlationId?: string | null,
-    agentName?: string | null
+    agentName?: string | null,
+    metadata?: any,
+    strategyId?: string | null
   ): Promise<SemanticMemoryLog> {
     const pool = getPool();
     // pgvector expects embeddings in the format '[1,2,3]'
@@ -27,7 +31,7 @@ export class MemoryRepository {
     // Attempt idempotency if correlationId and agentName are specified
     if (correlationId && agentName) {
       const existing = await pool.query(
-        `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at 
+        `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at, metadata, strategy_id 
          FROM semantic_memory_logs 
          WHERE correlation_id = $1 AND agent_name = $2`,
         [correlationId, agentName]
@@ -39,15 +43,15 @@ export class MemoryRepository {
 
     try {
       const result = await pool.query(
-        `INSERT INTO semantic_memory_logs (user_id, portfolio_id, market_regime, ai_rationale, vector_embedding, correlation_id, agent_name) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at`,
-        [userId || null, portfolioId || null, marketRegime, aiRationale, embeddingString, correlationId || null, agentName || null]
+        `INSERT INTO semantic_memory_logs (user_id, portfolio_id, market_regime, ai_rationale, vector_embedding, correlation_id, agent_name, metadata, strategy_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at, metadata, strategy_id`,
+        [userId || null, portfolioId || null, marketRegime, aiRationale, embeddingString, correlationId || null, agentName || null, metadata || null, strategyId || null]
       );
       return result.rows[0] as SemanticMemoryLog;
     } catch (error: any) {
       if (error.code === '23505' && correlationId && agentName) { // unique violation
         const existing = await pool.query(
-          `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at 
+          `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at, metadata, strategy_id 
            FROM semantic_memory_logs 
            WHERE correlation_id = $1 AND agent_name = $2`,
           [correlationId, agentName]
@@ -131,11 +135,37 @@ export class MemoryRepository {
   ): Promise<SemanticMemoryLog | null> {
     const pool = getPool();
     const result = await pool.query(
-      `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at 
+      `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at, metadata 
        FROM semantic_memory_logs 
        WHERE correlation_id = $1 AND agent_name = $2`,
       [correlationId, agentName]
     );
     return result.rows.length > 0 ? (result.rows[0] as SemanticMemoryLog) : null;
+  }
+
+  static async getEvaluations(
+    portfolioId: string,
+    assetId?: string,
+    marketRegime?: string,
+    limit: number = 5
+  ): Promise<SemanticMemoryLog[]> {
+    const pool = getPool();
+    let query = `SELECT id, user_id, portfolio_id, timestamp, market_regime, ai_rationale, created_at, metadata
+                 FROM semantic_memory_logs WHERE agent_name = 'EvaluationCoordinator' AND portfolio_id = $1`;
+    const params: any[] = [portfolioId];
+
+    if (assetId) {
+      query += ` AND metadata->>'asset_id' = $${params.length + 1}`;
+      params.push(assetId);
+    }
+    if (marketRegime) {
+      query += ` AND market_regime = $${params.length + 1}`;
+      params.push(marketRegime);
+    }
+    query += ` ORDER BY timestamp DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+
+    const result = await pool.query(query, params);
+    return result.rows as SemanticMemoryLog[];
   }
 }

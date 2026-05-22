@@ -1,9 +1,12 @@
 import { MarketSnapshotRepository } from "../db/repositories/marketSnapshots";
 import { PositionRepository } from "../db/repositories/positions";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
+import { TradeOutcomesRepository } from "../db/repositories/tradeOutcomes";
 import { MemoryService } from "../services/memoryService";
-import { GoogleGenAI } from "@google/genai";
+import { aiService } from "../services/aiService";
 import { EventDispatcher, EventType } from "../events";
+import { getPool } from "../db/connection";
+import { StrategyPerformanceService } from "../services/strategyPerformanceService";
 
 export class QuantAgent {
   static async analyzeMarket(portfolioId: string, userId: string, correlationId?: string) {
@@ -12,8 +15,6 @@ export class QuantAgent {
       if (!process.env.GEMINI_API_KEY) {
         throw new Error("GEMINI_API_KEY is not configured for QuantAgent.");
       }
-
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
       // 1. Get latest market snapshots filtered by portfolio positions
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
@@ -35,9 +36,102 @@ export class QuantAgent {
         memoryContext = "No prior memory for this portfolio.";
       }
 
+      // 2b. Add Decision Feedback Loop via past evaluations
+      const pastEvaluations = await MemoryService.getPastEvaluations(portfolioId, undefined, undefined, 50);
+      let recentFailuresContext = "None recorded.";
+      let recentSuccessContext = "None recorded.";
+      
+      const failures = [];
+      const successes = [];
+      const now = Date.now();
+      
+      for (const m of pastEvaluations) {
+          let pnl = 0, asset = "N/A", outcome = "N/A", score = 0, regime = m.market_regime || "UNKNOWN";
+          const md = m.metadata || {};
+          try {
+             const rationaleData = JSON.parse(m.ai_rationale || "{}");
+             pnl = rationaleData.pnl ?? 0;
+             outcome = rationaleData.outcome || "N/A";
+             asset = md.asset_id || "N/A";
+             score = md.score !== undefined ? md.score : (pnl > 0 ? 1 : pnl < 0 ? -1 : 0);
+          } catch (e) {}
+          
+          const accuracyScore = md.accuracy_score !== undefined ? md.accuracy_score : 0.5;
+          const strategyTag = md.strategy_tag || "default";
+
+          // Weighting: Recency (closer to 1.0 is more recent), Profitability (magnitude of PnL)
+          const daysOld = Math.max(1, (now - m.timestamp.getTime()) / (1000 * 60 * 60 * 24));
+          const recencyWeight = 1 / daysOld;
+          const profitabilityWeight = Math.min(10, Math.abs(pnl) / 100); // Normalize somewhat
+          const finalWeight = recencyWeight * accuracyScore * (1 + profitabilityWeight);
+
+          const evalRecord = {
+              line: `- Asset: ${asset} | Regime: ${regime} | Strategy: ${strategyTag} | Accuracy: ${accuracyScore.toFixed(2)} | PnL: ${pnl} | Score: ${score} | Weight: ${finalWeight.toFixed(2)}`,
+              weight: finalWeight
+          };
+
+          if (score < 0) failures.push(evalRecord);
+          if (score > 0) successes.push(evalRecord);
+      }
+      
+      // Sort by combined weight
+      failures.sort((a, b) => b.weight - a.weight);
+      successes.sort((a, b) => b.weight - a.weight);
+
+      if (failures.length > 0) recentFailuresContext = failures.slice(0, 5).map(f => f.line).join("\n");
+      if (successes.length > 0) recentSuccessContext = successes.slice(0, 5).map(s => s.line).join("\n");
+
+      // 2c. Deep Learning Loop (Win Rate, Best Assets, Loss Patterns)
+      let vectorContext = "No similar past outcomes.";
+      let recentOutcomesContext = "No recent trades for this portfolio.";
+      try {
+          const recentOutcomes = await TradeOutcomesRepository.getRecentOutcomes(portfolioId, 5);
+          if (recentOutcomes.length > 0) {
+              recentOutcomesContext = recentOutcomes.map(r => 
+                  `- Expected +${Number(r.predicted_alpha).toFixed(2)}% | Actual: ${Number(r.actual_alpha).toFixed(2)}% | Expectancy Score: ${Number(r.expectancy_contribution).toFixed(4)} | Context: ${JSON.stringify(r.decision_context)}`
+              ).join("\n");
+          }
+
+          // fetch last 5 similar outcomes using semantic match on marketState
+          const { getEmbeddingProvider } = await import("../services/embeddings");
+          const stateEmbedding = await getEmbeddingProvider().embedText(marketState).catch(() => new Array(1536).fill(0));
+          
+          const similarOutcomesInfo = await TradeOutcomesRepository.getSimilarOutcomes(stateEmbedding, 5);
+          
+          if (similarOutcomesInfo.length > 0) {
+              vectorContext = similarOutcomesInfo.map(r => 
+                  `- Expected +${Number(r.predicted_alpha).toFixed(2)}% | Actual: ${Number(r.actual_alpha).toFixed(2)}% | Context: ${JSON.stringify(r.decision_context)}`
+              ).join("\n");
+          }
+      } catch (e) {
+          console.error("Failed to query similar outcomes", e);
+      }
+
+      // Incorporate Strategy Performance Edge
+      const topStrategies = await StrategyPerformanceService.getTopPerformingStrategies(portfolioId);
+      const worstStrategies = await StrategyPerformanceService.getWorstPerformingStrategies(portfolioId);
+      
+      let edgeContext = "No explicit strategy edges calculated yet.";
+      if (topStrategies.length > 0 || worstStrategies.length > 0) {
+          edgeContext = `**Top Performing Strategies:**\n` + 
+             topStrategies.map(s => `- ${s.strategy_tag} during ${s.market_regime} for ${s.asset_id} (Win Rate: ${(s.win_rate*100).toFixed(1)}%, Avg PnL: ${s.avg_pnl.toFixed(2)})`).join('\n') + `\n\n` +
+             `**Worst Performing Strategies (AVOID):**\n` +
+             worstStrategies.map(s => `- ${s.strategy_tag} during ${s.market_regime} for ${s.asset_id} (Win Rate: ${(s.win_rate*100).toFixed(1)}%, Avg PnL: ${s.avg_pnl.toFixed(2)})`).join('\n');
+      }
+
+      // Explore vs Exploit logic
+      const isExploration = Math.random() < 0.20;
+      const explorationPrompt = isExploration 
+        ? "CRITICAL INSTRUCTION [EXPLORATION MODE]: Instead of exploiting the known best strategies, you MUST explore a NEW or uncommon strategy variant to discover new alpha. Generate a novel strategyTag."
+        : "CRITICAL INSTRUCTION [EXPLOITATION MODE]: Rely heavily on the 'Top Performing Strategies' and historically successful patterns. Maximize expected PNL based on known edge.";
+
       // 3. Prompt Gemini
       const prompt = `You are an expert quantitative trading agent.
-Analyze the current market state and previous memories to provide a market regime assessment and a trading rationale.
+Analyze the current market state, previous memories, and past trade evaluations to provide a market regime assessment, a trading rationale, and output an active "strategy_tag".
+Generate REAL TRADING EDGE (ALPHA) by preferring historically top-performing tags/regimes and strictly avoiding worst-performing patterns.
+Review the "Accuracy" score from past evaluations strictly. Penalize and lower the confidence of strategies with low accuracy (high confidence but resulted in a loss).
+
+${explorationPrompt}
 
 Current Market Data:
 ${marketState}
@@ -45,9 +139,27 @@ ${marketState}
 Recent Semantic Memories:
 ${memoryContext}
 
+Recent failures:
+${recentFailuresContext}
+
+Recent successful patterns:
+${recentSuccessContext}
+
+REAL STRATEGY EDGE DATA:
+${edgeContext}
+
+Most Recent 5 Trade Outcomes for this Portfolio:
+${recentOutcomesContext}
+
+5 Similar Historical Trade Outcomes (RAG):
+${vectorContext}
+
 Output your response as JSON in the exact format:
 {
   "marketRegime": "BULL_TREND" | "BEAR_TREND" | "CHOPPY" | "VOLATILE",
+  "volatilityLevel": "LOW" | "NORMAL" | "HIGH" | "EXTREME",
+  "strategyTag": "trend_following" | "mean_reversion" | "breakout" | "momentum",
+  "confidenceScore": 0.85,
   "aiRationale": "Your detailed reasoning..."
 }`;
 
@@ -55,35 +167,37 @@ Output your response as JSON in the exact format:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-pro-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        });
-        responseText = response.text || "{}";
+        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
+        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
       } catch (apiError: any) {
         console.warn("QuantAgent Gemini API failed, fallback", apiError.message);
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           marketRegime: "CHOPPY",
+          volatilityLevel: "NORMAL",
+          strategyTag: "default",
+          confidenceScore: 0.1,
           aiRationale: "API Error, fallback to CHOPPY. " + apiError.message
         });
       }
 
       const text = responseText;
-      let analysisResult;
+      let analysisResult: any;
       try {
         analysisResult = JSON.parse(text);
+        if (!analysisResult.confidenceScore) analysisResult.confidenceScore = 0.5;
+        if (!analysisResult.strategyTag) analysisResult.strategyTag = "default";
+        if (!analysisResult.volatilityLevel) analysisResult.volatilityLevel = "NORMAL";
       } catch (e) {
         console.warn("QuantAgent Gemini parsing failed, fallback");
         fallbackUsed = true;
         apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         analysisResult = {
           marketRegime: "CHOPPY",
+          volatilityLevel: "NORMAL",
+          strategyTag: "default",
+          confidenceScore: 0.1,
           aiRationale: "Failed to parse AI output. Raw: " + text
         };
       }
@@ -95,7 +209,8 @@ Output your response as JSON in the exact format:
         userId,
         portfolioId,
         correlationId,
-        "QuantAgent"
+        "QuantAgent",
+        { strategy_tag: analysisResult.strategyTag, confidence_score: analysisResult.confidenceScore, volatility_level: analysisResult.volatilityLevel }
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -136,3 +251,5 @@ Output your response as JSON in the exact format:
     }
   }
 }
+
+

@@ -1,62 +1,63 @@
-# ⚡ TradeX Terminal
+# ⚡ TradeX OS - Advanced Quantitative System
 
 <div align="center">
-  <p><strong>An intelligent financial command center and adaptive hedge-fund operating system powered by multi-agent AI.</strong></p>
+  <p><strong>An institutional-grade, multi-agent trading operating system powered by semantic memory, strategy evolution, and context-aware capital allocation.</strong></p>
   
   <p>
-    <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 19" />
+    <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" />
+    <img src="https://img.shields.io/badge/PostgreSQL-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
     <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
-    <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
     <img src="https://img.shields.io/badge/Gemini_AI-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Gemini API" />
   </p>
 </div>
 
-![TradeX Terminal Banner](https://via.placeholder.com/1200x400/050505/00f0ff?text=TradeX+Terminal+%7C+AI-Powered+Hedge-Fund+OS)
+![TradeX OS Architecture Banner](https://via.placeholder.com/1200x400/050505/00f0ff?text=TradeX+OS+%7C+Autonomous+Hedge-Fund+Intelligence)
 
-## 📌 Architectural Overview
+## 📌 Executive Summary
 
-TradeX Terminal is not merely a trading dashboard—it is a **next-generation, autonomous financial operating system**. Engineered for institutional-grade market analysis and strategy execution, it melds low-latency market infrastructure with the cognitive reasoning capabilities of Google's Gemini models.
+TradeX OS is a state-of-the-art, full-stack quantitative trading platform engineered around a highly cooperative multi-agent AI framework. Designed for the modern era of algorithmic finance, TradeX bridges high-fidelity execution realism, strict algorithmic risk controls, dynamic capital allocation, and evolutionary genetic strategies under a highly available node event-driven architecture. 
 
-Built with a focus on maximum performance, rigorous type safety, and futuristic, cyberpunk-inspired UI/UX aesthetics, TradeX provides a highly integrated environment for quantitative analysts and technical asset managers.
+It is constructed not merely as a dashboard, but as a headless autonomous financial daemon paired with a real-time reactive interface.
 
 ---
 
-## 🔥 Key Institutional Features
+## 🔥 Key Architectural Pillars
 
-### 1. Multi-Agent AI Framework
-The system is underpinned by specialized orchestrating agents:
-- **Quant Strategy Agent:** Deploys deep historical models to continuously generate alphas.
-- **Risk-Guardian Agent:** A dedicated firewall agent validating risk limits, margin capacity, and max drawdowns before execution.
-- **News/Sentiment Oracle:** Ingests macro headlines and maps linguistic sentiment to real-time asset volatility vectors.
+### 1. 🧠 Multi-Agent AI Orchestration
+The system abandons monolithic trading setups in favor of a specialized intelligence network:
+- **QuantAgent**: Conducts structural pattern recognition, identifying underlying market regimes (Bull, Bear, Choppy) and systemic volatility bands.
+- **RiskGuardian**: A mandatory compliance firewall. It pre-validates every trade intention against margin constraints, systemic drawdowns, and historic performance.
+- **Coordinator (CIO)**: Synthesizes multi-dimensional outputs from internal agents and external NewsOracles to manifest highly convicted, correctly sized execution orders.
+- **ExecutionAgent**: Intercepts the Coordinator's mandate, adjusting adaptive sizing logic and streaming commands to simulated or live Testnet environments.
 
-### 2. The Agent Memory Vault
-TradeX's standout capability is **Semantic Experience Logging**. 
-- **Pattern Retrieval:** By mapping complex market conditions into vector space, the AI engine can recall identical past environments.
-- **Backpropagation & Self-Correction:** Each trade outcome—especially mistakes—is logged with a semantic loss-attribution vector, actively mutating the system’s execution thresholds to ensure historical failures are never repeated.
+### 2. 🧬 Context-Aware Strategy Evolution
+TradeX actively manages a portfolio of systemic strategies:
+- **Genetic Strategy Mutation**: Actively prunes bottom-percentile strategies and utilizes LLM genetics to dynamically mutate parameters of winning strategies to discover untouched market edges.
+- **Context-Aware Capital Allocation**: Evaluates expected values, Sharpe scores, and win rates dynamically mapped to the *current Market Regime and Volatility profile*. Rather than static distributions, capital flows toward the strategies proving highly adapted to absolute present conditions.
 
-### 3. Hyper-Visual Live Market Deck
-Our bespoke charting interface utilizes `lightweight-charts` to provide highly optimized Canvas rendering:
-- Real-time Orderbook streaming overlays.
-- Simulated Liquidity Heatmaps dynamically uncovering hidden bid/ask walls.
-- Integrated AI Predictive paths overlaid onto traditional candlesticks.
+### 3. 💾 Semantic Experience Logging (Vector Memory)
+- Leverages PostgreSQL & `pgvector` to persist complex market state contexts into multi-dimensional memory maps.
+- Rather than ignoring past mistakes, trade outcomes (both alphas and losses) are backpropagated into the `semantic_memory_logs`. Multi-agents independently query these logs prior to executing decisions to prevent repeated historic failures.
 
-### 4. Dynamic Market Regimes
-The UI acts as a living reflection of market states. Depending on macro momentum (Bullish, Bearish, Sideways, High-Vol), the entire UI applies specialized color palettes and structural focuses (e.g., heightened risk warnings during volatility spikes) via adaptive state contexts.
-
-### 5. Interactive Voice Command Pipeline
-Trade hands-free via our experimental Voice Agent wrapper. Using the power of LLMs, users can request structural insights or execute simulated bracket orders purely via natural language.
+### 4. ⚡ Event-Driven Engine & Telemetry
+- De-coupled architecture relying on an abstracted `EventDispatcher` layer.
+- Enables sub-millisecond asynchronous messaging between market data aggregators, intelligence agents, database risk-loggers, and UI telemetry websockets without blocking the primary event loop.
 
 ---
 
 ## 🛠 Advanced Tech Stack
 
-Engineered to handle intensive real-time loads and continuous DOM mutations without compromising latency:
+**The Headless Daemon (Backend):**
+- **Runtime**: Node.js & TypeScript
+- **Database**: PostgreSQL configured with `pgvector` for AI similarity checks.
+- **AI Integration**: Google Gemini Models (`@google/genai`) for complex synthesis, genetic generation, and semantic comprehension.
+- **Exchange Integration**: Configurable standard Binance API connectors.
+- **Design Pattern**: Domain-Driven Design (Workers, Services, Event Bus, Agents).
 
-- **Core Engine**: React 19 combined with Vite for exceptional Hot-Module-Replacement and lightweight bundling.
-- **Typing Framework**: Strict TypeScript configurations preventing runtime execution errors.
-- **Aesthetic System**: Tailwind CSS v4 paired with Framer Motion to craft purposeful UI micro-interactions and glassmorphism bounds.
-- **Charting Engine**: TradingView's Lightweight Charts ensuring 60fps chart repainting even under heavy data loads.
-- **Intelligence Layer**: `@google/genai` (Google Gemini SDK) injected directly into analytical pipelines.
+**The Terminal (Frontend):**
+- **Core Engine**: React 18 & Vite ensuring modular Hot-Module-Replacement.
+- **Aesthetic System**: Fully tokenized Tailwind CSS v4.
+- **System Monitoring**: WebSockets mapped seamlessly to systemic back-end telemetry.
 
 ---
 
@@ -104,36 +105,56 @@ Ensure you have a modern Node.js environment:
 
 ---
 
-## 📂 System Architecture Directory
+## 📂 System Topology Matrix
 
 ```text
 src/
-├── components/           # The structural building blocks
-│   ├── tabs/             # Heavyweight view controllers (Live Markets, Memory, Risk)
-│   ├── auth/             # Biometric-simulated entry points
-│   └── ui/               # Granular atomic components (AI Confidence rings, panels)
-├── contexts/             # Global states (Market Regime, Agent Protocol)
-├── services/             # Extraneous API layers and LLM integration stubs
-├── utils/                # Mathematical helpers and calculation constraints
-├── App.tsx               # Primary layout grid and routing shell
-└── index.css             # Tailwind baseline and custom WebKit scrollbars
+├── agents/             # Micro-Agents (Coordinator, Quant, Risk, Execution)
+├── db/                 # Persistence Layer (Migrations, pgvector schemas, Repositories)
+├── events/             # System-wide decoupled Event Dispatcher (Pub/Sub)
+├── services/           # Algorithmic Services (Capital Allocation, Eval, Memory, Execution)
+├── workers/            # Daemon Background Processes (Metrics Worker, Strategy Evolver)
+├── telemetry/          # WebSocket broadcasters for UI live-feed visual mappings
+├── server.ts           # Primary Daemon bootstrapper & API gateway
+└── components/         # Frontend intelligence interfaces
 ```
 
 ---
 
-## 🤝 Open Source Contribution
+## 🚀 Node & Daemon Initialization
 
-TradeX is built for the community. If you are a Quant or Frontend Engineer looking to implement complex financial interfaces, we welcome PRs:
+### 1. Prerequisites
+Ensure you have a modern stack:
+- **Node.js** v20.x+
+- **PostgreSQL Database** with the `pgvector` extension natively installed.
 
-1. Fork the project.
-2. Initialize your feature branch (`git checkout -b impl/quant-layer`).
-3. Commit systematically (`git commit -m 'feat: Add orderflow imbalance calculations'`).
-4. Push to remote (`git push origin impl/quant-layer`).
-5. Open a well-documented Pull Request.
+### 2. Hydration
+```bash
+git clone https://github.com/organization/tradex-os.git
+cd tradex-os
+npm install
+```
+
+### 3. Secure Environmental Payload
+Populate your runtime configurations. The terminal requires a Google Gemini Key (for the core Multi-Agent framework), and a standard Postgres DB hook for internal event tracing.
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/tradex
+GEMINI_API_KEY=your_gemini_platform_key
+
+# Optional
+BINANCE_API_KEY=your_testnet_key
+BINANCE_SECRET_KEY=your_testnet_secret
+```
+
+### 4. Ignite the Runtime
+The boot sequence automatically resolves DB migrations, spins up Event Listeners, ignites Background Workers, and exposes the User Terminal.
+```bash
+npm run build
+npm start
+```
+The operations interface will boot autonomously on `http://localhost:3000`.
 
 ---
 
-## 📜 Legal Matrix
-
-This software operates under the Apache-2.0 License. See the `LICENSE` file for distribution rights.
-*Notice: TradeX Terminal currently operates on simulated execution loops and should not be attached to live capital without extensive proprietary modification.*
+## 🛑 Strict Protocol Notices
+*This software is primarily structured as an advanced technological demonstration of applied AI agents in time-series deterministic environments. TradeX OS acts upon testnet environments safely but involves advanced risk algorithms that should never operate unregulated real-world capital without severe comprehensive proprietary audits.*

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Cpu,
@@ -23,37 +23,37 @@ const INITIAL_AGENTS_DATA = [
     id: "Director",
     name: "Master Director",
     role: "Orchestration",
-    status: "Active",
+    status: "Idle",
     color: "#00f0ff",
     confidence: 94,
-    focus: "Global Strategy Orchestration",
+    focus: "Awaiting next correlation ID",
   },
   {
     id: "Quant-v4",
     name: "Quant Engine v4",
     role: "Data & Signals",
-    status: "Processing",
+    status: "Idle",
     color: "#a855f7",
     confidence: 89,
-    focus: "BTC Volatility Analysis",
+    focus: "Awaiting market data",
   },
   {
     id: "Risk-Guardian",
     name: "Risk Guardian",
     role: "Constraints",
-    status: "Monitoring",
+    status: "Idle",
     color: "#facc15",
     confidence: 99,
-    focus: "Drawdown Prevention",
+    focus: "Monitoring exposure",
   },
   {
     id: "Alpha-Seeker",
-    name: "Alpha Seeker",
+    name: "Execution Agent",
     role: "Execution",
     status: "Idle",
     color: "#39ff14",
     confidence: 82,
-    focus: "Execution Timing",
+    focus: "Awaiting execution clearance",
   },
 ] as const;
 
@@ -65,6 +65,23 @@ interface AIAgent {
   color: string;
   confidence: number;
   focus: string;
+}
+
+interface TelemetryMessage {
+  correlationId: string;
+  agent_name: string;
+  status: "started" | "completed" | "failed";
+  timestamp: string;
+  eventType: string;
+  summary: string;
+}
+
+interface AgentLog {
+  id: string;
+  timestamp: string;
+  agentId: string;
+  summary: string;
+  status: string;
 }
 
 export function AIAgentsTab() {
@@ -81,37 +98,74 @@ export function AIAgentsTab() {
     focus: a.focus as string
   })));
 
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setAgentsData(prev =>
-        prev.map(agent => {
-          let newConfidence = agent.confidence + (Math.random() * 4 - 2);
-          if (newConfidence > 99.9) newConfidence = 99.9;
-          if (newConfidence < 70) newConfidence = 70;
+  const [agentLogs, setAgentLogs] = useState<AgentLog[]>([]);
 
-          let newFocus = agent.focus;
-          // 15% chance to update the focus reason simulating live processing
-          if (Math.random() > 0.85) {
-            const focuses = {
-              "Director": ["Global Strategy Orchestration", "Evaluating Arbitrage Opportunities", "Awaiting Risk Clearance", "Synthesizing Multi-Exchange Data", "Capitalizing on Inefficiency"],
-              "Quant-v4": ["BTC Volatility Analysis", "Order Book Imbalance Scanning", "Liquidity Sweep Detection", "Funding Rate Analysis", "Momentum Divergence Check"],
-              "Risk-Guardian": ["Drawdown Prevention", "Stress Testing Portfolios", "Validating Leverage Metrics", "Liquidation Level Check", "Monitoring Value at Risk (VaR)"],
-              "Alpha-Seeker": ["Execution Timing", "Optimizing Execution Fees", "Hunting Sniper Entries", "Routing to Dark Pools", "Staging Limit Orders"]
+  useEffect(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const wsUrl = `${protocol}//${window.location.host}/ws/agent-telemetry`;
+
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const msg: TelemetryMessage = JSON.parse(event.data);
+        if (!msg.correlationId || msg.correlationId === "unknown") return;
+
+        let agentIdMap: Record<string, AIAgent["id"]> = {
+          "Coordinator": "Director",
+          "QuantAgent": "Quant-v4",
+          "RiskGuardian": "Risk-Guardian",
+          "ExecutionAgent": "Alpha-Seeker",
+        };
+
+        const targetAgentId = agentIdMap[msg.agent_name];
+        if (!targetAgentId) return;
+
+        // Update Agents Data
+        setAgentsData(prev =>
+          prev.map(agent => {
+            if (agent.id !== targetAgentId) return agent;
+            
+            let status = "Idle";
+            if (msg.status === "started") status = "Processing";
+            else if (msg.status === "completed") status = "Active";
+            else if (msg.status === "failed") status = "Error";
+
+            let newConf = agent.confidence;
+            if (status === "Processing") {
+               newConf = Math.min(99.9, Math.max(70, newConf)); // remove jitter
+            }
+
+            return {
+              ...agent,
+              status,
+              focus: msg.summary || ("Processing " + msg.eventType),
+              confidence: Number(newConf.toFixed(1))
             };
-            const list = focuses[agent.id as keyof typeof focuses] || [agent.focus];
-            newFocus = list[Math.floor(Math.random() * list.length)];
-          }
+          })
+        );
 
-          return {
-            ...agent,
-            confidence: Number(newConfidence.toFixed(1)),
-            focus: newFocus
+        // Add to log
+        setAgentLogs(prev => {
+          const newLog = {
+            id: msg.correlationId + "-" + msg.timestamp + "-" + performance.now(),
+            agentId: targetAgentId,
+            timestamp: msg.timestamp,
+            summary: msg.summary,
+            status: msg.status
           };
-        })
-      );
-    }, 1000);
+          const next = [newLog, ...prev];
+          return next.slice(0, 50); // Keep last 50
+        });
 
-    return () => clearInterval(interval);
+      } catch (e) {
+        console.error("Error parsing telemetry", e);
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   const selectedAgent = agentsData.find((a) => a.id === selectedAgentId) || agentsData[0];
@@ -274,7 +328,7 @@ export function AIAgentsTab() {
 
         {/* AI THINKING PANEL (Right Col) */}
         <div className="col-span-1 xl:col-span-8 flex flex-col">
-          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 relative overflow-hidden flex-1 shadow-2xl flex flex-col h-[400px]">
+          <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 relative overflow-hidden flex-1 shadow-2xl flex flex-col h-100">
             {/* Dynamic background based on selected agent */}
             <div
               className="absolute top-0 right-0 w-96 h-96 blur-[120px] rounded-full pointer-events-none opacity-10 transition-colors duration-1000"
@@ -311,90 +365,75 @@ export function AIAgentsTab() {
                   <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mb-2">Uncertainty</span>
                   <div className="w-10 h-10 rounded-full border border-[#ff4500]/30 bg-[#ff4500]/5 flex items-center justify-center relative">
                     <div className="absolute inset-0 rounded-full bg-[#ff4500]/10 animate-pulse"></div>
-                    <span className="text-xs font-bold text-[#ff4500]">{(100 - selectedAgent.confidence + Math.random() * 5).toFixed(1)}%</span>
+                    <span className="text-xs font-bold text-[#ff4500]">{(100 - selectedAgent.confidence).toFixed(1)}%</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Reasoning Stream Container */}
-            <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4 mb-4">
-              {/* Simulated Reasoning Blocks based on agent */}
+            <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4 mb-4 flex flex-col-reverse">
+              {/* Actual Reasoning Blocks based on agent logs */}
               <AnimatePresence mode="popLayout">
-                <motion.div
-                  key={`${selectedAgent.id}-block1`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="border-l-2 pl-4 py-1"
-                  style={{ borderLeftColor: "#333" }}
-                >
-                  <div className="text-[10px] text-gray-500 mb-1">
-                    00:00.012
-                  </div>
-                  <div className="text-gray-300">
-                    {selectedAgent.id === "Director" &&
-                      "Synthesizing inputs from Quant-v4 and Risk-Guardian... Market regime identified as Mean-Reverting. Volatility contraction detected."}
-                    {selectedAgent.id === "Quant-v4" &&
-                      "Scanning order books across Binance, Bybit, Coinbase. High frequency iceberg orders detected at $64,150."}
-                    {selectedAgent.id === "Risk-Guardian" &&
-                      "Calculating global drawdown exposure. Current portfolio VAR (Value at Risk) is 0.8%. Within acceptable limits."}
-                    {selectedAgent.id === "Alpha-Seeker" &&
-                      "Awaiting prime entry condition. Limit targets staging..."}
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  key={`${selectedAgent.id}-block2`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="border-l-2 pl-4 py-1 mt-4"
-                  style={{ borderLeftColor: "#333" }}
-                >
-                  <div className="text-[10px] text-gray-500 mb-1">
-                    00:00.045
-                  </div>
-                  <div className="text-gray-300">
-                    {selectedAgent.id === "Director" &&
-                      "Divergence identified between Spot volume and Perps open interest. Probability of fakeout: High. Directing Alpha-Seeker to hold execution."}
-                    {selectedAgent.id === "Quant-v4" &&
-                      "Generating probability matrix for next 15-minute candle. 68% chance of downward sweep. Feeding to Master Director."}
-                    {selectedAgent.id === "Risk-Guardian" &&
-                      "Simulating stress test for $2,000 flash crash. Liquidation distance is safe. Margin requirement optimal."}
-                    {selectedAgent.id === "Alpha-Seeker" &&
-                      "Adjusting entry bids to match Quant-v4 sweep prediction. New bids placed down to $63,800."}
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  key={`${selectedAgent.id}-block3`}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 }}
-                  className="border-l-2 pl-4 py-2 mt-4 bg-[#111]/50 border border-[#222]"
-                  style={{ borderLeftColor: selectedAgent.color }}
-                >
-                  <div className="text-[10px] flex items-center gap-2 mb-1">
-                    <Command
-                      className="w-3 h-3"
-                      style={{ color: selectedAgent.color }}
-                    />
-                    <span style={{ color: selectedAgent.color }}>
-                      OUTPUT CONCLUSION
-                    </span>
-                  </div>
-                  <div className="text-white font-bold tracking-wide">
-                    {selectedAgent.id === "Director" &&
-                      "RESOLUTION: DELAY LONG. Await downward liquidation sweep and reassess."}
-                    {selectedAgent.id === "Quant-v4" &&
-                      `SIGNAL VERIFIED: Bearish trap forming. Confidence: ${selectedAgent.confidence}%.`}
-                    {selectedAgent.id === "Risk-Guardian" &&
-                      "CLEARANCE GRANTED: All risk parameters green for execution when prompted."}
-                    {selectedAgent.id === "Alpha-Seeker" &&
-                      "ORDERS RESTING: Sniper bounds configured."}
-                  </div>
-                </motion.div>
+                {agentLogs
+                  .filter((log) => log.agentId === selectedAgent.id)
+                  .map((log) => (
+                    <motion.div
+                      key={log.id}
+                      initial={{ opacity: 0, x: -20, height: 0 }}
+                      animate={{ opacity: 1, x: 0, height: "auto" }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.2 }}
+                      className={`border-l-2 pl-4 py-2 mt-4 ${
+                        log.status === "completed"
+                          ? "bg-[#111]/50 border border-[#222]"
+                          : ""
+                      }`}
+                      style={{
+                        borderLeftColor:
+                          log.status === "completed"
+                            ? selectedAgent.color
+                            : "#333",
+                      }}
+                    >
+                      <div className="text-[10px] text-gray-500 mb-1 flex items-center gap-2">
+                        {log.status === "completed" && (
+                          <Command
+                            className="w-3 h-3"
+                            style={{ color: selectedAgent.color }}
+                          />
+                        )}
+                        <span
+                          style={{
+                            color:
+                              log.status === "completed"
+                                ? selectedAgent.color
+                                : undefined,
+                          }}
+                        >
+                          {new Date(log.timestamp).toLocaleTimeString([], {
+                            hour12: false,
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                            fractionalSecondDigits: 3,
+                          })}
+                        </span>
+                      </div>
+                      <div
+                        className={
+                          log.status === "completed"
+                            ? "text-white font-bold tracking-wide"
+                            : "text-gray-300"
+                        }
+                      >
+                        {log.summary}
+                      </div>
+                    </motion.div>
+                  ))}
+                  {agentLogs.filter((log) => log.agentId === selectedAgent.id).length === 0 && (
+                    <div className="text-gray-600 italic mt-4 text-center">Waiting for telemetry from {selectedAgent.name}...</div>
+                  )}
               </AnimatePresence>
             </div>
             <div className="pt-4 border-t border-[#1a1a1a] flex justify-between items-center relative z-10 shrink-0">
@@ -418,119 +457,53 @@ export function AIAgentsTab() {
           Agent Decision Pipeline (Last 60s)
         </h3>
 
-        <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-[#333] before:to-transparent pt-4">
-          {/* Timeline Item 0 - Newest */}
-          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#0ea5e9]/20 text-[#0ea5e9] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(14,165,233,0.5)]">
-              <Waves className="w-3 h-3" />
-            </div>
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
-              <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
-                  Liquidity Sweep Detected
-                </div>
-                <time className="text-[10px] text-[#0ea5e9]">Just now</time>
-              </div>
-              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
-                Quant Agent identified anomalous order book thinning combined with high volume liquidations below immediate support.
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Item 1 */}
-          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#ff4500]/20 text-[#ff4500] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(255,69,0,0.5)]">
-              <ShieldAlert className="w-3 h-3" />
-            </div>
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
-              <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
-                  Trade Rejected
-                </div>
-                <time className="text-[10px] text-gray-600">1s ago</time>
-              </div>
-              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
-                Director blocked execution as market conditions no longer
-                support the original thesis.
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Item 2 */}
-          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#00f0ff]/20 text-[#00f0ff] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(0,240,255,0.5)]">
-              <GitMerge className="w-3 h-3" />
-            </div>
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
-              <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
-                  Strategy Switched
-                </div>
-                <time className="text-[10px] text-gray-600">3s ago</time>
-              </div>
-              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
-                Quant-v4 shifted to defensive mode, adapting local parameters to
-                defend capital against sudden breakout.
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Item 3 */}
-          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#facc15]/20 text-[#facc15] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(250,204,21,0.5)]">
-              <AlertTriangle className="w-3 h-3" />
-            </div>
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
-              <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
-                  Risk Agent Warning Triggered
-                </div>
-                <time className="text-[10px] text-gray-600">12s ago</time>
-              </div>
-              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
-                Risk Guardian flagged immediate drawdown risk due to market
-                instability. Margin requirements dynamically increased.
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Item 4 */}
-          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#a855f7]/20 text-[#a855f7] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(168,85,247,0.5)]">
-              <Activity className="w-3 h-3" />
-            </div>
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
-              <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
-                  Volatility Increased
-                </div>
-                <time className="text-[10px] text-gray-600">22s ago</time>
-              </div>
-              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
-                Quant Engine detected sudden volatility expansion across major
-                pairs. Order book spread widening.
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline Item 5 - Oldest */}
-          <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-            <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-blue-500/20 text-blue-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 shadow-[0_0_10px_rgba(59,130,246,0.5)]">
-              <Network className="w-3 h-3" />
-            </div>
-            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
-              <div className="flex items-center justify-between space-x-2 mb-1">
-                <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left">
-                  News Spike Detected
-                </div>
-                <time className="text-[10px] text-gray-600">45s ago</time>
-              </div>
-              <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left">
-                NLP algorithms registered high-impact macroeconomic alert from
-                tier-1 financial sources.
-              </div>
-            </div>
-          </div>
+        <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-2.75 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-[#333] before:to-transparent pt-4">
+          <AnimatePresence>
+            {agentLogs.length === 0 && (
+              <div className="text-gray-500 font-mono text-center text-xs opacity-50 py-4">No recent decisions in this session.</div>
+            )}
+            {agentLogs.map((log, i) => {
+              const agent = agentsData.find(a => a.id === log.agentId) || agentsData[0];
+              const Icon = 
+                log.status === "failed" ? AlertTriangle : 
+                log.status === "completed" ? CheckCircle2 : 
+                Activity;
+              const color = 
+                log.status === "failed" ? "#ff4500" :
+                log.status === "completed" ? agent.color : 
+                "#0ea5e9";
+              
+              return (
+                 <motion.div 
+                  key={log.id}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
+                >
+                  <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#1a1a1a] bg-[#0a0a0a] shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10" style={{ color, boxShadow: `0 0 10px ${color}40`, borderColor: '#1a1a1a' }}>
+                    <Icon className="w-3 h-3" />
+                  </div>
+                  <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-[#0a0a0a] p-4 rounded border border-[#1a1a1a] shadow">
+                    <div className="flex items-center justify-between space-x-2 mb-1">
+                      <div className="font-bold text-gray-200 text-sm md:group-odd:text-right md:group-even:text-left" style={{ color: agent.color }}>
+                        {agent.name}
+                      </div>
+                      <time className="text-[10px] text-gray-600">
+                        {new Date(log.timestamp).toLocaleTimeString([], { hour12: false })}
+                      </time>
+                    </div>
+                    <div className="text-gray-500 text-xs md:group-odd:text-right md:group-even:text-left pt-1 font-mono uppercase">
+                      [{log.status}]
+                    </div>
+                    <div className="text-gray-300 text-xs md:group-odd:text-right md:group-even:text-left mt-2">
+                      {log.summary}
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
       </div>
     </motion.div>

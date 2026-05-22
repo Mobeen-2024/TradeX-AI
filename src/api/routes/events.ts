@@ -9,6 +9,32 @@ eventsRouter.get("/:correlationId", async (req: Request, res: Response): Promise
     const { correlationId } = req.params;
     const pool = getPool();
 
+    if (correlationId === "recent") {
+      // Fetch the 50 most recent memories directly
+      const memoriesQuery = `
+        SELECT id, agent_name, timestamp, market_regime, ai_rationale, created_at, metadata, correlation_id
+        FROM semantic_memory_logs
+        ORDER BY created_at DESC
+        LIMIT 50
+      `;
+      const memoriesResult = await pool.query(memoriesQuery);
+
+      const executionsQuery = `
+        SELECT id, agent_name, start_timestamp, duration_ms, success, error_message, portfolio_id, fallback_used, created_at
+        FROM execution_logs
+        ORDER BY start_timestamp DESC
+        LIMIT 50
+      `;
+      const executionsResult = await pool.query(executionsQuery);
+
+      res.json({
+        events: [],
+        memories: memoriesResult.rows,
+        executions: executionsResult.rows
+      });
+      return;
+    }
+
     // 1. Fetch event_queue_logs for correlationId
     // correlationId is inside the payload JSONB
     const eventsQuery = `

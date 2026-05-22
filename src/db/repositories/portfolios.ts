@@ -5,11 +5,23 @@ export interface Portfolio {
   user_id: string;
   name: string;
   description: string | null;
+  is_trading_enabled: boolean;
+  max_position_size: number;
+  max_loss: number;
   created_at: Date;
   updated_at: Date;
 }
 
 export class PortfolioRepository {
+  static async updateSettings(id: string, is_trading_enabled: boolean, max_position_size: number, max_loss: number): Promise<Portfolio> {
+    const pool = getPool();
+    const result = await pool.query(
+      "UPDATE portfolios SET is_trading_enabled = $1, max_position_size = $2, max_loss = $3, updated_at = NOW() WHERE id = $4 RETURNING *",
+      [is_trading_enabled, max_position_size, max_loss, id]
+    );
+    return result.rows[0] as Portfolio;
+  }
+
   static async create(userId: string, name: string, description: string | null): Promise<Portfolio> {
     const pool = getPool();
     const result = await pool.query(

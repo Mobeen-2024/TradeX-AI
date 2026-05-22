@@ -42,4 +42,12 @@ export class MarketTickRepository {
       return result.rows as MarketTick[];
     }
   }
+
+  static async getRecentPrices(limit: number = 20): Promise<number[]> {
+    const pool = getPool();
+    const result = await pool.query(
+      `SELECT price FROM market_ticks ORDER BY timestamp DESC LIMIT $1`, [limit]
+    );
+    return result.rows.map(r => Number(r.price));
+  }
 }

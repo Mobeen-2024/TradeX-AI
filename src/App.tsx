@@ -13,8 +13,10 @@ import { AIVoiceAssistant } from "./components/AIVoiceAssistant";
 import { useState } from "react";
 import { useMarketRegime } from "./contexts/MarketRegimeContext";
 
+import { SystemInitializer } from "./components/SystemInitializer";
+
 export type TabType =
-  | "Command Center"
+  | "PnL Dashboard"
   | "Market Intelligence"
   | "Multi-Agent Protocol"
   | "Autonomous Execution"
@@ -28,7 +30,7 @@ export type TabType =
   | "System Configuration";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("Command Center");
+  const [activeTab, setActiveTab] = useState<TabType>("PnL Dashboard");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const { regime } = useMarketRegime();
 
@@ -51,23 +53,25 @@ export default function App() {
   };
 
   return (
-    <div
-      className={`relative min-h-[100dvh] bg-[#000] selection:bg-[#00f0ff]/30 text-white font-sans ${getRegimeClasses()}`}
-    >
-      <div className="hidden md:flex flex-col min-h-[100dvh] overflow-hidden relative z-10 w-full bg-black/60">
-        <TopIntelligenceBar />
-        <div className="flex w-full flex-1 bg-[#020202] relative overflow-hidden">
-          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-          <MainContent activeTab={activeTab} />
+    <SystemInitializer>
+      <div
+        className={`relative min-h-[100dvh] bg-[#000] selection:bg-[#00f0ff]/30 text-white font-sans ${getRegimeClasses()}`}
+      >
+        <div className="hidden md:flex flex-col min-h-[100dvh] overflow-hidden relative z-10 w-full bg-black/60">
+          <TopIntelligenceBar />
+          <div className="flex w-full flex-1 bg-[#020202] relative overflow-hidden">
+            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+            <MainContent activeTab={activeTab} />
+          </div>
+          <BottomSystemTerminal />
         </div>
-        <BottomSystemTerminal />
+        <div className="md:hidden relative z-10 w-full min-h-[100dvh] bg-[#050505]">
+          <MobileApp />
+        </div>
+        <div className="relative z-50">
+          <AIVoiceAssistant />
+        </div>
       </div>
-      <div className="md:hidden relative z-10 w-full min-h-[100dvh] bg-[#050505]">
-        <MobileApp />
-      </div>
-      <div className="relative z-50">
-        <AIVoiceAssistant />
-      </div>
-    </div>
+    </SystemInitializer>
   );
 }

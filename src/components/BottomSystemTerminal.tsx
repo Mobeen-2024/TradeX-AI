@@ -1,32 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Terminal as TerminalIcon, Cpu, AlertCircle, Maximize2 } from 'lucide-react';
+import { useSystemStore } from '../store/systemStore';
 
 export function BottomSystemTerminal() {
-  const [logs, setLogs] = useState<string[]>([]);
-
-  useEffect(() => {
-    const messages = [
-      "SYSTEM: INITIALIZING QUANT-V4 KERNEL...",
-      "AGENT: ANALYZING ORDER FLOW IMBALANCE IN PERP MARKETS...",
-      "RISK_ENGINE: EXPOSURE DELTA NORMALIZED.",
-      "NETWORK: WEBSOCKET RECONNECTED. LATENCY 12ms.",
-      "SYSTEM: RECALIBRATING MICRO-TREND THRESHOLDS...",
-    ];
-    let i = 0;
-    // Initial logs
-    setLogs([messages[0]]);
-    i++;
-    
-    const interval = setInterval(() => {
-      setLogs(prev => {
-        const next = [...prev, messages[i % messages.length]];
-        if (next.length > 5) return next.slice(next.length - 5);
-        return next;
-      });
-      i++;
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
+  const { livePipelineEvents } = useSystemStore();
+  const logs = livePipelineEvents.slice(0, 5).map((e: any) => 
+    `${new Date(e.timestamp || Date.now()).toLocaleTimeString()} [${e.agent_name || 'SYSTEM'}] ${e.message || e.status || e.action || 'EVENT'}`
+  );
 
   return (
     <footer className="h-32 bg-[#020202] border-t border-[#1a1a1a] flex flex-col flex-shrink-0 z-50">
@@ -49,7 +29,7 @@ export function BottomSystemTerminal() {
          </div>
       </div>
       <div className="flex-1 p-2 px-4 overflow-y-auto no-scrollbar font-mono text-[10px] leading-relaxed flex flex-col justify-end gap-0.5">
-         {logs.map((log, i) => (
+         {logs.map((log: string, i: number) => (
            <div key={i} className="flex items-start gap-3">
              <span className="text-gray-700">[{new Date().toISOString().split('T')[1].slice(0, -1)}]</span>
              <span className={

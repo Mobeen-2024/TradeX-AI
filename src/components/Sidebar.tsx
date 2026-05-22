@@ -37,7 +37,7 @@ export function Sidebar({ activeTab, setActiveTab }: { activeTab: TabType, setAc
         <div className="mb-6">
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3 whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 h-3">Core Operations</h3>
           <ul className="space-y-[2px]">
-            <NavItem icon={<LayoutDashboard className="w-3.5 h-3.5" />} label="Command Center" active={activeTab === 'Command Center'} onClick={() => setActiveTab('Command Center')} />
+            <NavItem icon={<LayoutDashboard className="w-3.5 h-3.5" />} label="PnL Dashboard" active={activeTab === 'PnL Dashboard'} onClick={() => setActiveTab('PnL Dashboard')} />
             <NavItem icon={<Activity className="w-3.5 h-3.5" />} label="Market Intelligence" active={activeTab === 'Market Intelligence'} onClick={() => setActiveTab('Market Intelligence')} />
             <NavItem icon={<Cpu className="w-3.5 h-3.5" />} label="Multi-Agent Protocol" active={activeTab === 'Multi-Agent Protocol'} onClick={() => setActiveTab('Multi-Agent Protocol')} />
             <NavItem icon={<Zap className="w-3.5 h-3.5" />} label="Autonomous Execution" active={activeTab === 'Autonomous Execution'} onClick={() => setActiveTab('Autonomous Execution')} />

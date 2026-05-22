@@ -10,7 +10,8 @@ export class RiskWorker {
         await EventDispatcher.emit(EventType.NEWS_PROCESSING_REQUESTED, {
           portfolioId: payload.portfolioId,
           userId: payload.userId,
-          correlationId: payload.correlationId
+          correlationId: payload.correlationId,
+          isBacktest: payload.isBacktest
         });
       } catch (err) {
         console.error(`[RiskWorker] error:`, err);

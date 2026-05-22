@@ -1,5 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useSystemStore } from "../../store/systemStore";
+import { DecisionInspector } from "../ui/DecisionInspector";
 import {
   Archive,
   Download,
@@ -15,137 +17,68 @@ import {
   Zap,
 } from "lucide-react";
 
-type MemoryEvent = {
+type RealMemoryEvent = {
   id: string;
-  type:
-    | "market_event"
-    | "decision"
-    | "outcome"
-    | "mistake"
-    | "recovered_pattern";
-  time: string;
-  title: string;
-  description: string;
-  agent: string;
-  impact?: string;
-  impactType?: "positive" | "negative" | "neutral";
-  mistakeDetails?: {
-    lossBreakdown: { label: string; active: boolean; value?: string }[];
-    repeatedMistake: string;
-    confidenceAdjustment: string;
+  agent_name: string;
+  market_regime: string;
+  ai_rationale: string;
+  created_at: string;
+  metadata?: {
+    pnl?: string;
+    score?: number;
+    [key: string]: any;
   };
+  correlation_id?: string;
 };
 
-const mockMemories: MemoryEvent[] = [
-  {
-    id: "MEM-091",
-    type: "recovered_pattern",
-    time: "2024-05-12 14:15:00",
-    title: "Wyckoff Spring Pattern Identified",
-    description:
-      "System successfully recognized a textbook Wyckoff Spring on BTC/USDT 15m. Matched 92% similarity to historical event from Nov 2023. Applied accumulated learning for optimal entry.",
-    agent: "Quant-v4",
-    impact: "+$12,450 Realized",
-    impactType: "positive",
-  },
-  {
-    id: "MEM-090",
-    type: "outcome",
-    time: "2024-05-12 11:30:21",
-    title: "ETH Short Execution Completed",
-    description:
-      "Closed short position at target following divergence signal. Original thesis validated as spot volume dried up exactly 3 ticks above limit.",
-    agent: "Alpha-Seeker",
-    impact: "+0.81% PNL",
-    impactType: "positive",
-  },
-  {
-    id: "MEM-089",
-    type: "mistake",
-    time: "2024-05-11 09:44:11",
-    title: "Stop-Loss Slipped Pending News",
-    description:
-      'Unexpected CPI leak caused erratic spread widening. Stop-loss on SOL long triggered prematurely before true momentum reversal. Added flag: "Require confirmed trend before stop-loss trigger in high-variance macro windows".',
-    agent: "Risk-Guardian",
-    impact: "-2.13% PNL",
-    impactType: "negative",
-    mistakeDetails: {
-      lossBreakdown: [
-        { label: "Volatility", active: true, value: "Extreme Spread" },
-        { label: "Late Entry", active: false },
-        {
-          label: "Liquidity Trap",
-          active: true,
-          value: "Low order book depth",
-        },
-        { label: "Overexposure", active: false },
-      ],
-      repeatedMistake: "Entering during low liquidity spikes.",
-      confidenceAdjustment: "Future confidence reduced by 12%.",
-    },
-  },
-  {
-    id: "MEM-088",
-    type: "decision",
-    time: "2024-05-11 08:30:00",
-    title: "Hedge Ratio dynamically adjusted",
-    description:
-      "Director consensus shifted overall portfolio delta bias from +0.4 to Neutral. Triggered by deteriorating cross-asset correlations, specifically SPX lagging BTC gains.",
-    agent: "Master Director",
-    impact: "Risk mitigated",
-    impactType: "neutral",
-  },
-  {
-    id: "MEM-087",
-    type: "market_event",
-    time: "2024-05-10 14:20:05",
-    title: "Sudden Volatility Contraction",
-    description:
-      "Bollinger Band width on BTC 4h reached lowest quartile of past 180 days. System entered observation mode, awaiting breakout vector.",
-    agent: "Quant-v4",
-    impact: "System Idle",
-    impactType: "neutral",
-  },
-];
-
-function MemoryIcon({ type }: { type: MemoryEvent["type"] }) {
-  switch (type) {
-    case "market_event":
-      return <Zap className="w-4 h-4 text-[#0ea5e9]" />;
-    case "decision":
-      return <BrainCircuit className="w-4 h-4 text-[#a855f7]" />;
-    case "outcome":
-      return <ArrowUpRight className="w-4 h-4 text-[#39ff14]" />;
-    case "mistake":
-      return <AlertTriangle className="w-4 h-4 text-[#ff4500]" />;
-    case "recovered_pattern":
-      return <ShieldCheck className="w-4 h-4 text-[#facc15]" />;
-  }
+function MemoryIcon({ score }: { score?: number }) {
+  if (score === undefined) return <BrainCircuit className="w-4 h-4 text-[#a855f7]" />;
+  if (score > 0) return <ArrowUpRight className="w-4 h-4 text-[#39ff14]" />;
+  if (score < 0) return <AlertTriangle className="w-4 h-4 text-[#ff4500]" />;
+  return <Zap className="w-4 h-4 text-[#0ea5e9]" />;
 }
 
-function MemoryColor({ type }: { type: MemoryEvent["type"] }) {
-  switch (type) {
-    case "market_event":
-      return "#0ea5e9";
-    case "decision":
-      return "#a855f7";
-    case "outcome":
-      return "#39ff14";
-    case "mistake":
-      return "#ff4500";
-    case "recovered_pattern":
-      return "#facc15";
-  }
+function MemoryColor({ score }: { score?: number }) {
+  if (score === undefined) return "#a855f7";
+  if (score > 0) return "#39ff14";
+  if (score < 0) return "#ff4500";
+  return "#0ea5e9";
 }
 
 export function HistoryTab() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedMemory, setSelectedMemory] = useState<string>(
-    mockMemories[0].id,
-  );
+  const [memories, setMemories] = useState<RealMemoryEvent[]>([]);
+  const [selectedMemory, setSelectedMemory] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { setSelectedCorrelationId } = useSystemStore();
 
-  const activeMemory =
-    mockMemories.find((m) => m.id === selectedMemory) || mockMemories[0];
+  useEffect(() => {
+    const fetchMemories = async () => {
+      try {
+        const res = await fetch("/api/events/recent");
+        if (res.ok) {
+          const data = await res.json();
+          setMemories(data.memories || []);
+          if (data.memories && data.memories.length > 0) {
+            setSelectedMemory(data.memories[0].id);
+            setSelectedCorrelationId(data.memories[0].correlation_id || null);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching memories", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMemories();
+  }, []);
+
+  const handleSelectMemory = (memory: RealMemoryEvent) => {
+    setSelectedMemory(memory.id);
+    setSelectedCorrelationId(memory.correlation_id || null);
+  };
+
+  const activeMemory = memories.find((m) => m.id === selectedMemory);
 
   return (
     <motion.div
@@ -179,7 +112,7 @@ export function HistoryTab() {
       </div>
 
       <div className="bg-[#020202]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-center gap-4 relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.8)] group transition-colors hover:border-white/20">
-        <div className="absolute top-0 right-0 w-[30%] h-full bg-gradient-to-l from-[#00f0ff]/10 to-transparent pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
+        <div className="absolute top-0 right-0 w-[30%] h-full bg-linear-to-l from-[#00f0ff]/10 to-transparent pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700"></div>
         <div className="w-12 h-12 rounded-xl bg-[#00f0ff]/10 flex items-center justify-center border border-[#00f0ff]/20 shrink-0 shadow-inner group-hover:border-[#00f0ff]/40 transition-colors">
           <Search className="w-5 h-5 text-[#00f0ff]" />
         </div>
@@ -195,7 +128,7 @@ export function HistoryTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 h-full min-h-[500px]">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 h-full min-h-125">
         {/* Timeline List */}
         <div className="col-span-1 xl:col-span-4 bg-[#020202] border border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl">
           <div className="p-5 border-b border-white/5 bg-[#0a0a0a]/50 flex justify-between items-center sticky top-0 z-10 backdrop-blur-md">
@@ -207,16 +140,20 @@ export function HistoryTab() {
           </div>
 
           <div className="flex-1 overflow-y-auto no-scrollbar p-5 space-y-1 relative">
-            <div className="absolute top-5 bottom-5 left-[35px] w-[2px] bg-gradient-to-b from-transparent via-white/10 to-transparent z-0"></div>
+            <div className="absolute top-5 bottom-5 left-8.75 w-0.5 bg-linear-to-b from-transparent via-white/10 to-transparent z-0"></div>
 
-            {mockMemories.map((memory) => {
+            {memories.length === 0 && !loading && (
+              <div className="p-4 text-center text-gray-500 text-xs">No memories found.</div>
+            )}
+            
+            {memories.map((memory) => {
               const isActive = selectedMemory === memory.id;
-              const color = MemoryColor({ type: memory.type });
+              const color = MemoryColor({ score: memory.metadata?.score });
               return (
                 <button
                   key={memory.id}
-                  onClick={() => setSelectedMemory(memory.id)}
-                  className={`w-full text-left relative z-10 flex gap-4 p-3 rounded-xl border transition-all duration-300 group overflow-hidden ${isActive ? "bg-[#0a0a0a] border-white/10 shadow-lg scale-[1.02]" : "bg-transparent border-transparent hover:bg-white/[0.02]"}`}
+                  onClick={() => handleSelectMemory(memory)}
+                  className={`w-full text-left relative z-10 flex gap-4 p-3 rounded-xl border transition-all duration-300 group overflow-hidden ${isActive ? "bg-[#0a0a0a] border-white/10 shadow-lg scale-[1.02]" : "bg-transparent border-transparent hover:bg-white/2"}`}
                 >
                   {isActive && (
                     <motion.div
@@ -235,15 +172,15 @@ export function HistoryTab() {
                       boxShadow: isActive ? `0 0 15px ${color}40` : 'none'
                     }}
                   >
-                    <MemoryIcon type={memory.type} />
+                    <MemoryIcon score={memory.metadata?.score} />
                   </div>
                   <div className="flex-1 overflow-hidden relative z-10">
                     <div className="flex justify-between items-start mb-1 text-xs">
                       <span className={`font-bold font-sans truncate pr-2 transition-colors ${isActive ? "text-white" : "text-gray-300 group-hover:text-gray-100"}`}>
-                        {memory.title}
+                        {memory.agent_name}
                       </span>
                       <span className={`text-[9px] whitespace-nowrap font-mono transition-colors ${isActive ? "text-gray-400" : "text-gray-600"}`}>
-                        {memory.time.split(" ")[1]}
+                        {new Date(memory.created_at).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="text-[9px] uppercase tracking-widest mt-1 flex items-center gap-1.5 font-bold" style={{ color: isActive ? color : '#666' }}>
@@ -254,7 +191,7 @@ export function HistoryTab() {
                           boxShadow: isActive ? `0 0 5px ${color}` : 'none'
                         }}
                       ></span>
-                      {memory.type.replace("_", " ")}
+                      {memory.market_regime || "analysis"}
                     </div>
                   </div>
                 </button>
@@ -265,6 +202,9 @@ export function HistoryTab() {
 
         {/* Memory Details view */}
         <div className="col-span-1 xl:col-span-8 bg-[#020202] border border-white/10 rounded-2xl flex flex-col relative overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.8)] backdrop-blur-xl">
+          {activeMemory?.correlation_id ? (
+            <DecisionInspector correlationId={activeMemory.correlation_id} />
+          ) : activeMemory ? (
           <AnimatePresence mode="wait">
             <motion.div
               key={activeMemory.id}
@@ -278,7 +218,7 @@ export function HistoryTab() {
               <div 
                 className="absolute inset-0 opacity-[0.03] transition-colors duration-1000 z-0 pointer-events-none mix-blend-screen"
                 style={{
-                  background: `radial-gradient(circle at top right, ${MemoryColor({ type: activeMemory.type })}, transparent 50%)`
+                  background: `radial-gradient(circle at top right, ${MemoryColor({ score: activeMemory.metadata?.score })}, transparent 50%)`
                 }}
               />
 
@@ -286,26 +226,26 @@ export function HistoryTab() {
                 <div
                   className="w-14 h-14 rounded-xl flex items-center justify-center relative shadow-[0_0_30px_rgba(0,0,0,0.5)]"
                 >
-                  <div className="absolute inset-0 rounded-xl opacity-20 bg-current" style={{ color: MemoryColor({ type: activeMemory.type }) }}></div>
-                  <div className="absolute inset-0 rounded-xl border border-current opacity-50" style={{ color: MemoryColor({ type: activeMemory.type }) }}></div>
-                  <MemoryIcon type={activeMemory.type} />
+                  <div className="absolute inset-0 rounded-xl opacity-20 bg-current" style={{ color: MemoryColor({ score: activeMemory.metadata?.score }) }}></div>
+                  <div className="absolute inset-0 rounded-xl border border-current opacity-50" style={{ color: MemoryColor({ score: activeMemory.metadata?.score }) }}></div>
+                  <MemoryIcon score={activeMemory.metadata?.score} />
                 </div>
                 <div>
                   <h2 className="text-3xl font-bold text-white font-sans tracking-tight drop-shadow-md">
-                    {activeMemory.title}
+                    {activeMemory.agent_name}
                   </h2>
-                  <div className="flex items-center gap-3 text-xs uppercase tracking-widest font-bold mt-2 border border-white/5 bg-white/5 py-1 px-3 rounded-full inline-flex backdrop-blur-md">
+                  <div className="items-center gap-3 text-xs uppercase tracking-widest font-bold mt-2 border border-white/5 bg-white/5 py-1 px-3 rounded-full inline-flex backdrop-blur-md">
                     <span
                       style={{
-                        color: MemoryColor({ type: activeMemory.type }),
-                        textShadow: `0 0 10px ${MemoryColor({ type: activeMemory.type })}80`
+                        color: MemoryColor({ score: activeMemory.metadata?.score }),
+                        textShadow: `0 0 10px ${MemoryColor({ score: activeMemory.metadata?.score })}80`
                       }}
                     >
-                      {activeMemory.type.replace("_", " ")}
+                      {activeMemory.market_regime || "decision"}
                     </span>
                     <span className="text-gray-600">•</span>
                     <span className="flex items-center gap-1 text-gray-400">
-                      <Clock className="w-3 h-3" /> {activeMemory.time}
+                      <Clock className="w-3 h-3" /> {new Date(activeMemory.created_at).toLocaleString()}
                     </span>
                     <span className="text-gray-600">•</span>
                     <span className="text-gray-500 font-mono text-[10px] bg-black/50 px-2 py-0.5 rounded">{activeMemory.id}</span>
@@ -315,11 +255,11 @@ export function HistoryTab() {
 
               <div className="bg-[#0a0a0a]/80 border border-white/5 rounded-xl p-6 mb-6 shadow-inner relative z-10 backdrop-blur-sm">
                 <h3 className="text-[10px] uppercase font-bold tracking-widest mb-3 text-gray-400 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: MemoryColor({ type: activeMemory.type }) }}></span>
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: MemoryColor({ score: activeMemory.metadata?.score }) }}></span>
                   Context & Deep Analysis
                 </h3>
                 <p className="text-base text-gray-300 leading-relaxed font-sans">
-                  {activeMemory.description}
+                  {activeMemory.ai_rationale}
                 </p>
               </div>
 
@@ -330,7 +270,7 @@ export function HistoryTab() {
                     Originating Node
                   </h3>
                   <span className="text-sm text-white font-mono bg-white/5 px-3 py-1.5 rounded-md border border-white/10">
-                    {activeMemory.agent}
+                    {activeMemory.agent_name}
                   </span>
                 </div>
                 <div className="bg-[#0a0a0a]/50 border border-white/5 rounded-xl p-5 hover:border-white/10 transition-colors backdrop-blur-sm">
@@ -338,92 +278,19 @@ export function HistoryTab() {
                     Outcome Impact
                   </h3>
                   <span
-                    className={`text-sm font-mono font-bold px-3 py-1.5 rounded-md border inline-block ${activeMemory.impactType === "positive" ? "text-[#39ff14] bg-[#39ff14]/5 border-[#39ff14]/20 shadow-[0_0_10px_rgba(57,255,20,0.1)]" : activeMemory.impactType === "negative" ? "text-[#ff4500] bg-[#ff4500]/5 border-[#ff4500]/20 shadow-[0_0_10px_rgba(255,69,0,0.1)]" : "text-gray-400 bg-white/5 border-white/10"}`}
+                    className={`text-sm font-mono font-bold px-3 py-1.5 rounded-md border inline-block ${(activeMemory.metadata?.score ?? 0) > 0 ? "text-[#39ff14] bg-[#39ff14]/5 border-[#39ff14]/20 shadow-[0_0_10px_rgba(57,255,20,0.1)]" : (activeMemory.metadata?.score ?? 0) < 0 ? "text-[#ff4500] bg-[#ff4500]/5 border-[#ff4500]/20 shadow-[0_0_10px_rgba(255,69,0,0.1)]" : "text-gray-400 bg-white/5 border-white/10"}`}
                   >
-                    {activeMemory.impact || "None"}
+                    {activeMemory.metadata?.pnl ? activeMemory.metadata.pnl : "None"}
                   </span>
                 </div>
               </div>
-
-              {activeMemory.type === "mistake" &&
-                activeMemory.mistakeDetails && (
-                  <div className="mb-6 space-y-6 mt-auto relative z-10">
-                    {/* Loss Breakdown */}
-                    <div className="bg-[#0a0a0a]/80 border border-white/5 rounded-xl p-5">
-                      <h3 className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-4">
-                        Loss Attribution Vector
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        {activeMemory.mistakeDetails.lossBreakdown.map(
-                          (factor, idx) => (
-                            <div
-                              key={idx}
-                              className={`p-3 rounded-lg border flex flex-col gap-1 transition-all ${factor.active ? "bg-[#ff4500]/5 border-[#ff4500]/30 shadow-[inset_0_0_15px_rgba(255,69,0,0.05)]" : "bg-[#111]/50 border-white/5 opacity-50"}`}
-                            >
-                              <span
-                                className={`text-[10px] font-bold uppercase tracking-widest ${factor.active ? "text-[#ff4500] drop-shadow-[0_0_2px_#ff4500]" : "text-gray-500"}`}
-                              >
-                                {factor.label}
-                              </span>
-                              {factor.active && factor.value && (
-                                <span className="text-xs text-gray-300 font-mono mt-1">
-                                  {factor.value}
-                                </span>
-                              )}
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    </div>
-
-                    {/* AI Self-Correction Panel */}
-                    <div className="bg-gradient-to-r from-[#ff4500]/10 to-transparent border border-[#ff4500]/30 rounded-xl p-5 shadow-[0_0_20px_rgba(255,69,0,0.05)] backdrop-blur-md">
-                      <h3 className="text-[#ff4500] text-xs uppercase tracking-widest font-bold flex items-center gap-2 mb-4 drop-shadow-[0_0_5px_#ff4500]">
-                        <AlertTriangle className="w-4 h-4" />
-                        Neural Weights Self-Correction
-                      </h3>
-                      <div className="space-y-4">
-                        <div className="text-gray-300 text-sm font-mono flex items-start gap-3 bg-black/40 p-3 rounded-lg border border-white/5">
-                          <span className="text-[#ff4500] mt-0.5">↳</span>
-                          <div>
-                            <span className="text-gray-500 text-[10px] uppercase tracking-widest block mb-1">Identified Error Signature</span>
-                            <span className="text-white border-l-2 border-[#ff4500] pl-2 py-0.5 inline-block text-xs">
-                              "{activeMemory.mistakeDetails.repeatedMistake}"
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-gray-300 text-sm font-mono flex items-center gap-3">
-                          <span className="text-[#ff4500]">↳</span>
-                          <span className="bg-[#ff4500]/10 text-[#ff4500] px-3 py-1 rounded text-xs font-bold border border-[#ff4500]/30 shadow-[0_0_10px_rgba(255,69,0,0.2)]">
-                            {activeMemory.mistakeDetails.confidenceAdjustment}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-500 text-[10px] uppercase tracking-widest mt-4 pt-4 border-t border-white/10">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse"></div>
-                          Neural weights updated via backpropagation. Invariant embedded in Risk-Guardian.
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-              {activeMemory.type === "recovered_pattern" && (
-                <div className="mt-auto bg-gradient-to-r from-[#facc15]/10 to-transparent border border-[#facc15]/30 rounded-xl p-6 shadow-[0_0_20px_rgba(250,204,21,0.05)] relative z-10 backdrop-blur-md">
-                  <h3 className="text-[#facc15] text-xs uppercase tracking-widest font-bold flex items-center gap-2 mb-3 drop-shadow-[0_0_5px_#facc15]">
-                    <ShieldCheck className="w-4 h-4" />
-                    Semantic Retrieval Match Activated
-                  </h3>
-                  <div className="bg-black/50 border border-white/5 rounded-lg p-3 mt-2">
-                    <p className="text-gray-300 text-xs font-mono leading-relaxed">
-                      Vector distance: <span className="text-[#00f0ff] font-bold">0.082</span>
-                      <br/>
-                      Successfully leveraged identical historical conditions from Memory Vault to enhance execution precision by <span className="text-[#39ff14] font-bold">14%</span>.
-                    </p>
-                  </div>
-                </div>
-              )}
             </motion.div>
           </AnimatePresence>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-gray-600 font-mono text-xs">
+              {loading ? "Loading Memory Vault..." : "No memories to display."}
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

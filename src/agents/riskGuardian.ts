@@ -2,7 +2,9 @@ import { PositionRepository } from "../db/repositories/positions";
 import { MemoryRepository } from "../db/repositories/memory";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { MemoryService } from "../services/memoryService";
-import { GoogleGenAI } from "@google/genai";
+import { TradeRepository } from "../db/repositories/trades";
+import { MarketTickRepository } from "../db/repositories/marketTicks";
+import { aiService } from "../services/aiService";
 import { EventDispatcher, EventType } from "../events";
 
 export class RiskGuardian {
@@ -12,8 +14,6 @@ export class RiskGuardian {
       if (!process.env.GEMINI_API_KEY) {
         throw new Error("GEMINI_API_KEY is not configured for RiskGuardian.");
       }
-
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
       // 1. Get portfolio positions
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
@@ -42,27 +42,61 @@ export class RiskGuardian {
         quantContext = `Latest Market Regime: ${log.market_regime}\nLatest Quant Rationale: ${log.ai_rationale}`;
       }
 
+      // 2b. Get recent Win/Loss
+      let winLossContext = "No recent trades.";
+      try {
+          const pnls = await TradeRepository.getRecentClosedPnls(portfolioId, 3);
+          if (pnls.length > 0) {
+              const wins = pnls.filter(p => p > 0).length;
+              const losses = pnls.filter(p => p < 0).length;
+              winLossContext = `Recent closed trades: ${wins} wins, ${losses} losses. PnLs: ${pnls.join(", ")}`;
+          }
+      } catch (e) {}
+
+      // 2c. Get Volatility Proxy
+      let volatilityContext = "Unknown volatility.";
+      try {
+          const prices = await MarketTickRepository.getRecentPrices(20);
+          if (prices.length >= 10) {
+              const maxPrice = Math.max(...prices);
+              const minPrice = Math.min(...prices);
+              const avgPrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+              const spreadPct = avgPrice > 0 ? ((maxPrice - minPrice) / avgPrice) * 100 : 0;
+              volatilityContext = `Recent 20 tick volatility: ${spreadPct.toFixed(2)}% spread.`;
+          }
+      } catch (e) {}
+
       // 3. Evaluate exposure and risk using Gemini
       const prompt = `You are a Risk Guardian, an expert in portfolio risk management.
-Evaluate the current position exposure and margin risk given the current market context provided by the Quant service.
+Evaluate the current position exposure and margin risk given the current market context.
+Determine an optimal adaptive 'position_size' (0.01 to 2.00) based on recent win/loss streaks and market volatility.
 
 Portfolio Positions:
 ${positionsContext}
 Total Portfolio Exposure: $${totalExposureUsd}
 
+Recent Trade Outcomes (for sizing streaks):
+${winLossContext}
+
+Market Volatility (for sizing defensively):
+${volatilityContext}
+
 Rules:
 - Max Position Size: $${MAX_POSITION_USD}
 - Max Portfolio Exposure: $${MAX_PORTFOLIO_USD}
 If any rule is breached, you MUST set riskLevel to "HIGH".
+If recent trades are heavily losing or volatility is extremely high, reduce position_size.
+If winning streak and low volatility, increase position_size.
 
 Recent Quant Analysis context:
 ${quantContext}
 
-Provide a JSON output evaluating the risk levels and your detailed rationale.
+Provide a JSON output evaluating the risk levels, your planned position size allocation, and detailed rationale.
 Format exactly as JSON:
 {
   "riskLevel": "LOW" | "MODERATE" | "HIGH" | "CRITICAL",
   "marginRisk": "SAFE" | "WARNING" | "DANGER",
+  "position_size": 1.0,
   "aiRationale": "Your detailed risk reasoning..."
 }`;
 
@@ -70,15 +104,8 @@ Format exactly as JSON:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-pro-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        });
-        responseText = response.text || "{}";
+        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
+        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
       } catch (apiError: any) {
         console.warn("RiskGuardian Gemini API failed, fallback", apiError.message);
         fallbackUsed = true;
@@ -86,6 +113,7 @@ Format exactly as JSON:
         responseText = JSON.stringify({
           riskLevel: "HIGH",
           marginRisk: "WARNING",
+          position_size: 1.0,
           aiRationale: "API Error, fallback to HIGH risk. " + apiError.message
         });
       }
@@ -101,6 +129,7 @@ Format exactly as JSON:
         riskEvaluation = {
           riskLevel: "HIGH",
           marginRisk: "WARNING",
+          position_size: 1.0,
           aiRationale: "Failed to parse AI output. Raw: " + text
         };
       }
@@ -112,7 +141,7 @@ Format exactly as JSON:
       }
 
       // 4. Persist risk rationale into semantic_memory_logs
-      const rationaleStr = `Risk Level: ${riskEvaluation.riskLevel} | Margin Risk: ${riskEvaluation.marginRisk} | Rationale: ${riskEvaluation.aiRationale}`;
+      const rationaleStr = `Risk Level: ${riskEvaluation.riskLevel} | Margin Risk: ${riskEvaluation.marginRisk} | Position Size: ${riskEvaluation.position_size || 1.0} | Rationale: ${riskEvaluation.aiRationale}`;
       const loggedMemory = await MemoryService.logMemory(
         `RISK_EVALUATION (${riskEvaluation.riskLevel})`, // using market regime for tags
         rationaleStr,

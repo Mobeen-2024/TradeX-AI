@@ -10,7 +10,8 @@ export class NewsWorker {
         await EventDispatcher.emit(EventType.COORDINATOR_DECISION_REQUESTED, {
           portfolioId: payload.portfolioId,
           userId: payload.userId,
-          correlationId: payload.correlationId
+          correlationId: payload.correlationId,
+          isBacktest: payload.isBacktest
         });
       } catch (err) {
         console.error(`[NewsWorker] error:`, err);

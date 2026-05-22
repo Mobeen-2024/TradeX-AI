@@ -8,7 +8,9 @@ export class MemoryService {
     userId?: string | null,
     portfolioId?: string | null,
     correlationId?: string,
-    agentName?: string
+    agentName?: string,
+    metadata?: any,
+    strategyId?: string | null
   ): Promise<SemanticMemoryLog> {
     let embedding: number[];
     if (aiRationale) {
@@ -17,7 +19,11 @@ export class MemoryService {
     } else {
       embedding = new Array(768).fill(0);
     }
-    return MemoryRepository.create(marketRegime, aiRationale, embedding, userId, portfolioId, correlationId, agentName);
+    return MemoryRepository.create(marketRegime, aiRationale, embedding, userId, portfolioId, correlationId, agentName, metadata, strategyId);
+  }
+
+  static async getPastEvaluations(portfolioId: string, assetId?: string, marketRegime?: string, limit: number = 5): Promise<SemanticMemoryLog[]> {
+    return MemoryRepository.getEvaluations(portfolioId, assetId, marketRegime, limit);
   }
 
   static async searchMemory(

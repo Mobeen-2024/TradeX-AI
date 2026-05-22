@@ -1,6 +1,8 @@
 import { EventListener, EventType, EventDispatcher } from "../events";
 import { ExecutionService } from "../services/executionService";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
+import { PortfolioRepository } from "../db/repositories/portfolios";
+import { AgentDecisionsRepository } from "../db/repositories/agentDecisions";
 import { MemoryService } from "../services/memoryService";
 import { getPool } from "../db/connection";
 import { v4 as uuidv4 } from "uuid";
@@ -25,10 +27,9 @@ export class ExecutionAgent {
         let userId = payload.userId;
 
         if (!userId) {
-            const pool = getPool();
-            const res = await pool.query("SELECT user_id FROM portfolios WHERE id = $1", [portfolioId]);
-            if (res.rows.length > 0) {
-                userId = res.rows[0].user_id;
+            const portfolio = await PortfolioRepository.findById(portfolioId);
+            if (portfolio) {
+                userId = portfolio.user_id;
             } else {
                 throw new Error("Portfolio not found: " + portfolioId);
             }
@@ -38,7 +39,7 @@ export class ExecutionAgent {
             if (decision.action === "BUY" || decision.action === "SELL") {
                 // Kill-switch: check risk level before execution
                 const riskMemory = await MemoryService.getByCorrelation(correlationId, "RiskGuardian");
-                if (riskMemory && riskMemory.market_regime?.includes("HIGH")) {
+                if (riskMemory && riskMemory.market_regime.includes("HIGH")) {
                     console.warn(`[ExecutionAgent] Blocking execution due to HIGH risk for correlation ${correlationId}`);
 
                     await MemoryService.logMemory(
@@ -63,25 +64,31 @@ export class ExecutionAgent {
                     return; // Abort execution
                 }
 
+                // Extract adaptive position size from RiskGuardian
+                let adaptiveSize = 1; // Default
+                if (riskMemory && riskMemory.ai_rationale) {
+                    const match = riskMemory.ai_rationale.match(/Position Size: ([\d.]+)/);
+                    if (match && match[1]) {
+                        adaptiveSize = parseFloat(match[1]);
+                        console.log(`[ExecutionAgent] Using adaptive position size from RiskGuardian: ${adaptiveSize}`);
+                    }
+                }
+
                 const orderRequest = {
                     portfolioId,
                     userId,
                     assetId: decision.assetId || "BTC", // Default to BTC if unspecified
                     action: decision.action,
-                    size: 1, // Default size for simulation
-                    correlationId: correlationId || uuidv4()
+                    size: adaptiveSize,
+                    correlationId: correlationId || uuidv4(),
+                    strategyId: payload.strategyId,
+                    isBacktest: payload.isBacktest
                 };
 
                 const { orderId, price } = await ExecutionService.placeOrder(orderRequest);
 
                 // Log to agent_decisions
-                const pool = getPool();
-                await pool.query(
-                    `INSERT INTO agent_decisions 
-                     (agent_name, portfolio_id, asset_id, direction, entry_price, rationale, evaluation) 
-                     VALUES ($1, $2, $3, $4, $5, $6, 'PENDING')`,
-                    ['QuantAgent', portfolioId, decision.assetId || "BTC", decision.action, price, decision.rationale]
-                );
+                await AgentDecisionsRepository.insertDecision('QuantAgent', portfolioId, decision.assetId || "BTC", decision.action, price, decision.rationale);
 
                 // Track execution in memory
                 await MemoryService.logMemory(

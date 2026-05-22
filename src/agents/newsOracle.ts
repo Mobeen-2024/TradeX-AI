@@ -2,7 +2,7 @@ import { PositionRepository } from "../db/repositories/positions";
 import { MemoryService } from "../services/memoryService";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { getNewsProvider } from "../services/news";
-import { GoogleGenAI } from "@google/genai";
+import { aiService } from "../services/aiService";
 import { EventDispatcher, EventType } from "../events";
 
 export class NewsOracle {
@@ -12,8 +12,6 @@ export class NewsOracle {
       if (!process.env.GEMINI_API_KEY) {
         throw new Error("GEMINI_API_KEY is not configured for NewsOracle.");
       }
-
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
       // 1. Get unique assets from portfolio
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
@@ -60,15 +58,8 @@ Format exactly as JSON:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-pro-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        });
-        responseText = response.text || "{}";
+        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
+        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
       } catch (apiError: any) {
         console.warn("NewsOracle Gemini API failed, fallback", apiError.message);
         fallbackUsed = true;

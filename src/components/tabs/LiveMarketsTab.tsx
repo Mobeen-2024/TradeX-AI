@@ -68,29 +68,9 @@ function ExecutionLog() {
       }
     };
 
-    const interval = setInterval(() => {
-       const msgs = [
-         {text: "RECALIBRATING MICRO-TREND THRESHOLDS...", type: "SYSTEM", color: "text-gray-400"},
-         {text: "ANALYZING ORDER FLOW IMBALANCE...", type: "AGENT", color: "text-[#0ea5e9]"},
-         {text: "UPDATING LIQUIDITY HEATMAP GROUPS...", type: "SYSTEM", color: "text-gray-400"},
-         {text: "SCANNING FOR FRONTRUN OPPORTUNITIES...", type: "AGENT", color: "text-[#0ea5e9]"},
-       ];
-       const r = msgs[Math.floor(Math.random() * msgs.length)];
-       setLogs(prev => {
-            const newLog = {
-              timestamp: new Date().toISOString().split("T")[1].slice(0, -1),
-              type: r.type,
-              text: r.text,
-              color: r.color
-            };
-            return [...prev, newLog].slice(-50);
-       });
-    }, 12000);
-
     return () => {
       isMounted = false;
       ws.close();
-      clearInterval(interval);
     }
   }, []);
 
@@ -595,6 +575,10 @@ function MarketChart({
     fetch(`/api/market/klines?symbol=BTCUSDT&interval=${binanceInterval}&limit=100`)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+           throw new Error("Invalid non-JSON response from binance proxy");
+        }
         return res.json();
       })
       .then(data => {

@@ -1,10 +1,10 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import "./index.css";
-import { MarketRegimeProvider } from "./contexts/MarketRegimeContext";
+import {StrictMode} from 'react';
+import {createRoot} from 'react-dom/client';
+import App from './App';
+import './index.css';
+import { MarketRegimeProvider } from './contexts/MarketRegimeContext';
 
-createRoot(document.getElementById("root")!).render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MarketRegimeProvider>
       <App />

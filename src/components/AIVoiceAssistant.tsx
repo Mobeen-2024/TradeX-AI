@@ -29,6 +29,10 @@ export function AIVoiceAssistant() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ prompt: userMessage }),
         });
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+           throw new Error("Invalid response");
+        }
         const data = await response.json();
         
         setConversation((prev) => [

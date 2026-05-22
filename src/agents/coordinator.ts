@@ -3,8 +3,9 @@ import { RiskGuardian } from "./riskGuardian";
 import { NewsOracle } from "./newsOracle";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { MemoryService } from "../services/memoryService";
-import { GoogleGenAI } from "@google/genai";
+import { aiService } from "../services/aiService";
 import { EventListener, EventType, EventDispatcher } from "../events";
+import { StrategyService } from "../services/strategyService";
 
 export class Coordinator {
   static initialize() {
@@ -23,7 +24,7 @@ export class Coordinator {
     EventListener.subscribe(EventType.COORDINATOR_DECISION_REQUESTED, async (payload) => {
       console.log(`[Coordinator] Received COORDINATOR_DECISION_REQUESTED:`, payload);
       try {
-        await this.makeDecision(payload.portfolioId, payload.userId, payload.correlationId);
+        await this.makeDecision(payload.portfolioId, payload.userId, payload.correlationId, payload.isBacktest);
       } catch (err) {
         console.error(`[Coordinator] error:`, err);
         throw err;
@@ -31,7 +32,7 @@ export class Coordinator {
     });
   }
 
-  static async makeDecision(portfolioId: string, userId: string, correlationId: string) {
+  static async makeDecision(portfolioId: string, userId: string, correlationId: string, isBacktest: boolean = false) {
     const startTimestamp = new Date();
     try {
       if (!process.env.GEMINI_API_KEY) {
@@ -47,13 +48,30 @@ export class Coordinator {
         throw new Error("Missing prerequisite agent memories for correlationId: " + correlationId);
       }
 
+      const qMeta = quantMemory.metadata || {};
+      const quantConfidence = qMeta.confidence_score || 0.5;
+      const strategyTag = qMeta.strategy_tag || "default";
+
+      // 1.5 Fetch Best Strategy 
+      const strategy = await StrategyService.getBestStrategy(portfolioId);
+      const strategyContext = strategy ? strategy.parameters : {};
+
+      const { CapitalAllocationService } = require('../services/capitalAllocationService');
+      const allocations = await CapitalAllocationService.getAllocations(portfolioId);
+
       // 2. Aggregate Decision
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `You are the Chief Investment Officer (Coordinator).
 Synthesize the analysis from your three specialized agents and produce a final aggregated trading decision.
+The QuantAgent provides a base confidence_score (0-1.0) and a strategyTag. Incorporate risk and news to adjust the final confidence score (0-1.0).
+
+Active Strategy Profile Context:
+${JSON.stringify(strategyContext, null, 2)}
+
+Current Strategy Allocations:
+${JSON.stringify(allocations, null, 2)}
 
 1. Quant Analysis:
-${JSON.stringify({ marketRegime: quantMemory.market_regime, rationale: quantMemory.ai_rationale }, null, 2)}
+${JSON.stringify({ marketRegime: quantMemory.market_regime, rationale: quantMemory.ai_rationale, confidenceScore: quantConfidence, strategyTag }, null, 2)}
 
 2. Risk Analysis:
 ${JSON.stringify({ riskLevel: riskMemory.market_regime, rationale: riskMemory.ai_rationale }, null, 2)}
@@ -65,7 +83,8 @@ Provide a JSON output with the final aggregate decision.
 Format exactly as JSON:
 {
   "action": "BUY" | "SELL" | "HOLD",
-  "confidence": "LOW" | "MEDIUM" | "HIGH",
+  "confidenceScore": 0.85,
+  "strategyTag": "trend_following",
   "rationale": "Your detailed synthesis and final decision reasoning..."
 }`;
 
@@ -73,37 +92,34 @@ Format exactly as JSON:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-pro-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        });
-        responseText = response.text || "{}";
+        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
+        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
       } catch (apiError: any) {
         console.warn("Coordinator Gemini API failed, fallback", apiError.message);
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           action: "HOLD",
-          confidence: "MEDIUM",
+          confidenceScore: 0.1,
+          strategyTag: "default",
           rationale: "API Error, fallback to HOLD. " + apiError.message
         });
       }
 
       const text = responseText;
-      let aggregateDecision;
+      let aggregateDecision: any;
       try {
         aggregateDecision = JSON.parse(text);
+        if (typeof aggregateDecision.confidenceScore !== 'number') aggregateDecision.confidenceScore = quantConfidence;
+        if (!aggregateDecision.strategyTag) aggregateDecision.strategyTag = strategyTag;
       } catch (e) {
         console.warn("Coordinator Gemini parsing failed, fallback");
         fallbackUsed = true;
         apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         aggregateDecision = {
           action: "HOLD",
-          confidence: "LOW",
+          confidenceScore: 0.1,
+          strategyTag: "default",
           rationale: "Failed to parse AI output. Raw: " + text
         };
       }
@@ -111,11 +127,13 @@ Format exactly as JSON:
       // Log the final decision memory
       const loggedMemory = await MemoryService.logMemory(
         `AGGREGATE_DECISION (${aggregateDecision.action})`,
-        `Confidence: ${aggregateDecision.confidence} | Rationale: ${aggregateDecision.rationale}`,
+        `Confidence: ${aggregateDecision.confidenceScore} | Rationale: ${aggregateDecision.rationale}`,
         userId,
         portfolioId,
         correlationId,
-        "Coordinator" // Uses "Coordinator" preserving idempotency
+        "Coordinator", // Uses "Coordinator" preserving idempotency
+        { confidence_score: aggregateDecision.confidenceScore, strategy_tag: aggregateDecision.strategyTag },
+        strategy?.id
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -127,13 +145,15 @@ Format exactly as JSON:
         fallback_used: fallbackUsed,
         error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
-        portfolio_id: portfolioId
+        portfolio_id: portfolioId,
+        strategy_id: strategy?.id
       });
 
       await EventDispatcher.emit(EventType.COORDINATOR_DECISION_COMPLETED, {
         portfolioId,
         correlationId,
-        decision: aggregateDecision
+        decision: aggregateDecision,
+        isBacktest
       });
 
       return {
@@ -171,10 +191,22 @@ Format exactly as JSON:
       // 3. Run News
       const newsResult = await NewsOracle.analyzeSentiment(portfolioId, userId, correlationId);
 
+      // 3.5 Fetch Best Strategy
+      const strategy = await StrategyService.getBestStrategy(portfolioId);
+      const strategyContext = strategy ? strategy.parameters : {};
+
+      const { CapitalAllocationService } = require('../services/capitalAllocationService');
+      const allocations = await CapitalAllocationService.getAllocations(portfolioId);
+
       // 4. Aggregate Decision
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const prompt = `You are the Chief Investment Officer (Coordinator).
 Synthesize the analysis from your three specialized agents and produce a final aggregated trading decision.
+
+Active Strategy Profile Context:
+${JSON.stringify(strategyContext, null, 2)}
+
+Current Strategy Allocations:
+${JSON.stringify(allocations, null, 2)}
 
 1. Quant Analysis:
 ${JSON.stringify(quantResult.rawOutput, null, 2)}
@@ -189,7 +221,8 @@ Provide a JSON output with the final aggregate decision.
 Format exactly as JSON:
 {
   "action": "BUY" | "SELL" | "HOLD",
-  "confidence": "LOW" | "MEDIUM" | "HIGH",
+  "confidenceScore": 0.85,
+  "strategyTag": "trend_following",
   "rationale": "Your detailed synthesis and final decision reasoning..."
 }`;
 
@@ -197,37 +230,34 @@ Format exactly as JSON:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const response = await ai.models.generateContent({
-          model: "gemini-3.1-pro-preview",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            temperature: 0.2
-          }
-        });
-        responseText = response.text || "{}";
+        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
+        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
       } catch (apiError: any) {
         console.warn("Coordinator Gemini API failed, fallback", apiError.message);
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           action: "HOLD",
-          confidence: "MEDIUM",
+          confidenceScore: 0.1,
+          strategyTag: "default",
           rationale: "API Error, fallback to HOLD. " + apiError.message
         });
       }
 
       const text = responseText;
-      let aggregateDecision;
+      let aggregateDecision: any;
       try {
         aggregateDecision = JSON.parse(text);
+        if (typeof aggregateDecision.confidenceScore !== 'number') aggregateDecision.confidenceScore = 0.5;
+        if (!aggregateDecision.strategyTag) aggregateDecision.strategyTag = "default";
       } catch (e) {
         console.warn("Coordinator Gemini parsing failed, fallback");
         fallbackUsed = true;
         apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         aggregateDecision = {
           action: "HOLD",
-          confidence: "LOW",
+          confidenceScore: 0.1,
+          strategyTag: "default",
           rationale: "Failed to parse AI output. Raw: " + text
         };
       }
@@ -235,11 +265,13 @@ Format exactly as JSON:
       // Log the final decision memory
       const loggedMemory = await MemoryService.logMemory(
         `AGGREGATE_DECISION (${aggregateDecision.action})`,
-        `Confidence: ${aggregateDecision.confidence} | Rationale: ${aggregateDecision.rationale}`,
+        `Confidence: ${aggregateDecision.confidenceScore} | Rationale: ${aggregateDecision.rationale}`,
         userId,
         portfolioId,
         correlationId,
-        "Coordinator"
+        "Coordinator",
+        { confidence_score: aggregateDecision.confidenceScore, strategy_tag: aggregateDecision.strategyTag },
+        strategy?.id
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -251,7 +283,8 @@ Format exactly as JSON:
         fallback_used: fallbackUsed,
         error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
-        portfolio_id: portfolioId
+        portfolio_id: portfolioId,
+        strategy_id: strategy?.id
       });
 
       return {
@@ -276,3 +309,4 @@ Format exactly as JSON:
     }
   }
 }
+
