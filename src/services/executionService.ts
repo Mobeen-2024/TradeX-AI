@@ -115,6 +115,15 @@ export class ExecutionService {
         `[ExecutionService] Risk State: ${riskAssessment.state}, Multiplier: ${riskAssessment.riskMultiplier}, Drawdown: ${riskAssessment.drawdown}, Streak: ${riskAssessment.lossStreak}`,
       );
 
+      // Phase 10: Multi-Portfolio Capital Orchestration
+      const { GlobalPortfolioService } = require("./globalPortfolioService");
+      const globalCapitalWeight =
+        await GlobalPortfolioService.getPortfolioWeight(request.portfolioId);
+
+      console.log(
+        `[ExecutionService] Global Capital Weight: ${globalCapitalWeight}`,
+      );
+
       // Fetch Coordinator Confidence Score from Memory via correlationId
       let confidenceScore = 1.0;
       let marketRegime = "UNKNOWN";
@@ -197,11 +206,12 @@ export class ExecutionService {
       }
 
       const originalSize = Number(request.size);
-      // Apply all position sizing edges: base size * predictive risk multiplier * vol curve * confidence probability
+      // Apply all position sizing edges: base size * predictive risk multiplier * global capital weight * vol curve * confidence probability
       request.size = parseFloat(
         (
           originalSize *
           riskAssessment.riskMultiplier *
+          globalCapitalWeight *
           volatilityMultiplier *
           confidenceScore
         ).toFixed(6),
