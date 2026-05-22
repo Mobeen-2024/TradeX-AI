@@ -84,7 +84,7 @@ export function AuditTrailTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 w-full h-[600px] overflow-hidden flex-col">
+      <div className="grid grid-cols-1 gap-6 w-full h-150 overflow-hidden flex-col">
         <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 flex flex-col h-full overflow-hidden">
           <div className="flex items-center justify-between gap-4 mb-4 border-b border-[#1a1a1a] pb-4">
             <div className="flex items-center gap-2">

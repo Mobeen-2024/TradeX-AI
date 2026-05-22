@@ -113,7 +113,7 @@ export function AlphaGenerationTab() {
 
               <div className="mt-4 h-1.5 bg-[#111] rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-[#0ea5e9] to-[#00f0ff]"
+                  className="h-full bg-linear-to-r from-[#0ea5e9] to-[#00f0ff]"
                   style={{ width: `${score.baseScore * 100}%` }}
                 />
               </div>

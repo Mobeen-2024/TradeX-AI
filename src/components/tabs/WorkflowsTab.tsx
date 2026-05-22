@@ -124,7 +124,7 @@ export function WorkflowsTab() {
                         key={s.portfolioId}
                         className={`bg-[#050505] border ${isActive ? "border-[#ff00f0]/30 hover:border-[#ff00f0]/50" : "border-[#1a1a1a] opacity-60 grayscale"} rounded-sm p-6 cursor-pointer transition-all group relative overflow-hidden flex flex-col`}
                       >
-                        <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#ff00f0]/5 to-transparent pointer-events-none"></div>
+                        <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-[#ff00f0]/5 to-transparent pointer-events-none"></div>
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <h3
@@ -179,7 +179,7 @@ export function WorkflowsTab() {
                           </div>
                           <div className="h-2 bg-[#111] rounded-full overflow-hidden border border-[#222]">
                             <div
-                              className="h-full bg-gradient-to-r from-[#ff00f0] to-[#00f0ff]"
+                              className="h-full bg-linear-to-r from-[#ff00f0] to-[#00f0ff]"
                               style={{ width: `${s.baseScore * 100}%` }}
                             ></div>
                           </div>
@@ -220,10 +220,10 @@ export function WorkflowsTab() {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.3 }}
-            className="flex-1 flex gap-6 min-h-[600px]"
+            className="flex-1 flex gap-6 min-h-150"
           >
             {/* Component Library Panel */}
-            <div className="w-64 flex-shrink-0 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col gap-4 overflow-y-auto no-scrollbar">
+            <div className="w-64 shrink-0 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col gap-4 overflow-y-auto no-scrollbar">
               <h3 className="text-white font-bold text-sm tracking-wide mb-2 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-[#ff00f0]" />
                 Logic Blocks
@@ -292,7 +292,7 @@ export function WorkflowsTab() {
 
             {/* Visual Node Editor (Canvas) */}
             <div className="flex-1 bg-[#050505] border border-[#1a1a1a] rounded-sm relative overflow-hidden flex flex-col shadow-none">
-              <div className="absolute inset-0 bg-[radial-gradient(#222_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-50"></div>
+              <div className="absolute inset-0 bg-[radial-gradient(#222_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-50"></div>
 
               {/* Nodes inside Canvas */}
               <div className="relative flex-1 p-8">
@@ -325,7 +325,7 @@ export function WorkflowsTab() {
                 </svg>
 
                 {/* Indicator Node */}
-                <div className="absolute top-[100px] left-[50px] z-10 bg-[#0a0a0a] border border-[#222] border-t-2 border-t-[#00f0ff] p-4 rounded-sm w-56 shadow-xl cursor-move hover:border-[#333]">
+                <div className="absolute top-25 left-12.5 z-10 bg-[#0a0a0a] border border-[#222] border-t-2 border-t-[#00f0ff] p-4 rounded-sm w-56 shadow-xl cursor-move hover:border-[#333]">
                   <div className="flex items-center gap-3 mb-2 pb-2 border-b border-[#1a1a1a]">
                     <Radio className="w-4 h-4 text-[#00f0ff]" />
                     <span className="text-xs font-bold text-gray-200">
@@ -344,7 +344,7 @@ export function WorkflowsTab() {
                 </div>
 
                 {/* AI Condition Node */}
-                <div className="absolute top-[300px] left-[50px] z-10 bg-[#0a0a0a] border border-[#222] border-t-2 border-t-[#a855f7] p-4 rounded-sm w-56 shadow-xl cursor-move hover:border-[#333]">
+                <div className="absolute top-75 left-12.5 z-10 bg-[#0a0a0a] border border-[#222] border-t-2 border-t-[#a855f7] p-4 rounded-sm w-56 shadow-xl cursor-move hover:border-[#333]">
                   <div className="flex items-center gap-3 mb-2 pb-2 border-b border-[#1a1a1a]">
                     <Cpu className="w-4 h-4 text-[#a855f7]" />
                     <span className="text-xs font-bold text-gray-200">
@@ -363,7 +363,7 @@ export function WorkflowsTab() {
                 </div>
 
                 {/* Logic AND/OR Node */}
-                <div className="absolute top-[230px] left-[420px] z-10 bg-[#111] border border-[#333] p-3 rounded-md shadow-xl cursor-move flex items-center gap-2">
+                <div className="absolute top-57.5 left-105 z-10 bg-[#111] border border-[#333] p-3 rounded-md shadow-xl cursor-move flex items-center gap-2">
                   <div className="absolute top-1/4 -left-2 -translate-y-1/2 w-3 h-3 bg-[#0a0a0a] border border-[#333] rounded-full"></div>
                   <div className="absolute top-3/4 -left-2 -translate-y-1/2 w-3 h-3 bg-[#0a0a0a] border border-[#333] rounded-full"></div>
                   <span className="text-xs font-bold text-white font-mono uppercase px-2">
@@ -375,7 +375,7 @@ export function WorkflowsTab() {
                 </div>
 
                 {/* Risk / Execution Node */}
-                <div className="absolute top-[180px] left-[770px] z-10 bg-[#0a0a0a] border border-[#222] border-t-2 border-t-[#ff00f0] p-4 rounded-sm w-64 shadow-xl cursor-move hover:border-[#333]">
+                <div className="absolute top-45 left-192.5 z-10 bg-[#0a0a0a] border border-[#222] border-t-2 border-t-[#ff00f0] p-4 rounded-sm w-64 shadow-xl cursor-move hover:border-[#333]">
                   <div className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 bg-[#0a0a0a] border border-[#ff00f0] rounded-full"></div>
                   <div className="flex items-center gap-3 mb-2 pb-2 border-b border-[#1a1a1a]">
                     <Boxes className="w-4 h-4 text-[#ff00f0]" />
@@ -399,7 +399,7 @@ export function WorkflowsTab() {
             </div>
 
             {/* Advanced Properties Panel */}
-            <div className="w-80 flex-shrink-0 flex flex-col gap-4">
+            <div className="w-80 shrink-0 flex flex-col gap-4">
               <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4">
                 <h3 className="text-white font-bold text-sm tracking-wide mb-4">
                   Node Properties
@@ -450,7 +450,7 @@ export function WorkflowsTab() {
                   <Database className="w-3.5 h-3.5" />
                   Memory Subsystem
                 </h3>
-                <p className="text-xs text-gray-400 leading-relaxed min-h-[50px]">
+                <p className="text-xs text-gray-400 leading-relaxed min-h-12.5">
                   The node retains context of previous 50 ticks to infer
                   micro-trend velocity.
                 </p>

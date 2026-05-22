@@ -103,7 +103,7 @@ export function TopIntelligenceBar() {
   }, [overrideHistory]);
 
   return (
-    <header className="h-12 bg-[#020202] border-b border-[#1a1a1a] flex items-center justify-between px-4 flex-shrink-0 z-50">
+    <header className="h-12 bg-[#020202] border-b border-[#1a1a1a] flex items-center justify-between px-4 shrink-0 z-50">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 pr-2 border-r border-[#1a1a1a]">
           {isSimulationMode ? (
@@ -196,7 +196,7 @@ export function TopIntelligenceBar() {
           </button>
         )}
 
-        <div className="h-6 w-[1px] bg-[#1a1a1a] mx-2 hidden sm:block"></div>
+        <div className="h-6 w-px bg-[#1a1a1a] mx-2 hidden sm:block"></div>
         <div className="relative hidden sm:block">
           <Search className="w-3.5 h-3.5 text-gray-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input

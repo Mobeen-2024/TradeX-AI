@@ -39,13 +39,13 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
     <main className="flex-1 relative overflow-hidden bg-[#020202] flex flex-col">
       {/* Main Glow Background */}
       <div
-        className={`absolute top-[-30%] left-1/2 -translate-x-1/2 w-[80%] h-[80%] bg-gradient-to-b to-transparent rounded-full blur-[160px] pointer-events-none transition-colors duration-1000 ${getGlowClasses()}`}
+        className={`absolute top-[-30%] left-1/2 -translate-x-1/2 w-[80%] h-[80%] bg-linear-to-b to-transparent rounded-full blur-[160px] pointer-events-none transition-colors duration-1000 ${getGlowClasses()}`}
       ></div>
 
       {/* Header Removed */}
 
       <div className="flex-1 overflow-y-auto w-full relative z-10 no-scrollbar pb-10 scroll-smooth">
-        <div className="max-w-[1400px] mx-auto px-8 pt-[4vh]">
+        <div className="max-w-350 mx-auto px-8 pt-[4vh]">
           <AnimatePresence mode="wait">
             {activeTab === "PnL Dashboard" ? (
               <DashboardTab />

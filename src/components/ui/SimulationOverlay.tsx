@@ -31,7 +31,7 @@ export const SimulationOverlay: React.FC = () => {
            initial={{ y: 50, opacity: 0 }}
            animate={{ y: 0, opacity: 1 }}
            exit={{ y: 50, opacity: 0 }}
-           className="fixed bottom-6 left-6 w-96 bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff6b00]/50 rounded-xl shadow-[0_0_30px_rgba(255,107,0,0.15)] z-[90] font-mono overflow-hidden"
+           className="fixed bottom-6 left-6 w-96 bg-[#0a0a0a]/90 backdrop-blur-md border border-[#ff6b00]/50 rounded-xl shadow-[0_0_30px_rgba(255,107,0,0.15)] z-90 font-mono overflow-hidden"
         >
            <div className="bg-[#110a05] border-b border-[#ff6b00]/30 px-4 py-3 flex justify-between items-center">
               <h3 className="text-xs text-[#ff6b00] font-bold uppercase tracking-widest flex items-center gap-2">

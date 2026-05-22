@@ -37,12 +37,12 @@ export function Sidebar({
   setActiveTab: (tab: TabType) => void;
 }) {
   return (
-    <aside className="w-[72px] hover:w-[280px] group/sidebar flex-shrink-0 bg-[#020202] border-r border-[#1a1a1a] flex flex-col h-full relative z-50 transition-all duration-300 overflow-hidden">
+    <aside className="w-18 hover:w-70 group/sidebar shrink-0 bg-[#020202] border-r border-[#1a1a1a] flex flex-col h-full relative z-50 transition-all duration-300 overflow-hidden">
       <div className="p-2 overflow-y-auto overflow-x-hidden no-scrollbar flex-1 pb-32 w-full block scroll-smooth">
         {/* Core Identity */}
         <div className="flex items-center justify-between mb-8 px-1 mt-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex flex-shrink-0 items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.2)]">
+            <div className="w-8 h-8 rounded-lg bg-[#00f0ff]/10 border border-[#00f0ff]/30 flex shrink-0 items-center justify-center shadow-[0_0_15px_rgba(0,240,255,0.2)]">
               <Sparkles className="w-4 h-4 text-[#00f0ff]" />
             </div>
             <div className="flex flex-col whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
@@ -58,10 +58,10 @@ export function Sidebar({
 
         {/* Action Button */}
         <button className="w-full relative group mb-8">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#00f0ff]/20 via-[#00f0ff]/5 to-transparent rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
-          <div className="relative flex items-center bg-[#050505] hover:bg-[#0a0a0a] border border-[#1a1a1a] border-l-[#00f0ff] border-l-[2px] text-sm text-gray-200 py-3 px-3 rounded-lg transition-colors overflow-hidden">
+          <div className="absolute inset-0 bg-linear-to-r from-[#00f0ff]/20 via-[#00f0ff]/5 to-transparent rounded-lg blur-md opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+          <div className="relative flex items-center bg-[#050505] hover:bg-[#0a0a0a] border border-[#1a1a1a] border-l-[#00f0ff] border-l-2 text-sm text-gray-200 py-3 px-3 rounded-lg transition-colors overflow-hidden">
             <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-widest whitespace-nowrap">
-              <div className="flex-shrink-0 w-4 h-4 flex items-center justify-center">
+              <div className="shrink-0 w-4 h-4 flex items-center justify-center">
                 <Command className="w-3.5 h-3.5 text-[#00f0ff]" />
               </div>
               <span className="font-bold text-white/90 opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
@@ -76,7 +76,7 @@ export function Sidebar({
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3 whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 h-3">
             Core Operations
           </h3>
-          <ul className="space-y-[2px]">
+          <ul className="space-y-0.5">
             <NavItem
               icon={<LayoutDashboard className="w-3.5 h-3.5" />}
               label="PnL Dashboard"
@@ -109,7 +109,7 @@ export function Sidebar({
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3 whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 h-3">
             Portfolio & Risk
           </h3>
-          <ul className="space-y-[2px]">
+          <ul className="space-y-0.5">
             <NavItem
               icon={<Wallet className="w-3.5 h-3.5" />}
               label="Alpha Generation"
@@ -130,7 +130,7 @@ export function Sidebar({
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3 whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 h-3">
             Intelligence & Experimentation
           </h3>
-          <ul className="space-y-[2px]">
+          <ul className="space-y-0.5">
             <NavItem
               icon={<Boxes className="w-3.5 h-3.5" />}
               label="Strategy Engine"
@@ -163,7 +163,7 @@ export function Sidebar({
           <h3 className="text-[9px] text-gray-600 font-bold uppercase tracking-widest mb-3 px-3 whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300 h-3">
             System
           </h3>
-          <ul className="space-y-[2px]">
+          <ul className="space-y-0.5">
             <NavItem
               icon={<Terminal className="w-3.5 h-3.5" />}
               label="System Telemetry"
@@ -188,7 +188,7 @@ export function Sidebar({
 
       {/* System Status telemetry */}
       <div className="absolute bottom-0 left-0 w-full p-2 bg-[#020202] border-t border-[#1a1a1a]">
-        <div className="flex flex-col gap-3 h-[72px] overflow-hidden whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
+        <div className="flex flex-col gap-3 h-18 overflow-hidden whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
           <div className="flex justify-between items-center text-[10px] font-mono">
             <span className="text-gray-500 uppercase tracking-widest">
               Connectivity
@@ -262,7 +262,7 @@ function NavItem({
 
         <div className="flex items-center gap-3 relative z-10 whitespace-nowrap">
           <span
-            className={`flex-shrink-0 w-4 h-4 flex items-center justify-center transition-colors duration-300 ${active ? "text-[#00f0ff]" : "opacity-50 group-hover:opacity-80"}`}
+            className={`shrink-0 w-4 h-4 flex items-center justify-center transition-colors duration-300 ${active ? "text-[#00f0ff]" : "opacity-50 group-hover:opacity-80"}`}
           >
             {icon}
           </span>

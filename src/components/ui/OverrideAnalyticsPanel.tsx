@@ -67,7 +67,7 @@ export const OverrideAnalyticsPanel: React.FC = () => {
             </div>
             
             <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-4 rounded-lg relative">
-               <div className="absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-black/80 to-transparent z-0 pointer-events-none"></div>
+               <div className="absolute right-0 top-0 h-full w-24 bg-linear-to-l from-black/80 to-transparent z-0 pointer-events-none"></div>
                <h3 className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mb-3 flex items-center gap-2 relative z-10">
                  <Activity className="w-3.5 h-3.5 text-[#ffcc00]" /> Override History
                </h3>

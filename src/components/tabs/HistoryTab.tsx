@@ -258,7 +258,7 @@ export function HistoryTab() {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-gray-300 font-mono break-words leading-relaxed truncate">
+                        <div className="text-xs text-gray-300 font-mono wrap-break-word leading-relaxed truncate">
                           {event.message || JSON.stringify(event.metadata)}
                         </div>
                       </div>
@@ -300,7 +300,7 @@ export function HistoryTab() {
                         <span className="text-[#0ea5e9] w-24 shrink-0 font-bold">
                           {ev.type}
                         </span>
-                        <span className="text-gray-300 break-words flex-1 whitespace-pre-wrap">
+                        <span className="text-gray-300 wrap-break-word flex-1 whitespace-pre-wrap">
                           {ev.message || JSON.stringify(ev.metadata, null, 2)}
                         </span>
                       </div>

@@ -200,7 +200,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
       // 3. Analyze Strategy Scores
       const degradingStrategies = Object.entries(state.strategyScores).filter(
-        ([k, v]) => v.winRate < 40 && v.totalTrades > 5,
+        ([k, v]) => v.winRate < 40 && (v.totalTrades ?? 0) > 5,
       );
 
       degradingStrategies.forEach(([k, v]) => {

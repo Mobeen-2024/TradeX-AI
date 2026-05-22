@@ -17,7 +17,7 @@ export function BottomSystemTerminal() {
     );
 
   return (
-    <footer className="h-32 bg-[#020202] border-t border-[#1a1a1a] flex flex-col flex-shrink-0 z-50">
+    <footer className="h-32 bg-[#020202] border-t border-[#1a1a1a] flex flex-col shrink-0 z-50">
       <div className="flex items-center justify-between px-4 py-1.5 border-b border-[#111] bg-[#050505]">
         <div className="flex items-center gap-4">
           <h3 className="text-[9px] font-bold font-mono tracking-widest text-[#00f0ff] uppercase flex items-center gap-1.5">
@@ -25,13 +25,13 @@ export function BottomSystemTerminal() {
             System Terminal
           </h3>
           <div className="flex gap-3 text-[9px] font-mono">
-            <span className="text-white border-b border-[#00f0ff] pb-[1px] cursor-pointer">
+            <span className="text-white border-b border-[#00f0ff] pb-px cursor-pointer">
               Logs
             </span>
-            <span className="text-gray-600 hover:text-white cursor-pointer transition-colors pb-[1px]">
+            <span className="text-gray-600 hover:text-white cursor-pointer transition-colors pb-px">
               Network
             </span>
-            <span className="text-gray-600 hover:text-white cursor-pointer transition-colors pb-[1px]">
+            <span className="text-gray-600 hover:text-white cursor-pointer transition-colors pb-px">
               Risk Engine
             </span>
           </div>

@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Lightbulb, AlertTriangle, TrendingDown, Target, Brain, ArrowRight } from 'lucide-react';
-import { useSystemStore } from '../../store/systemStore';
-import { SystemInsight } from '../../types';
+import { useSystemStore } from '../store/systemStore';
+import { SystemInsight } from '../types';
 
 export function InsightsPanel() {
   const { systemInsights } = useSystemStore();
@@ -40,7 +40,7 @@ export function InsightsPanel() {
       
       <div className="space-y-3">
         <AnimatePresence>
-            {systemInsights.map(insight => (
+            {systemInsights.map((insight: SystemInsight) => (
                 <motion.div 
                     key={insight.id}
                     initial={{ opacity: 0, x: -10 }}

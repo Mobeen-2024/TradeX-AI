@@ -17,7 +17,8 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
-    "moduleResolution": "Node",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
     "isolatedModules": true,
     "moduleDetection": "force",
     "allowJs": false,

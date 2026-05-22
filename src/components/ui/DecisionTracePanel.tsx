@@ -62,14 +62,14 @@ export const DecisionTracePanel: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setActiveCorrelationId(null)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-100"
           />
           <motion.div
             initial={{ x: "100%", opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-full sm:w-[500px] bg-[#050505] border-l border-white/10 z-[101] flex flex-col shadow-2xl font-mono"
+            className="fixed right-0 top-0 bottom-0 w-full sm:w-125 bg-[#050505] border-l border-white/10 z-101 flex flex-col shadow-2xl font-mono"
           >
             <div className="flex items-center justify-between p-4 border-b border-white/10 bg-[#0a0a0a]">
               <div className="flex items-center gap-3">
@@ -129,7 +129,7 @@ export const DecisionTracePanel: React.FC = () => {
                     <>
                       {/* OVERVIEW PANEL */}
                       <div className="bg-[#0a0a0a] rounded-xl border border-white/5 p-4 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#a855f7]/20 via-transparent to-transparent pointer-events-none opacity-50"></div>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-[#a855f7]/20 via-transparent to-transparent pointer-events-none opacity-50"></div>
                         <div className="flex justify-between items-start mb-4 relative z-10">
                           <div>
                             <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-1">
@@ -187,7 +187,7 @@ export const DecisionTracePanel: React.FC = () => {
 
                       {/* TIMELINE (STACKED REASONING) */}
                       <div className="space-y-4 relative">
-                        <div className="absolute left-[15px] top-6 bottom-4 w-px bg-white/10 z-0"></div>
+                        <div className="absolute left-3.75 top-6 bottom-4 w-px bg-white/10 z-0"></div>
 
                         {/* Step 1: Quant Signal */}
                         {currentTrace.quant && (

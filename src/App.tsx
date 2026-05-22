@@ -58,9 +58,9 @@ export default function App() {
   return (
     <SystemInitializer>
       <div
-        className={`relative min-h-[100dvh] bg-[#000] selection:bg-[#00f0ff]/30 text-white font-sans ${getRegimeClasses()}`}
+        className={`relative min-h-dvh bg-black selection:bg-[#00f0ff]/30 text-white font-sans ${getRegimeClasses()}`}
       >
-        <div className="hidden md:flex flex-col min-h-[100dvh] overflow-hidden relative z-10 w-full bg-black/60">
+        <div className="hidden md:flex flex-col min-h-dvh overflow-hidden relative z-10 w-full bg-black/60">
           <TopIntelligenceBar />
           <div className="flex w-full flex-1 bg-[#020202] relative overflow-hidden">
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -68,7 +68,7 @@ export default function App() {
           </div>
           <BottomSystemTerminal />
         </div>
-        <div className="md:hidden relative z-10 w-full min-h-[100dvh] bg-[#050505]">
+        <div className="md:hidden relative z-10 w-full min-h-dvh bg-[#050505]">
           <MobileApp />
         </div>
         <div className="relative z-50">
