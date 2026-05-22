@@ -50,8 +50,15 @@ interface SystemState {
     actualOutcome: number | null;
   }[];
 
+  // LAYER 5: AUDIT & GOVERNANCE
+  lockOverrides: boolean;
+  sessionSnapshot: any | null;
+
   // ACTIONS
   setActivePortfolio: (portfolio: PortfolioMetrics | null) => void;
+  setLockOverrides: (locked: boolean) => void;
+  saveSessionSnapshot: () => void;
+  loadSessionSnapshot: () => void;
   setPortfolios: (portfolios: PortfolioMetrics[]) => void;
   setGlobalMetrics: (metrics: GlobalMetrics) => void;
   setRiskState: (risk: RiskMetrics) => void;
@@ -118,8 +125,31 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     emergencyThrottle: 1.0,
   },
   overrideHistory: [],
+  lockOverrides: false,
+  sessionSnapshot: null,
 
   setActivePortfolio: (portfolio) => set({ activePortfolio: portfolio }),
+  setLockOverrides: (locked) => set({ lockOverrides: locked }),
+  saveSessionSnapshot: () =>
+    set((state) => ({
+      sessionSnapshot: {
+        strategyOverrides: state.strategyOverrides,
+        riskOverrides: state.riskOverrides,
+        isSimulationMode: state.isSimulationMode,
+        overrideHistory: state.overrideHistory,
+        timestamp: Date.now(),
+      },
+    })),
+  loadSessionSnapshot: () =>
+    set((state) => {
+      if (!state.sessionSnapshot) return state;
+      return {
+        strategyOverrides: state.sessionSnapshot.strategyOverrides,
+        riskOverrides: state.sessionSnapshot.riskOverrides,
+        isSimulationMode: state.sessionSnapshot.isSimulationMode,
+        overrideHistory: state.sessionSnapshot.overrideHistory,
+      };
+    }),
   setPortfolios: (portfolios) => set({ portfolios }),
   setGlobalMetrics: (metrics) => set({ globalMetrics: metrics }),
   setRiskState: (risk) => set({ riskState: risk }),
@@ -147,8 +177,15 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     set((state) => ({
       riskOverrides: { ...state.riskOverrides, ...overrides },
     })),
-  addOverrideRecord: (record) =>
-    set((state) => ({ overrideHistory: [record, ...state.overrideHistory] })),
+  addOverrideRecord: (record) => {
+    set((state) => ({ overrideHistory: [record, ...state.overrideHistory] }));
+    // Persist to backend without blocking UI
+    fetch("/api/overrides/log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record),
+    }).catch((err) => console.error("Failed to persist override log", err));
+  },
 
   updateAgentState: (agent, state) =>
     set((prev) => ({

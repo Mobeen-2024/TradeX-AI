@@ -15,6 +15,7 @@ import { SimulationEngineTab } from "./tabs/SimulationEngineTab";
 import { SystemTelemetryTab } from "./tabs/SystemTelemetryTab";
 import { SystemConfigurationTab } from "./tabs/SystemConfigurationTab";
 import { AlphaGenerationTab } from "./tabs/AlphaGenerationTab";
+import { AuditTrailTab } from "./tabs/AuditTrailTab";
 import { useMarketRegime } from "../contexts/MarketRegimeContext";
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
@@ -68,6 +69,8 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
               <SystemTelemetryTab />
             ) : activeTab === "Alpha Generation" ? (
               <AlphaGenerationTab />
+            ) : activeTab === "Audit & Governance" ? (
+              <AuditTrailTab />
             ) : activeTab === "System Configuration" ? (
               <SystemConfigurationTab />
             ) : (

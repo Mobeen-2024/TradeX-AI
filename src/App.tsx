@@ -29,6 +29,7 @@ export type TabType =
   | "Technical Engine"
   | "Backtesting Engine"
   | "System Telemetry"
+  | "Audit & Governance"
   | "System Configuration";
 
 export default function App() {

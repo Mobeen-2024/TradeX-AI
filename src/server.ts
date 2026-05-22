@@ -22,6 +22,7 @@ import { marketRouter } from "./api/routes/market";
 import { intelligenceRouter } from "./api/routes/intelligence";
 import { eventsRouter } from "./api/routes/events";
 import { systemRouter } from "./api/routes/system";
+import { overridesRouter } from "./api/routes/overrides";
 
 dotenv.config();
 
@@ -29,19 +30,27 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 async function startServer() {
   if (process.env.NODE_ENV === "production") {
-    console.log("[TradeX OS Daemon] Production mode detected. Validating environment...");
+    console.log(
+      "[TradeX OS Daemon] Production mode detected. Validating environment...",
+    );
     if (!process.env.GEMINI_API_KEY) {
-      console.warn("WARNING: GEMINI_API_KEY is missing during production startup.");
+      console.warn(
+        "WARNING: GEMINI_API_KEY is missing during production startup.",
+      );
     }
     if (!process.env.JWT_SECRET) {
-      console.warn("WARNING: JWT_SECRET is missing during production startup. Using default.");
+      console.warn(
+        "WARNING: JWT_SECRET is missing during production startup. Using default.",
+      );
       process.env.JWT_SECRET = "default-secret-do-not-use-in-real-prod";
     }
 
     console.log("[TradeX OS Daemon] Validating db connection...");
     const isConnected = await checkDbConnection();
     if (!isConnected) {
-      console.warn("WARNING: Database connection failed during production startup. Continuing with mock DB.");
+      console.warn(
+        "WARNING: Database connection failed during production startup. Continuing with mock DB.",
+      );
     }
     console.log("[TradeX OS Daemon] Startup checks complete.");
   } else {
@@ -61,14 +70,19 @@ async function startServer() {
       MetricsWorker.initialize();
       EventRetryWorker.initialize();
       StrategyEvolutionWorker.initialize();
-      
+
       const { AllocationWorker } = require("./workers/allocationWorker");
       AllocationWorker.initialize();
     } catch (e) {
-      console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);
+      console.error(
+        "[TradeX OS Daemon] Failed to initialize EventListener:",
+        e,
+      );
     }
   } else {
-    console.warn("[TradeX OS Daemon] DATABASE_URL is missing. Background workers and EventListener are disabled.");
+    console.warn(
+      "[TradeX OS Daemon] DATABASE_URL is missing. Background workers and EventListener are disabled.",
+    );
   }
 
   const app = express();
@@ -101,10 +115,14 @@ async function startServer() {
   apiRouter.get("/market/klines", async (req, res) => {
     try {
       const { symbol = "BTCUSDT", interval = "1m", limit = "100" } = req.query;
-      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+      const response = await fetch(
+        `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`,
+      );
 
       if (!response.ok) {
-        throw new Error(`Binance API Error: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Binance API Error: ${response.status} ${response.statusText}`,
+        );
       }
 
       const data = await response.json();
@@ -121,7 +139,7 @@ async function startServer() {
     res.json({
       regime: "volatile",
       confidence: 0.89,
-      description: "Pre-election high volatility cluster detected."
+      description: "Pre-election high volatility cluster detected.",
     });
   });
 
@@ -132,6 +150,7 @@ async function startServer() {
   apiRouter.use("/intelligence", intelligenceRouter);
   apiRouter.use("/events", eventsRouter);
   apiRouter.use("/system", systemRouter);
+  apiRouter.use("/overrides", overridesRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {
@@ -150,12 +169,15 @@ async function startServer() {
 
       if (!process.env.GEMINI_API_KEY) {
         console.warn("Mocking AI response because GEMINI_API_KEY is not set.");
-        return res.json({ response: "Simulated Agent: Trade logic initialized based on prompt.", isMock: true });
+        return res.json({
+          response: "Simulated Agent: Trade logic initialized based on prompt.",
+          isMock: true,
+        });
       }
 
       const response = await ai.models.generateContent({
         model: "gemini-3.1-pro-preview",
-        contents: `You are the Quant Strategy Agent for TradeX OS. Analyze the following request and give institutional-grade insight. 
+        contents: `You are the Quant Strategy Agent for TradeX OS. Analyze the following request and give institutional-grade insight.
         Request: ${prompt}`,
       });
 
@@ -171,25 +193,31 @@ async function startServer() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
-      server: { 
+      server: {
         middlewareMode: true,
-        hmr: { server: httpServer }
+        hmr: { server: httpServer },
       },
       appType: "spa",
     });
     app.use(vite.middlewares);
-    app.use("/graphify-out", express.static(path.join(process.cwd(), "graphify-out")));
+    app.use(
+      "/graphify-out",
+      express.static(path.join(process.cwd(), "graphify-out")),
+    );
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.use("/graphify-out", express.static(path.join(process.cwd(), "graphify-out")));
+    app.use(
+      "/graphify-out",
+      express.static(path.join(process.cwd(), "graphify-out")),
+    );
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
-  httpServer.on('error', (e: any) => {
-    if (e.code === 'EADDRINUSE') {
+  httpServer.on("error", (e: any) => {
+    if (e.code === "EADDRINUSE") {
       console.error(`[TradeX OS Daemon] Port ${PORT} is in use, retrying...`);
       setTimeout(() => {
         httpServer.close();
