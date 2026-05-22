@@ -13,6 +13,8 @@ import { DashboardTab } from "./tabs/DashboardTab";
 import { RiskCenterTab } from "./tabs/RiskCenterTab";
 import { SimulationEngineTab } from "./tabs/SimulationEngineTab";
 import { SystemTelemetryTab } from "./tabs/SystemTelemetryTab";
+import { SystemConfigurationTab } from "./tabs/SystemConfigurationTab";
+import { AlphaGenerationTab } from "./tabs/AlphaGenerationTab";
 import { useMarketRegime } from "../contexts/MarketRegimeContext";
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
@@ -20,17 +22,24 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
 
   const getGlowClasses = () => {
     switch (regime) {
-      case "bull": return "from-[#0ea5e9]/15 via-[#00f0ff]/5";
-      case "bear": return "from-[#ff4500]/15 via-[#ff4500]/5";
-      case "volatile": return "from-[#facc15]/15 via-[#facc15]/5 animate-pulse";
-      case "neutral": default: return "from-gray-500/10 via-transparent";
+      case "bull":
+        return "from-[#0ea5e9]/15 via-[#00f0ff]/5";
+      case "bear":
+        return "from-[#ff4500]/15 via-[#ff4500]/5";
+      case "volatile":
+        return "from-[#facc15]/15 via-[#facc15]/5 animate-pulse";
+      case "neutral":
+      default:
+        return "from-gray-500/10 via-transparent";
     }
   };
 
   return (
     <main className="flex-1 relative overflow-hidden bg-[#020202] flex flex-col">
       {/* Main Glow Background */}
-      <div className={`absolute top-[-30%] left-1/2 -translate-x-1/2 w-[80%] h-[80%] bg-gradient-to-b to-transparent rounded-full blur-[160px] pointer-events-none transition-colors duration-1000 ${getGlowClasses()}`}></div>
+      <div
+        className={`absolute top-[-30%] left-1/2 -translate-x-1/2 w-[80%] h-[80%] bg-gradient-to-b to-transparent rounded-full blur-[160px] pointer-events-none transition-colors duration-1000 ${getGlowClasses()}`}
+      ></div>
 
       {/* Header Removed */}
 
@@ -57,6 +66,10 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
               <SimulationEngineTab />
             ) : activeTab === "System Telemetry" ? (
               <SystemTelemetryTab />
+            ) : activeTab === "Alpha Generation" ? (
+              <AlphaGenerationTab />
+            ) : activeTab === "System Configuration" ? (
+              <SystemConfigurationTab />
             ) : (
               <motion.div
                 key="clean-slate"
