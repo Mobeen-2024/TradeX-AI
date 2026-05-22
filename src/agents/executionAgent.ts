@@ -38,7 +38,7 @@ export class ExecutionAgent {
             if (decision.action === "BUY" || decision.action === "SELL") {
                 // Kill-switch: check risk level before execution
                 const riskMemory = await MemoryService.getByCorrelation(correlationId, "RiskGuardian");
-                if (riskMemory && riskMemory.market_regime.includes("HIGH")) {
+                if (riskMemory && riskMemory.market_regime?.includes("HIGH")) {
                     console.warn(`[ExecutionAgent] Blocking execution due to HIGH risk for correlation ${correlationId}`);
 
                     await MemoryService.logMemory(
