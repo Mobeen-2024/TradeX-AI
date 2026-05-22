@@ -42,14 +42,6 @@ export class PortfolioService {
     max_loss: number,
   ): Promise<Portfolio> {
     const portfolio = await PortfolioRepository.findById(portfolioId);
-    console.log(
-      "UpdateSettings -> userId:",
-      userId,
-      "portfolioId:",
-      portfolioId,
-      "portfolio:",
-      portfolio,
-    );
     if (!portfolio || portfolio.user_id !== userId) {
       throw new Error("Portfolio not found or unauthorized");
     }
