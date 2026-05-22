@@ -4,11 +4,12 @@ import { useSystemStore } from "../store/systemStore";
 export const SystemInitializer: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { connectWebSocket } = useSystemStore();
+  const { connectWebSocket, fetchInitialData } = useSystemStore();
 
   useEffect(() => {
     connectWebSocket();
-  }, [connectWebSocket]);
+    fetchInitialData();
+  }, [connectWebSocket, fetchInitialData]);
 
   return <>{children}</>;
 };

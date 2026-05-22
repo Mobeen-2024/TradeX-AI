@@ -69,9 +69,10 @@ interface SystemState {
   setRiskOverride: (overrides: Partial<SystemState["riskOverrides"]>) => void;
   addOverrideRecord: (record: SystemState["overrideHistory"][0]) => void;
 
-  // LAYER 2: WEBSOCKET ORCHESTRATION
+  // LAYER 2: WEBSOCKET ORCHESTRATION & INITIALIZATION
   connectWebSocket: () => void;
   disconnectWebSocket: () => void;
+  fetchInitialData: () => Promise<void>;
 }
 
 let wsSocket: WebSocket | null = null;
@@ -165,6 +166,53 @@ export const useSystemStore = create<SystemState>((set, get) => ({
 
   setWsConnected: (connected) => set({ wsConnected: connected }),
 
+  fetchInitialData: async () => {
+    try {
+      // 1. Fetch Portfolios
+      const portRes = await fetch("/api/portfolio/me");
+      if (portRes.ok) {
+        const data = await portRes.json();
+        if (data.portfolios && data.portfolios.length > 0) {
+          get().setPortfolios(data.portfolios);
+          get().setActivePortfolio(data.portfolios[0]);
+
+          // Populate global metrics roughly from the first portfolio
+          const p = data.portfolios[0];
+          get().setGlobalMetrics({
+            totalPnl: p.totalRealizedPnl + p.totalUnrealizedPnl,
+            globalDrawdown: p.maxDrawdown || 0,
+            winRate: p.winRate || 0,
+            sharpeRatio: p.sharpeRatio || 0,
+            totalCapital: p.cash + (p.totalValue || 0),
+            totalExposure: p.totalValue || 0,
+          });
+        }
+      }
+
+      // 2. Fetch Risk State
+      const riskRes = await fetch("/api/intelligence/risk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (riskRes.ok) {
+        const riskData = await riskRes.json();
+        if (riskData.riskState) {
+          get().setRiskState(riskData.riskState);
+        }
+      }
+
+      // 3. Fetch Strategy / Intelligence (mocked endpoint or backtest if available, assuming events/recent acts as a general pulse)
+      const eventsRes = await fetch("/api/events/recent");
+      if (eventsRes.ok) {
+        const evData = await eventsRes.json();
+        // This doesn't strictly set strategy scores yet, just prewarms the API cache
+      }
+    } catch (error) {
+      console.error("Failed to fetch initial data", error);
+    }
+  },
+
   connectWebSocket: () => {
     if (wsSocket) return;
 
@@ -184,7 +232,6 @@ export const useSystemStore = create<SystemState>((set, get) => ({
           if (data.type === "AGENT_UPDATE" && data.payload) {
             get().updateAgentState(data.payload.agent, data.payload.state);
 
-            // Append telemetry
             get().addTelemetryEvent({
               id: Math.random().toString(36).substring(7),
               type: "AGENT_DECISION",
@@ -200,13 +247,25 @@ export const useSystemStore = create<SystemState>((set, get) => ({
               message: data.payload.message || "Execution event",
               timestamp: Date.now(),
             });
+
+            // Re-fetch portfolios on execution updates to keep UI perfectly in sync
+            get().fetchInitialData();
           }
 
           if (data.type === "METRICS_UPDATE" && data.payload) {
             if (data.payload.globalMetrics)
               get().setGlobalMetrics(data.payload.globalMetrics);
-            if (data.payload.portfolios)
+            if (data.payload.portfolios) {
               get().setPortfolios(data.payload.portfolios);
+              // Keep active portfolio reference updated
+              const currentActive = get().activePortfolio;
+              if (currentActive) {
+                const updatedActive = data.payload.portfolios.find(
+                  (p: any) => p.id === currentActive.id,
+                );
+                if (updatedActive) get().setActivePortfolio(updatedActive);
+              }
+            }
             if (data.payload.riskState)
               get().setRiskState(data.payload.riskState);
             if (data.payload.strategyScores)
