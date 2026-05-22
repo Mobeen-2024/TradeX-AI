@@ -6,6 +6,7 @@ import {
   RiskMetrics,
   AgentState,
   TradeEvent,
+  SystemInsight,
 } from "../types";
 
 interface SystemState {
@@ -53,6 +54,10 @@ interface SystemState {
   // LAYER 5: AUDIT & GOVERNANCE
   lockOverrides: boolean;
   sessionSnapshot: any | null;
+
+  // LAYER 6: STRATEGIC GUIDANCE
+  systemInsights: SystemInsight[];
+  generateInsights: () => void;
 
   // ACTIONS
   setActivePortfolio: (portfolio: PortfolioMetrics | null) => void;
@@ -127,6 +132,98 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   overrideHistory: [],
   lockOverrides: false,
   sessionSnapshot: null,
+  systemInsights: [],
+
+  generateInsights: () =>
+    set((state) => {
+      const insights: SystemInsight[] = [];
+
+      // 1. Analyze Override History
+      if (state.overrideHistory.length >= 2) {
+        const overrides = state.overrideHistory.filter((h) => h.userOverride);
+        const userWins = overrides.filter(
+          (h) => h.actualOutcome && h.actualOutcome > 0,
+        ).length;
+        const userTotal = overrides.length;
+
+        if (userTotal > 0 && userWins / userTotal >= 0.6) {
+          insights.push({
+            id: "insight-override-outperform",
+            description:
+              "User overrides are outperforming AI autonomous decisions.",
+            affectedComponent: "EXECUTION",
+            confidence: 85,
+            priority: "MEDIUM",
+            suggestedAction:
+              "Consider adjusting base AI models or maintain manual supervision.",
+          });
+        } else if (userTotal > 0 && userWins / userTotal <= 0.4) {
+          insights.push({
+            id: "insight-override-underperform",
+            description:
+              "User overrides are statistically degrading system performance.",
+            affectedComponent: "EXECUTION",
+            confidence: 90,
+            priority: "HIGH",
+            suggestedAction:
+              "Trust AI autonomous decisions and reduce manual interventions.",
+          });
+        }
+      }
+
+      // 2. Analyze Risk State
+      if (state.riskState.drawdown > 15) {
+        insights.push({
+          id: "insight-risk-drawdown",
+          description:
+            "System drawdown is approaching critical threshold limits.",
+          affectedComponent: "RISK",
+          confidence: 95,
+          priority: "HIGH",
+          suggestedAction:
+            "Immediate risk reduction. Consider tightening risk sensitivity.",
+        });
+      }
+
+      if (state.riskState.volatility > 5) {
+        insights.push({
+          id: "insight-risk-volatility",
+          description:
+            "High market volatility detected across portfolio assets.",
+          affectedComponent: "RISK",
+          confidence: 80,
+          priority: "MEDIUM",
+          suggestedAction:
+            "Increase risk sensitivity and prepare for market whipsaw.",
+        });
+      }
+
+      // 3. Analyze Strategy Scores
+      const degradingStrategies = Object.entries(state.strategyScores).filter(
+        ([k, v]) => v.winRate < 40 && v.totalTrades > 5,
+      );
+
+      degradingStrategies.forEach(([k, v]) => {
+        insights.push({
+          id: `insight-strategy-degrading-${k}`,
+          description: `Strategy ${k} is exhibiting sustained underperformance.`,
+          affectedComponent: "STRATEGY",
+          confidence: 88,
+          priority: v.winRate < 30 ? "HIGH" : "MEDIUM",
+          suggestedAction: "Reduce allocation or disable strategy.",
+          targetId: k,
+        });
+      });
+
+      const sortedInsights = insights.sort((a, b) => {
+        const pMap = { HIGH: 3, MEDIUM: 2, LOW: 1 };
+        if (pMap[a.priority] !== pMap[b.priority])
+          return pMap[b.priority] - pMap[a.priority];
+        return b.confidence - a.confidence;
+      });
+
+      return { systemInsights: sortedInsights.slice(0, 3) };
+    }),
 
   setActivePortfolio: (portfolio) => set({ activePortfolio: portfolio }),
   setLockOverrides: (locked) => set({ lockOverrides: locked }),
@@ -152,8 +249,14 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     }),
   setPortfolios: (portfolios) => set({ portfolios }),
   setGlobalMetrics: (metrics) => set({ globalMetrics: metrics }),
-  setRiskState: (risk) => set({ riskState: risk }),
-  setStrategyScores: (scores) => set({ strategyScores: scores }),
+  setRiskState: (risk) => {
+    set({ riskState: risk });
+    get().generateInsights();
+  },
+  setStrategyScores: (scores) => {
+    set({ strategyScores: scores });
+    get().generateInsights();
+  },
   setActiveCorrelationId: (id) => set({ activeCorrelationId: id }),
   setIsSimulationMode: (mode) => set({ isSimulationMode: mode }),
   setOverrideState: (overrides) =>
@@ -179,6 +282,7 @@ export const useSystemStore = create<SystemState>((set, get) => ({
     })),
   addOverrideRecord: (record) => {
     set((state) => ({ overrideHistory: [record, ...state.overrideHistory] }));
+    get().generateInsights();
     // Persist to backend without blocking UI
     fetch("/api/overrides/log", {
       method: "POST",

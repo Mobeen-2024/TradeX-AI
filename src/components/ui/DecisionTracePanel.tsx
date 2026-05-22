@@ -23,6 +23,7 @@ export const DecisionTracePanel: React.FC = () => {
     isSimulationMode,
     overrideState,
     setOverrideState,
+    systemInsights,
   } = useSystemStore();
   const [viewMode, setViewMode] = useState<"AI" | "USER" | "OUTCOME">("AI");
   const [currentTrace, setCurrentTrace] = useState<any>(null);
@@ -284,6 +285,25 @@ export const DecisionTracePanel: React.FC = () => {
                   {/* OVERRIDE CONSOLE */}
                   {(viewMode === "USER" || isSimulationMode) && (
                     <div className="bg-[#110a05] rounded-xl border border-[#ff6b00]/30 p-4 relative overflow-hidden shadow-[0_0_15px_rgba(255,107,0,0.1)] mb-4">
+                      {(currentTrace?.agentResponses &&
+                        currentTrace.agentResponses.some(
+                          (r: any) => r.confidence && r.confidence > 80,
+                        )) ||
+                      systemInsights.find(
+                        (i) => i.id === "insight-override-underperform",
+                      ) ? (
+                        <div className="mb-4 bg-orange-500/10 border border-orange-500/30 p-2 rounded flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 text-orange-500 shrink-0" />
+                          <span className="text-orange-400 text-[10px] font-bold uppercase tracking-wide">
+                            {systemInsights.find(
+                              (i) => i.id === "insight-override-underperform",
+                            )
+                              ? "System overrides are actively degrading performance."
+                              : "AI Confidence High. Manual Overrides Discouraged."}
+                          </span>
+                        </div>
+                      ) : null}
+
                       <h3 className="text-xs text-[#ff6b00] uppercase tracking-widest mb-3 font-bold flex items-center gap-2">
                         <Play className="w-3.5 h-3.5" /> Simulation Overrides
                       </h3>

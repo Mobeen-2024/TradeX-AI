@@ -92,7 +92,12 @@ export function RiskCenterTab() {
     riskState,
     riskOverrides,
     setRiskOverride,
+    systemInsights,
   } = useSystemStore();
+
+  const activeRiskInsights = systemInsights.filter(
+    (i) => i.affectedComponent === "RISK",
+  );
 
   const [stressLevel, setStressLevel] = useState(68);
   const [loading, setLoading] = useState(false);
@@ -167,6 +172,37 @@ export function RiskCenterTab() {
           </button>
         </div>
       </div>
+
+      {activeRiskInsights.length > 0 && (
+        <div className="flex flex-col gap-2 mb-2">
+          {activeRiskInsights.map((insight) => (
+            <div
+              key={insight.id}
+              className="bg-red-500/10 border border-red-500/30 rounded px-4 py-3 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+                <div className="flex flex-col">
+                  <span className="text-red-400 font-bold text-xs uppercase tracking-widest">
+                    {insight.priority} PRIORITY RISK ALERT
+                  </span>
+                  <span className="text-gray-300 text-sm">
+                    {insight.description}
+                  </span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-gray-500 text-[10px] uppercase tracking-widest">
+                  Suggested Action
+                </span>
+                <span className="text-red-400 text-xs font-bold uppercase">
+                  {insight.suggestedAction}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mb-2">
         {/* Exposure Radar */}

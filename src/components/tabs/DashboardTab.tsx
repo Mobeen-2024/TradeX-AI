@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 import { useSystemStore } from "../../store/systemStore";
+import { InsightsPanel } from "../ui/InsightsPanel";
 
 export function DashboardTab() {
   const {
@@ -263,43 +264,9 @@ export function DashboardTab() {
           </div>
         </div>
 
-        {/* AI Panel (1 col) */}
-        <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col">
-          <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 mb-4">
-            <Cpu className="w-4 h-4 text-[#ff00f0]" />
-            Active Neural Layers
-          </h3>
-          <div className="flex-1 flex flex-col gap-4 justify-center">
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex items-center gap-3">
-              <div className="w-8 h-8 rounded-sm bg-[#ff00f0]/10 flex items-center justify-center border border-[#ff00f0]/20">
-                <Zap className="w-4 h-4 text-[#ff00f0]" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-white">
-                  Sentiment Core
-                </span>
-                <span className="text-[9px] text-[#39ff14] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] opacity-80"></span>{" "}
-                  Analyzing News
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex items-center gap-3">
-              <div className="w-8 h-8 rounded-sm bg-[#a855f7]/10 flex items-center justify-center border border-[#a855f7]/20">
-                <TrendingUp className="w-4 h-4 text-[#a855f7]" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-white">
-                  Price Action LSTM
-                </span>
-                <span className="text-[9px] text-[#39ff14] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] opacity-80"></span>{" "}
-                  Forward Prop
-                </span>
-              </div>
-            </div>
-          </div>
+        {/* Insights Panel (1 col) */}
+        <div className="lg:col-span-1 flex flex-col h-full max-h-[350px] overflow-y-auto no-scrollbar">
+          <InsightsPanel />
         </div>
       </div>
 
