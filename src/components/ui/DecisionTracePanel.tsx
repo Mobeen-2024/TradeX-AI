@@ -17,7 +17,13 @@ import {
 import Markdown from "react-markdown";
 
 export const DecisionTracePanel: React.FC = () => {
-  const { activeCorrelationId, setActiveCorrelationId } = useSystemStore();
+  const {
+    activeCorrelationId,
+    setActiveCorrelationId,
+    isSimulationMode,
+    overrideState,
+    setOverrideState,
+  } = useSystemStore();
   const [currentTrace, setCurrentTrace] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -151,6 +157,75 @@ export const DecisionTracePanel: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* OVERRIDE CONSOLE */}
+                  {isSimulationMode && (
+                    <div className="bg-[#110a05] rounded-xl border border-[#ff6b00]/30 p-4 relative overflow-hidden shadow-[0_0_15px_rgba(255,107,0,0.1)]">
+                      <h3 className="text-xs text-[#ff6b00] uppercase tracking-widest mb-3 font-bold flex items-center gap-2">
+                        <Play className="w-3.5 h-3.5" /> Simulation Overrides
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] text-gray-500 uppercase">
+                            Override Action
+                          </span>
+                          <select
+                            value={overrideState.action || ""}
+                            onChange={(e) =>
+                              setOverrideState({
+                                action: e.target.value
+                                  ? (e.target.value as any)
+                                  : null,
+                              })
+                            }
+                            className="bg-[#050505] border border-white/10 text-white text-xs p-1.5 rounded outline-none w-full"
+                          >
+                            <option value="">(Inherit AI)</option>
+                            <option value="BUY">BUY</option>
+                            <option value="SELL">SELL</option>
+                            <option value="HOLD">HOLD</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] text-gray-500 uppercase">
+                            Size Multiplier
+                          </span>
+                          <select
+                            value={overrideState.sizeMultiplier}
+                            onChange={(e) =>
+                              setOverrideState({
+                                sizeMultiplier: parseFloat(e.target.value),
+                              })
+                            }
+                            className="bg-[#050505] border border-white/10 text-[#00f0ff] font-mono text-xs p-1.5 rounded outline-none w-full"
+                          >
+                            <option value="0.5">0.5x</option>
+                            <option value="1">1.0x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2.0x</option>
+                          </select>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[9px] text-gray-500 uppercase">
+                            Risk Mode
+                          </span>
+                          <select
+                            value={overrideState.riskMode}
+                            onChange={(e) =>
+                              setOverrideState({
+                                riskMode: e.target.value as any,
+                              })
+                            }
+                            className="bg-[#050505] border border-white/10 text-[#ffcc00] font-mono text-xs p-1.5 rounded outline-none w-full"
+                          >
+                            <option value="CONSERVATIVE">CONSERVATIVE</option>
+                            <option value="NORMAL">NORMAL</option>
+                            <option value="AGGRESSIVE">AGGRESSIVE</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* TIMELINE (STACKED REASONING) */}
                   <div className="space-y-4 relative">

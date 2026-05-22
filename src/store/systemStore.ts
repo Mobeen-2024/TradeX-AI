@@ -20,6 +20,23 @@ interface SystemState {
   wsConnected: boolean;
   activeCorrelationId: string | null;
 
+  // LAYER 3: SIMULATION & OVERRIDES
+  isSimulationMode: boolean;
+  overrideState: {
+    action: "BUY" | "SELL" | "HOLD" | null;
+    sizeMultiplier: number;
+    riskMode: "CONSERVATIVE" | "NORMAL" | "AGGRESSIVE";
+  };
+  strategyOverrides: Record<
+    string,
+    { weightMultiplier: number; enabled: boolean }
+  >;
+  riskOverrides: {
+    drawdownCap: number;
+    volSensitivity: number;
+    emergencyThrottle: number;
+  };
+
   // ACTIONS
   setActivePortfolio: (portfolio: PortfolioMetrics | null) => void;
   setPortfolios: (portfolios: PortfolioMetrics[]) => void;
@@ -30,6 +47,13 @@ interface SystemState {
   addTelemetryEvent: (event: TradeEvent) => void;
   setWsConnected: (connected: boolean) => void;
   setActiveCorrelationId: (id: string | null) => void;
+  setIsSimulationMode: (mode: boolean) => void;
+  setOverrideState: (overrides: Partial<SystemState["overrideState"]>) => void;
+  setStrategyOverride: (
+    strategyId: string,
+    overrides: Partial<SystemState["strategyOverrides"][string]>,
+  ) => void;
+  setRiskOverride: (overrides: Partial<SystemState["riskOverrides"]>) => void;
 
   // LAYER 2: WEBSOCKET ORCHESTRATION
   connectWebSocket: () => void;
@@ -66,6 +90,18 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   telemetryFeed: [],
   wsConnected: false,
   activeCorrelationId: null,
+  isSimulationMode: false,
+  overrideState: {
+    action: null,
+    sizeMultiplier: 1.0,
+    riskMode: "NORMAL",
+  },
+  strategyOverrides: {},
+  riskOverrides: {
+    drawdownCap: 10.0,
+    volSensitivity: 1.0,
+    emergencyThrottle: 1.0,
+  },
 
   setActivePortfolio: (portfolio) => set({ activePortfolio: portfolio }),
   setPortfolios: (portfolios) => set({ portfolios }),
@@ -73,6 +109,28 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   setRiskState: (risk) => set({ riskState: risk }),
   setStrategyScores: (scores) => set({ strategyScores: scores }),
   setActiveCorrelationId: (id) => set({ activeCorrelationId: id }),
+  setIsSimulationMode: (mode) => set({ isSimulationMode: mode }),
+  setOverrideState: (overrides) =>
+    set((state) => ({
+      overrideState: { ...state.overrideState, ...overrides },
+    })),
+  setStrategyOverride: (strategyId, overrides) =>
+    set((state) => ({
+      strategyOverrides: {
+        ...state.strategyOverrides,
+        [strategyId]: {
+          ...(state.strategyOverrides[strategyId] || {
+            weightMultiplier: 1.0,
+            enabled: true,
+          }),
+          ...overrides,
+        },
+      },
+    })),
+  setRiskOverride: (overrides) =>
+    set((state) => ({
+      riskOverrides: { ...state.riskOverrides, ...overrides },
+    })),
 
   updateAgentState: (agent, state) =>
     set((prev) => ({
