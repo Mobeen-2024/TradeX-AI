@@ -555,7 +555,7 @@ export class ExecutionService {
         portfolio.user_id,
         request.portfolioId,
         request.correlationId,
-      ).catch((err) => {
+      ).catch ((err: any) => {
         console.error("[ExecutionService] Post-trade evaluation failed:", err);
       });
       const {
@@ -564,7 +564,7 @@ export class ExecutionService {
       StrategyEvolutionService.processClosedTrade(
         closedTradeId,
         request.portfolioId,
-      ).catch((err) => {
+      ).catch ((err: any) => {
         console.error(
           "[ExecutionService] Post-trade strategy evolution failed:",
           err,
