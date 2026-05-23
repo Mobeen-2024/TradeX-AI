@@ -1745,7 +1745,7 @@ function L2OrderBook() {
       </div>
 
       {/* Spread Display */}
-      <div className="py-1.5 border-y border-[#222] my-1 flex justify-between items-center text-[11px] font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
+      <div className="py-1.5 border-y my-1 flex justify-between items-center text-[11px] font-bold font-mono px-2 bg-[#0ea5e9]/5 rounded border border-[#0ea5e9]/20 shadow-[0_0_10px_rgba(14,165,233,0.1)] shrink-0">
         <span className="text-[#39ff14] flex items-center">
           <ArrowUpRight className="w-3.5 h-3.5 mr-1" />{" "}
           {midPrice !== "0.0" ? midPrice : "..."}
