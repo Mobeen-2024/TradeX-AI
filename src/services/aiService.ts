@@ -91,7 +91,7 @@ class AiService {
 
     // 2. Rate Limiting Enforcer & Retry
     const maxRetries = 3;
-    const baseDelay = 1000;
+    const baseDelay = 1500; // slightly longer base delay
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
@@ -100,7 +100,7 @@ class AiService {
           (ts) => now - ts < 60000,
         );
         if (this.callTimestamps.length >= AiService.MAX_CALLS_PER_MINUTE) {
-          await new Promise((r) => setTimeout(r, 2000)); // wait and retry
+          await new Promise((r) => setTimeout(r, 2000 * attempt)); // exponential rate limit wait
           throw new Error("Rate limit exceeded for AI calls.");
         }
         this.callTimestamps.push(now);
@@ -124,10 +124,14 @@ class AiService {
         );
         return response.text;
       } catch (error: any) {
+        console.warn(
+          `[AiService] Gemini Generation Attempt ${attempt}/${maxRetries} Failed. Error: ${error.message}`,
+        );
+        
         if (attempt === maxRetries) {
           this.consecutiveFailures++;
           console.error(
-            `[AiService] Gemini Generation Failed after ${maxRetries} attempts.`,
+            `[AiService] Gemini Generation Failed after ${maxRetries} attempts. Activating safe fallbacks.`,
           );
           await this.auditLog(
             "AI_REQUEST_FAILED",
@@ -144,9 +148,34 @@ class AiService {
               "CRITICAL",
             );
           }
-          throw error;
+
+          // Return safe default JSON fallbacks instead of crashing the process
+          const isNewsOracle = prompt.includes("News Oracle") || prompt.includes("sentiment");
+          const isCoordinator = prompt.includes("Chief Investment Officer") || prompt.includes("Coordinator");
+
+          if (isNewsOracle) {
+            return JSON.stringify({
+              sentiment: "NEUTRAL",
+              aiRationale: `[Fallback] Gemini API failed (Error: ${error.message}). Neutral fallback applied safely.`
+            });
+          } else if (isCoordinator) {
+            return JSON.stringify({
+              action: "HOLD",
+              confidenceScore: 0.1,
+              strategyTag: "default",
+              rationale: `[Fallback] Gemini API failed (Error: ${error.message}). Capital preserved: HOLD default applied.`
+            });
+          } else {
+            return JSON.stringify({
+              action: "HOLD",
+              sentiment: "NEUTRAL",
+              confidenceScore: 0.1,
+              rationale: `[Fallback] Gemini API failed (Error: ${error.message}).`
+            });
+          }
         }
-        await new Promise((r) => setTimeout(r, baseDelay * attempt));
+        // Exponential backoff
+        await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt - 1)));
       }
     }
     return "";

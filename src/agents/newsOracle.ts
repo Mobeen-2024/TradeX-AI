@@ -22,6 +22,20 @@ export class NewsOracle {
       const assetIds = Array.from(new Set(positions.map((p) => p.asset_id)));
 
       if (assetIds.length === 0) {
+        const sentimentEvaluation = {
+          sentiment: "NEUTRAL",
+          aiRationale: "No active positions to analyze news for. Neutral fallback applied.",
+        };
+        const rationaleStr = `Sentiment: ${sentimentEvaluation.sentiment} | Rationale: ${sentimentEvaluation.aiRationale}`;
+        const loggedMemory = await MemoryService.logMemory(
+          `NEWS_SENTIMENT (${sentimentEvaluation.sentiment})`,
+          rationaleStr,
+          userId,
+          portfolioId,
+          correlationId,
+          "NewsOracle",
+        );
+
         const durationMs = Date.now() - startTimestamp.getTime();
         await ExecutionLogRepository.insertLog({
           agent_name: "NewsOracle",
@@ -31,12 +45,16 @@ export class NewsOracle {
           user_id: userId,
           portfolio_id: portfolioId,
         });
+
+        await EventDispatcher.emit(EventType.NEWS_PROCESSED, {
+          portfolioId,
+          sentiment: sentimentEvaluation.sentiment,
+          correlationId,
+        });
+
         return {
-          newAnalysis: null,
-          rawOutput: {
-            sentiment: "NEUTRAL",
-            aiRationale: "No active positions to analyze news for.",
-          },
+          newAnalysis: loggedMemory,
+          rawOutput: sentimentEvaluation,
         };
       }
 
@@ -138,17 +156,56 @@ Format exactly as JSON:
         rawOutput: sentimentEvaluation,
       };
     } catch (error: any) {
+      console.error("[NewsOracle] Unhandled error during sentiment analysis, applying safe neutral fallback:", error);
+      const sentimentEvaluation = {
+        sentiment: "NEUTRAL",
+        aiRationale: `[Critical Fallback] Unhandled error: ${error.message || "Unknown error"}. Safe NEUTRAL sentiment applied.`,
+      };
+      const rationaleStr = `Sentiment: ${sentimentEvaluation.sentiment} | Rationale: ${sentimentEvaluation.aiRationale}`;
+      
+      let loggedMemory = null;
+      try {
+        loggedMemory = await MemoryService.logMemory(
+          `NEWS_SENTIMENT (${sentimentEvaluation.sentiment})`,
+          rationaleStr,
+          userId,
+          portfolioId,
+          correlationId,
+          "NewsOracle",
+        );
+      } catch (logErr) {
+        console.error("[NewsOracle] Failed logging fallback memory:", logErr);
+      }
+
       const durationMs = Date.now() - startTimestamp.getTime();
-      await ExecutionLogRepository.insertLog({
-        agent_name: "NewsOracle",
-        start_timestamp: startTimestamp,
-        duration_ms: durationMs,
-        success: false,
-        error_message: error.message || "Unknown error",
-        user_id: userId,
-        portfolio_id: portfolioId,
-      });
-      throw error;
+      try {
+        await ExecutionLogRepository.insertLog({
+          agent_name: "NewsOracle",
+          start_timestamp: startTimestamp,
+          duration_ms: durationMs,
+          success: false,
+          error_message: error.message || "Unknown error",
+          user_id: userId,
+          portfolio_id: portfolioId,
+        });
+      } catch (logErr) {
+        console.error("[NewsOracle] Failed inserting error log:", logErr);
+      }
+
+      try {
+        await EventDispatcher.emit(EventType.NEWS_PROCESSED, {
+          portfolioId,
+          sentiment: sentimentEvaluation.sentiment,
+          correlationId,
+        });
+      } catch (evtErr) {
+        console.error("[NewsOracle] Failed emitting NEWS_PROCESSED fallback event:", evtErr);
+      }
+
+      return {
+        newAnalysis: loggedMemory,
+        rawOutput: sentimentEvaluation,
+      };
     }
   }
 }

@@ -60,25 +60,26 @@ export class ExecutionAgent {
       }
     }
 
-    if (!decision || !decision.action) {
-      console.error(
+    let currentDecision = decision || payload.decision;
+    if (!currentDecision || !currentDecision.action) {
+      console.warn(
         "[ExecutionAgent] Invalid decision or action missing, defaulting to HOLD",
       );
-      payload.decision = {
+      currentDecision = {
         action: "HOLD",
         rationale: "Fallback: Missing decision",
-        confidence: 0,
+        confidenceScore: 0,
       };
     }
 
     try {
-      if (decision.action === "BUY" || decision.action === "SELL") {
+      if (currentDecision.action === "BUY" || currentDecision.action === "SELL") {
         // Kill-switch: check risk level before execution
         const riskMemory = await MemoryService.getByCorrelation(
           correlationId,
           "RiskGuardian",
         );
-        if (riskMemory && riskMemory.market_regime.includes("HIGH")) {
+        if (riskMemory && riskMemory.market_regime && riskMemory.market_regime.includes("HIGH")) {
           console.warn(
             `[ExecutionAgent] Blocking execution due to HIGH risk for correlation ${correlationId}`,
           );
@@ -102,6 +103,14 @@ export class ExecutionAgent {
             user_id: userId,
             portfolio_id: portfolioId,
           });
+
+          await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
+            orderId: "blocked-" + (correlationId ? correlationId.substring(0, 6) : "default"),
+            portfolioId,
+            userId,
+            correlationId,
+            action: "BLOCKED",
+          });
           return; // Abort execution
         }
 
@@ -122,8 +131,8 @@ export class ExecutionAgent {
         const orderRequest = {
           portfolioId,
           userId,
-          assetId: decision.assetId || "BTC", // Default to BTC if unspecified
-          action: decision.action,
+          assetId: currentDecision.assetId || "BTC", // Default to BTC if unspecified
+          action: currentDecision.action,
           size: adaptiveSize,
           correlationId: correlationId || uuidv4(),
           strategyId: payload.strategyId,
@@ -137,16 +146,16 @@ export class ExecutionAgent {
         await AgentDecisionsRepository.insertDecision(
           "QuantAgent",
           portfolioId,
-          decision.assetId || "BTC",
-          decision.action,
+          currentDecision.assetId || "BTC",
+          currentDecision.action,
           price,
-          decision.rationale,
+          currentDecision.rationale,
         );
 
         // Track execution in memory
         await MemoryService.logMemory(
           `EXECUTED_ORDER`,
-          `Executed ${decision.action} order. Order ID: ${orderId}. Confidence: ${decision.confidence}. Rationale: ${decision.rationale}`,
+          `Executed ${currentDecision.action} order. Order ID: ${orderId}. ConfidenceScore: ${currentDecision.confidenceScore || currentDecision.confidence || 0}. Rationale: ${currentDecision.rationale}`,
           userId,
           portfolioId,
           correlationId,
@@ -169,13 +178,13 @@ export class ExecutionAgent {
           portfolioId,
           userId,
           correlationId,
-          action: decision.action,
+          action: currentDecision.action,
         });
       } else {
         // HOLD or unknown action, log it but don't place order
         await MemoryService.logMemory(
           `SKIPPED_EXECUTION`,
-          `Decision was ${decision.action}, no order placed. Confidence: ${decision.confidence}. Rationale: ${decision.rationale}`,
+          `Decision was ${currentDecision.action}, no order placed. ConfidenceScore: ${currentDecision.confidenceScore || currentDecision.confidence || 0}. Rationale: ${currentDecision.rationale}`,
           userId,
           portfolioId,
           correlationId,
@@ -192,6 +201,14 @@ export class ExecutionAgent {
           user_id: userId,
           portfolio_id: portfolioId,
         });
+
+        await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
+          orderId: "skipped-" + (correlationId ? correlationId.substring(0, 6) : "default"),
+          portfolioId,
+          userId,
+          correlationId,
+          action: currentDecision.action,
+        });
       }
     } catch (error: any) {
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -204,6 +221,19 @@ export class ExecutionAgent {
         user_id: userId,
         portfolio_id: portfolioId,
       });
+
+      // Emit order executed with FAILED status to close telemetry loop safely
+      try {
+        await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
+          orderId: "failed-" + (correlationId ? correlationId.substring(0, 6) : "default"),
+          portfolioId,
+          userId,
+          correlationId,
+          action: "FAILED",
+        });
+      } catch (evtErr) {
+        console.error("[ExecutionAgent] Failed emitting ORDER_EXECUTED fallback event:", evtErr);
+      }
       throw error;
     }
   }

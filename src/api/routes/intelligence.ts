@@ -18,7 +18,7 @@ intelligenceRouter.post(
     try {
       console.log("ANALYZE TRIGGERED");
       const userId = req.user?.userId;
-      const { portfolioId, mode = "debug" } = req.body;
+      const { portfolioId } = req.body;
 
       if (!userId) {
         res.status(401).json({ error: "Unauthorized" });
@@ -30,214 +30,21 @@ intelligenceRouter.post(
         return;
       }
 
-      const { ExecutionAgent } = require("../../agents/executionAgent");
-
       const correlationId = crypto.randomUUID();
 
-      if (mode === "debug") {
-        // Temporarily trigger the pipeline directly with explicit logging and events for step-by-step debug/demo
-        console.log("== PIPELINE STARTING (DEBUG MODE) == ");
+      console.log("== PIPELINE STARTING (PRODUCTION ENQUEUED) ==");
+      // Enqueue the pipeline execution
+      await EventDispatcher.emit(EventType.QUANT_ANALYSIS_REQUESTED, {
+        portfolioId,
+        userId,
+        correlationId,
+        message: "Pipeline enqueued for worker execution.",
+      });
 
-        // 1. Quant
-        await EventDispatcher.emit(EventType.QUANT_ANALYSIS_REQUESTED, {
-          correlationId,
-          portfolioId,
-          message: "QuantAgent analyzing market conditions...",
-        });
-        console.log("EVENT EMITTED: QUANT_ANALYSIS_REQUESTED");
-
-        let quantResult = null;
-        try {
-          quantResult = await QuantAgent.analyzeMarket(
-            portfolioId,
-            userId,
-            correlationId,
-          );
-
-          await EventDispatcher.emit(EventType.QUANT_ANALYSIS_COMPLETED, {
-            correlationId,
-            portfolioId,
-            marketRegime: "ANALYZED",
-            result: quantResult,
-            message: "Quant analysis complete.",
-          });
-        } catch (e: any) {
-          console.error("QuantAgent execution failed:", e);
-          await EventDispatcher.emit(EventType.AGENT_DECISION, {
-            type: "AGENT_DECISION",
-            agent_name: "QuantAgent",
-            correlationId,
-            portfolioId,
-            message: `QUANT_FAILED: ${e.message || "Unknown error"}`,
-            status: "failed",
-            error: true,
-          });
-        }
-
-        // 2. Risk
-        await EventDispatcher.emit(EventType.RISK_VALIDATION_REQUESTED, {
-          correlationId,
-          portfolioId,
-          message: "RiskGuardian evaluating portfolio constraints...",
-        });
-        console.log("EVENT EMITTED: RISK_VALIDATION_REQUESTED");
-
-        let riskResult = null;
-        try {
-          riskResult = await RiskGuardian.evaluateRisk(
-            portfolioId,
-            userId,
-            correlationId,
-          );
-
-          await EventDispatcher.emit(EventType.RISK_VALIDATED, {
-            correlationId,
-            portfolioId,
-            riskLevel: "CHECKED",
-            result: riskResult,
-            message: "Risk validation complete.",
-          });
-        } catch (e: any) {
-          console.error("RiskGuardian execution failed:", e);
-          await EventDispatcher.emit(EventType.RISK_ALERT, {
-            type: "RISK_ALERT",
-            agent_name: "RiskGuardian",
-            correlationId,
-            portfolioId,
-            message: `RISK_FAILED: ${e.message || "Unknown error"}`,
-            status: "failed",
-            error: true,
-          });
-        }
-
-        // 3. News
-        await EventDispatcher.emit(EventType.NEWS_PROCESSING_REQUESTED, {
-          correlationId,
-          portfolioId,
-          message: "NewsOracle processing real-time sentiment...",
-        });
-        console.log("EVENT EMITTED: NEWS_PROCESSING_REQUESTED");
-
-        let newsResult = null;
-        try {
-          newsResult = await NewsOracle.analyzeSentiment(
-            portfolioId,
-            userId,
-            correlationId,
-          );
-
-          await EventDispatcher.emit(EventType.NEWS_PROCESSED, {
-            correlationId,
-            portfolioId,
-            sentiment: "VERIFIED",
-            result: newsResult,
-            message: "News processed.",
-          });
-        } catch (e: any) {
-          console.error("NewsOracle execution failed:", e);
-          await EventDispatcher.emit(EventType.AGENT_DECISION, {
-            type: "AGENT_DECISION",
-            agent_name: "NewsOracle",
-            correlationId,
-            portfolioId,
-            message: `NEWS_FAILED: ${e.message || "Unknown error"}`,
-            status: "failed",
-            error: true,
-          });
-        }
-
-        // 4. Coordinator
-        await EventDispatcher.emit(EventType.COORDINATOR_DECISION_REQUESTED, {
-          correlationId,
-          portfolioId,
-          message: "Coordinator synthesizing inputs and planning...",
-        });
-        console.log("EVENT EMITTED: COORDINATOR_DECISION_REQUESTED");
-
-        let decisionResult = null;
-        try {
-          decisionResult = await Coordinator.makeDecision(
-            portfolioId,
-            userId,
-            correlationId,
-          );
-
-          await EventDispatcher.emit(EventType.COORDINATOR_DECISION_COMPLETED, {
-            correlationId,
-            portfolioId,
-            userId,
-            decision: { action: "BUY" },
-            rationale: decisionResult || "Pipeline Completed",
-            message: "Coordinator decision complete. Action: BUY.",
-          });
-        } catch (e: any) {
-          console.error("Coordinator execution failed:", e);
-          await EventDispatcher.emit(EventType.AGENT_DECISION, {
-            type: "AGENT_DECISION",
-            agent_name: "Coordinator",
-            correlationId,
-            portfolioId,
-            message: `COORDINATOR_FAILED: ${e.message || "Unknown error"}`,
-            status: "failed",
-            error: true,
-          });
-        }
-
-        // 5. Execution
-        console.log("TRIGGERING EXECUTION DIRECTLY...");
-        try {
-          await ExecutionAgent.executeDecision({
-            correlationId,
-            portfolioId,
-            userId,
-            decision: decisionResult
-              ? decisionResult.aggregateDecision
-              : { action: "HOLD" },
-            rationale: "Executing planned orders",
-          });
-          // Execution agent might emit ORDER_EXECUTED itself, but we ensure it here just mostly manually simulated if it didn't
-        } catch (e) {
-          console.error("Execution direct run test error:", e);
-        }
-
-        // Fallback broadcast in case execution doesn't broadcast
-        await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
-          correlationId,
-          portfolioId,
-          action: "BUY",
-          orderId: "debug-" + correlationId.substring(0, 6),
-          message: "BUY: ExecutionAgent dispatched orders.",
-        });
-
-        console.log("EVENT EMITTED: ORDER_EXECUTED");
-
-        console.log("== PIPELINE FINISHED ==");
-
-        res.status(200).json({
-          message: "Pipeline executed directly (debug mode)",
-          correlationId,
-          data: {
-            quant: quantResult,
-            risk: riskResult,
-            news: newsResult,
-            decision: decisionResult,
-          },
-        });
-      } else {
-        console.log("== PIPELINE STARTING (PRODUCTION ENQUEUED) ==");
-        // Enqueue the pipeline execution
-        await EventDispatcher.emit(EventType.QUANT_ANALYSIS_REQUESTED, {
-          portfolioId,
-          userId,
-          correlationId,
-          message: "Pipeline enqueued for worker execution.",
-        });
-
-        res.status(202).json({
-          message: "Analysis pipeline enqueued successfully",
-          correlationId,
-        });
-      }
+      res.status(202).json({
+        message: "Analysis pipeline enqueued successfully",
+        correlationId,
+      });
     } catch (error: any) {
       console.error("Intelligence Analysis error:", error);
       res.status(500).json({ error: error.message || "Internal server error" });
@@ -434,7 +241,7 @@ Make sure there is exactly ${limit} objects in the array. NO Markdown formatting
       // 3. Process outcomes
       let cash = parseFloat(startingCapital.toString());
       let positionTokens = 0;
-      const history = [];
+      const history: any[] = [];
       let peakPortfolio = cash;
       let maxDrawdown = 0;
       let winCount = 0;

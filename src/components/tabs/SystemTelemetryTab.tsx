@@ -46,7 +46,8 @@ export function SystemTelemetryTab() {
         },
         body: JSON.stringify({
           portfolioId: activePortfolio.id,
-          mode: "debug",
+          useWorker: true,
+          async: true,
         }),
       });
 

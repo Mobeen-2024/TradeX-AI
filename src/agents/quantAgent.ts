@@ -16,10 +16,6 @@ export class QuantAgent {
   ) {
     const startTimestamp = new Date();
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY is not configured for QuantAgent.");
-      }
-
       // 1. Get latest market snapshots filtered by portfolio positions
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
       const assetIds = Array.from(new Set(positions.map((p) => p.asset_id)));

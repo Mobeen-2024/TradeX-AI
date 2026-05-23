@@ -15,10 +15,6 @@ export class RiskGuardian {
   ) {
     const startTimestamp = new Date();
     try {
-      if (!process.env.GEMINI_API_KEY) {
-        throw new Error("GEMINI_API_KEY is not configured for RiskGuardian.");
-      }
-
       // 1. Get portfolio positions
       const positions = await PositionRepository.findByPortfolioId(portfolioId);
 

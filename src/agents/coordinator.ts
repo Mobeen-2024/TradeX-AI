@@ -79,10 +79,52 @@ export class Coordinator {
       );
 
       if (!quantMemory || !riskMemory || !newsMemory) {
-        throw new Error(
-          "Missing prerequisite agent memories for correlationId: " +
-            correlationId,
+        console.warn(
+          `[Coordinator] Missing prerequisite agent memories for correlationId ${correlationId}. Falling back to rule-based defaults.`
         );
+        const fallbackDecision = {
+          action: "HOLD",
+          confidenceScore: 0.1,
+          strategyTag: "default",
+          rationale: `[Fallback] Missing prerequisite agent memories (Quant: ${!!quantMemory}, Risk: ${!!riskMemory}, News: ${!!newsMemory}). Capital preserved: HOLD applied.`
+        };
+
+        const loggedMemory = await MemoryService.logMemory(
+          `AGGREGATE_DECISION (${fallbackDecision.action})`,
+          `Confidence: ${fallbackDecision.confidenceScore} | Rationale: ${fallbackDecision.rationale}`,
+          userId,
+          portfolioId,
+          correlationId,
+          "Coordinator",
+          {
+            confidence_score: fallbackDecision.confidenceScore,
+            strategy_tag: fallbackDecision.strategyTag,
+          }
+        );
+
+        const durationMs = Date.now() - startTimestamp.getTime();
+        await ExecutionLogRepository.insertLog({
+          agent_name: "Coordinator",
+          start_timestamp: startTimestamp,
+          duration_ms: durationMs,
+          success: false,
+          fallback_used: true,
+          error_message: "Missing prerequisite agent memories",
+          user_id: userId,
+          portfolio_id: portfolioId,
+        });
+
+        await EventDispatcher.emit(EventType.COORDINATOR_DECISION_COMPLETED, {
+          portfolioId,
+          correlationId,
+          decision: fallbackDecision,
+          isBacktest,
+        });
+
+        return {
+          aggregateDecision: fallbackDecision,
+          coordinatorMemory: loggedMemory,
+        };
       }
 
       const qMeta = quantMemory.metadata || {};
@@ -222,17 +264,62 @@ Format exactly as JSON:
         coordinatorMemory: loggedMemory,
       };
     } catch (error: any) {
+      console.error("[Coordinator] Unhandled error during decision synthesis, applying safe HOLD fallback:", error);
+      const fallbackDecision = {
+        action: "HOLD",
+        confidenceScore: 0.1,
+        strategyTag: "default",
+        rationale: `[Critical Fallback] Unhandled coordinator error: ${error.message || "Unknown error"}. Safe HOLD decision applied.`
+      };
+
+      let loggedMemory = null;
+      try {
+        loggedMemory = await MemoryService.logMemory(
+          `AGGREGATE_DECISION (${fallbackDecision.action})`,
+          `Confidence: ${fallbackDecision.confidenceScore} | Rationale: ${fallbackDecision.rationale}`,
+          userId,
+          portfolioId,
+          correlationId,
+          "Coordinator",
+          {
+            confidence_score: fallbackDecision.confidenceScore,
+            strategy_tag: fallbackDecision.strategyTag,
+          }
+        );
+      } catch (logErr) {
+        console.error("[Coordinator] Failed logging fallback memory:", logErr);
+      }
+
       const durationMs = Date.now() - startTimestamp.getTime();
-      await ExecutionLogRepository.insertLog({
-        agent_name: "Coordinator",
-        start_timestamp: startTimestamp,
-        duration_ms: durationMs,
-        success: false,
-        error_message: error.message || "Unknown error",
-        user_id: userId,
-        portfolio_id: portfolioId,
-      });
-      throw error;
+      try {
+        await ExecutionLogRepository.insertLog({
+          agent_name: "Coordinator",
+          start_timestamp: startTimestamp,
+          duration_ms: durationMs,
+          success: false,
+          error_message: error.message || "Unknown error",
+          user_id: userId,
+          portfolio_id: portfolioId,
+        });
+      } catch (logErr) {
+        console.error("[Coordinator] Failed inserting error log:", logErr);
+      }
+
+      try {
+        await EventDispatcher.emit(EventType.COORDINATOR_DECISION_COMPLETED, {
+          portfolioId,
+          correlationId,
+          decision: fallbackDecision,
+          isBacktest,
+        });
+      } catch (evtErr) {
+        console.error("[Coordinator] Failed emitting COORDINATOR_DECISION_COMPLETED fallback event:", evtErr);
+      }
+
+      return {
+        aggregateDecision: fallbackDecision,
+        coordinatorMemory: loggedMemory,
+      };
     }
   }
 
@@ -402,17 +489,54 @@ Format exactly as JSON:
         coordinatorMemory: loggedMemory,
       };
     } catch (error: any) {
+      console.error("[Coordinator] Unhandled error during runCycle, applying safe HOLD fallback:", error);
+      const fallbackDecision = {
+        action: "HOLD",
+        confidenceScore: 0.1,
+        strategyTag: "default",
+        rationale: `[Critical Fallback] Unhandled runCycle error: ${error.message || "Unknown error"}. Safe HOLD decision applied.`
+      };
+
+      let loggedMemory = null;
+      try {
+        loggedMemory = await MemoryService.logMemory(
+          `AGGREGATE_DECISION (${fallbackDecision.action})`,
+          `Confidence: ${fallbackDecision.confidenceScore} | Rationale: ${fallbackDecision.rationale}`,
+          userId,
+          portfolioId,
+          correlationId,
+          "Coordinator",
+          {
+            confidence_score: fallbackDecision.confidenceScore,
+            strategy_tag: fallbackDecision.strategyTag,
+          }
+        );
+      } catch (logErr) {
+        console.error("[Coordinator] Failed logging fallback memory:", logErr);
+      }
+
       const durationMs = Date.now() - startTimestamp.getTime();
-      await ExecutionLogRepository.insertLog({
-        agent_name: "Coordinator",
-        start_timestamp: startTimestamp,
-        duration_ms: durationMs,
-        success: false,
-        error_message: error.message || "Unknown error",
-        user_id: userId,
-        portfolio_id: portfolioId,
-      });
-      throw error;
+      try {
+        await ExecutionLogRepository.insertLog({
+          agent_name: "Coordinator",
+          start_timestamp: startTimestamp,
+          duration_ms: durationMs,
+          success: false,
+          error_message: error.message || "Unknown error",
+          user_id: userId,
+          portfolio_id: portfolioId,
+        });
+      } catch (logErr) {
+        console.error("[Coordinator] Failed inserting error log:", logErr);
+      }
+
+      return {
+        quantResult: { marketRegime: "UNKNOWN", volatilityLevel: "UNKNOWN", strategyTag: "default", confidenceScore: 0, aiRationale: "Failed" },
+        riskResult: { riskLevel: "UNKNOWN", marginRisk: "UNKNOWN", position_size: 0, aiRationale: "Failed" },
+        newsResult: { sentiment: "UNKNOWN", aiRationale: "Failed" },
+        aggregateDecision: fallbackDecision,
+        coordinatorMemory: loggedMemory,
+      };
     }
   }
 }
