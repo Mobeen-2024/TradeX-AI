@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
 import { checkDbConnection } from "./db/connection";
+import { runMigrations } from "./db/migrate";
 import { EventListener } from "./events";
 import { Coordinator } from "./agents/coordinator";
 import { QuantWorker } from "./workers/quantWorker";
@@ -51,11 +52,18 @@ async function startServer() {
       console.warn(
         "WARNING: Database connection failed during production startup. Continuing with mock DB.",
       );
+    } else {
+      console.log("[TradeX OS Daemon] Running DB migrations in production...");
+      await runMigrations();
     }
     console.log("[TradeX OS Daemon] Startup checks complete.");
   } else {
     // Also try to connect in dev to initialize EventListener correctly
-    await checkDbConnection();
+    const isConnected = await checkDbConnection();
+    if (isConnected) {
+      console.log("[TradeX OS Daemon] Running DB migrations in dev...");
+      await runMigrations();
+    }
   }
 
   try {

@@ -33,11 +33,27 @@ function createMockPool(): pg.Pool {
               is_trading_enabled: false,
               max_position_size: 0,
               max_loss: 0,
+              execution_mode: "AUTO",
             },
           ],
         };
       }
       if (sql.includes("UPDATE portfolios")) {
+        if (sql.includes("SET execution_mode =")) {
+          return {
+            rows: [
+              {
+                id: params?.[1],
+                user_id: "dev-mock-user-id",
+                execution_mode: params?.[0],
+                name: "Default Portfolio",
+                description: "Created by memory mock",
+                created_at: new Date(),
+                updated_at: new Date(),
+              }
+            ]
+          };
+        }
         return {
           rows: [
             {
@@ -46,6 +62,7 @@ function createMockPool(): pg.Pool {
               is_trading_enabled: params?.[0],
               max_position_size: params?.[1],
               max_loss: params?.[2],
+              execution_mode: "AUTO",
               name: "Default Portfolio",
               description: "Created by memory mock",
               created_at: new Date(),
@@ -119,6 +136,14 @@ function createMockPool(): pg.Pool {
 
       if (sql.includes("INSERT INTO orders") || sql.includes("UPDATE orders")) {
         return { rows: [{ id: "mock-order-id" }] };
+      }
+
+      if (sql.includes("INSERT INTO decision_overrides") || sql.includes("UPDATE decision_overrides")) {
+        return { rows: [{ id: "mock-override-id" }] };
+      }
+
+      if (sql.includes("SELECT * FROM decision_overrides")) {
+        return { rows: [] };
       }
 
       if (

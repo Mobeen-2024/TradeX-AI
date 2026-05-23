@@ -3,6 +3,7 @@ import { ExecutionService } from "../services/executionService";
 import { ExecutionLogRepository } from "../db/repositories/executionLogs";
 import { PortfolioRepository } from "../db/repositories/portfolios";
 import { AgentDecisionsRepository } from "../db/repositories/agentDecisions";
+import { DecisionOverridesRepository } from "../db/repositories/decisionOverrides";
 import { MemoryService } from "../services/memoryService";
 import { getPool } from "../db/connection";
 import { v4 as uuidv4 } from "uuid";
@@ -42,22 +43,21 @@ export class ExecutionAgent {
       return;
     }
 
-    if (!userId) {
-      try {
-        const portfolio = await PortfolioRepository.findById(portfolioId);
-        if (portfolio) {
-          userId = portfolio.user_id;
-        } else {
-          console.error(
-            "[ExecutionAgent] Portfolio not found, missing userId: " +
-              portfolioId,
-          );
-          return;
-        }
-      } catch (err) {
-        console.error("[ExecutionAgent] Error fetching portfolio: ", err);
+    let executionMode = "AUTO";
+    try {
+      const portfolio = await PortfolioRepository.findById(portfolioId);
+      if (portfolio) {
+        userId = userId || portfolio.user_id;
+        executionMode = portfolio.execution_mode || "AUTO";
+      } else {
+        console.error(
+          "[ExecutionAgent] Portfolio not found: " + portfolioId,
+        );
         return;
       }
+    } catch (err) {
+      console.error("[ExecutionAgent] Error fetching portfolio: ", err);
+      return;
     }
 
     let currentDecision = decision || payload.decision;
@@ -130,6 +130,51 @@ export class ExecutionAgent {
           `[ExecutionAgent] Mathematically scaled position size: ${adaptiveSize} (Base: ${baseSize}, StrategyWeight: ${strategyWeight}, RiskMultiplier: ${riskMultiplier}, GlobalWeight: ${globalPortfolioWeight})`
         );
 
+        if (executionMode === "SEMI_AUTO") {
+          console.log(`[ExecutionAgent] Pipeline PAUSED (SEMI_AUTO mode) for correlation ${correlationId}. Waiting for user override.`);
+          
+          const overrideId = await DecisionOverridesRepository.insertOverride(
+            portfolioId,
+            correlationId || uuidv4(),
+            currentDecision.assetId || "BTC",
+            currentDecision.action,
+            adaptiveSize,
+            currentDecision.rationale
+          );
+
+          await MemoryService.logMemory(
+            `SKIPPED_EXECUTION`,
+            `Execution paused for manual review (SEMI_AUTO). Original Decision: ${currentDecision.action} ${adaptiveSize} units. Rationale: ${currentDecision.rationale}`,
+            userId,
+            portfolioId,
+            correlationId,
+            "ExecutionAgent"
+          );
+
+          const durationMs = Date.now() - startTimestamp.getTime();
+          await ExecutionLogRepository.insertLog({
+            agent_name: "ExecutionAgent",
+            start_timestamp: startTimestamp,
+            duration_ms: durationMs,
+            success: true,
+            error_message: "Paused for User Override (SEMI_AUTO)",
+            user_id: userId,
+            portfolio_id: portfolioId,
+          });
+
+          await EventDispatcher.emit(EventType.EXECUTION_PAUSED, {
+            overrideId,
+            portfolioId,
+            userId,
+            correlationId,
+            action: currentDecision.action,
+            size: adaptiveSize,
+            rationale: currentDecision.rationale,
+          });
+          return; // Pause and do not place the order
+        }
+
+        const isSimulation = executionMode === "SIMULATION";
         const orderRequest = {
           portfolioId,
           userId,
@@ -138,7 +183,7 @@ export class ExecutionAgent {
           size: adaptiveSize,
           correlationId: correlationId || uuidv4(),
           strategyId: payload.strategyId,
-          isBacktest: payload.isBacktest,
+          isBacktest: payload.isBacktest || isSimulation,
         };
 
         const { orderId, price } =

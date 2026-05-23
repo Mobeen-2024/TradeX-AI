@@ -16,6 +16,7 @@ export enum EventType {
   AGENT_DECISION = "AGENT_DECISION",
   RISK_ALERT = "RISK_ALERT",
   EXECUTION = "EXECUTION",
+  EXECUTION_PAUSED = "EXECUTION_PAUSED",
 }
 
 export interface EventPayload {

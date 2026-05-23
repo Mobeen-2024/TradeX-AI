@@ -69,6 +69,40 @@ export class EvaluationService {
     const lossRateAssumed = 1 - confidenceScore;
     // rough Kelly-like expectancy
     const expectancyScore = (winRateAssumed * Math.max(0.1, actualAlpha)) - (lossRateAssumed * Math.abs(Math.min(-0.1, actualAlpha)));
+
+    // human override outcome comparison
+    let overrideAlpha = 0;
+    let originalAction = null;
+    let originalSize = null;
+
+    if (trade.override_id) {
+      try {
+        const overrideRes = await pool.query(
+          `SELECT * FROM decision_overrides WHERE id = $1`,
+          [trade.override_id]
+        );
+        if (overrideRes.rows.length > 0) {
+          const override = overrideRes.rows[0];
+          originalAction = override.original_action;
+          originalSize = Number(override.original_size);
+
+          const entryPrice = Number(trade.entry_price);
+          const exitPrice = Number(trade.exit_price || entryPrice);
+          let theoreticalAiPnl = 0;
+
+          if (originalAction === "BUY") {
+            theoreticalAiPnl = (exitPrice - entryPrice) * originalSize;
+          } else if (originalAction === "SELL") {
+            theoreticalAiPnl = (entryPrice - exitPrice) * originalSize;
+          }
+
+          overrideAlpha = pnl - theoreticalAiPnl;
+          console.log(`[Evaluation] Human Override trade compared. User PNL: ${pnl}, AI Theoretical PNL: ${theoreticalAiPnl}, Override Alpha: ${overrideAlpha}`);
+        }
+      } catch (err) {
+        console.error("[Evaluation] Failed to calculate override comparison metrics:", err);
+      }
+    }
     
     const rationale = JSON.stringify({
       context: "Post-trade evaluation",
@@ -79,7 +113,10 @@ export class EvaluationService {
       exit_price: trade.exit_price,
       size: trade.size,
       duration_hours: durationHours,
-      duration_impact: durationImpact
+      duration_impact: durationImpact,
+      original_action: originalAction,
+      original_size: originalSize,
+      override_alpha: overrideAlpha
     });
 
     const embedding = await getEmbeddingProvider().embedText(rationale).catch(() => new Array(768).fill(0));

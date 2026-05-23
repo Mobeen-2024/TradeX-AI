@@ -1,4 +1,5 @@
 import { getPool } from "../db/connection";
+import { TradeOutcomesRepository } from "../db/repositories/tradeOutcomes";
 
 export interface EvolutionInsight {
     failureType: string;
@@ -125,4 +126,14 @@ export class StrategyEvolutionService {
             client.release();
         }
     }
+
+    static async getFeedbackMetrics(portfolioId: string) {
+        const aggregated = await TradeOutcomesRepository.getAggregatedMetrics(portfolioId);
+        const byRegime = await TradeOutcomesRepository.getMetricsByRegime(portfolioId);
+        return {
+            overall: aggregated || { winRate: 0, avgAlpha: 0, expectancy: 0, totalTrades: 0 },
+            byRegime
+        };
+    }
 }
+

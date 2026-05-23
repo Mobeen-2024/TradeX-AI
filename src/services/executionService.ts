@@ -14,6 +14,7 @@ interface OrderRequest {
   correlationId?: string;
   strategyId?: string;
   isBacktest?: boolean;
+  overrideId?: string;
 }
 
 class ExecutionSimulator {
@@ -278,9 +279,9 @@ export class ExecutionService {
 
       // Save order into DB as PENDING initially
       const orderIdResult = await client.query(
-        `INSERT INTO orders (id, portfolio_id, asset_id, action, size, status, correlation_id)
-                 VALUES ($1, $2, $3, $4, $5, 'PENDING', $6)
-                 ON CONFLICT (correlation_id) DO UPDATE SET status = 'PENDING'
+        `INSERT INTO orders (id, portfolio_id, asset_id, action, size, status, correlation_id, is_simulation)
+                 VALUES ($1, $2, $3, $4, $5, 'PENDING', $6, $7)
+                 ON CONFLICT (correlation_id) DO UPDATE SET status = 'PENDING', is_simulation = $7
                  RETURNING id`,
         [
           uuidv4(),
@@ -289,6 +290,7 @@ export class ExecutionService {
           request.action,
           request.size,
           request.correlationId || null,
+          isBacktestMode
         ],
       );
       const internalOrderId = orderIdResult.rows[0].id;
@@ -480,9 +482,11 @@ export class ExecutionService {
         );
       }
 
+      const isSimulation = (request as any).isBacktest === true;
+      const overrideId = request.overrideId || null;
       const tradeResult = await client.query(
-        `INSERT INTO trades (portfolio_id, asset_id, entry_price, size, status) VALUES ($1, $2, $3, $4, 'OPEN') RETURNING id`,
-        [request.portfolioId, request.assetId, price, filledSize],
+        `INSERT INTO trades (portfolio_id, asset_id, entry_price, size, status, is_simulation, override_id) VALUES ($1, $2, $3, $4, 'OPEN', $5, $6) RETURNING id`,
+        [request.portfolioId, request.assetId, price, filledSize, isSimulation, overrideId],
       );
       newTradeId = tradeResult.rows[0].id;
       await client.query(`UPDATE orders SET trade_id = $1 WHERE id = $2`, [
@@ -532,9 +536,10 @@ export class ExecutionService {
           filledSize,
         );
 
+        const overrideId = request.overrideId || null;
         await client.query(
-          `UPDATE trades SET status = 'CLOSED', exit_price = $1, pnl = $2, closed_at = NOW() WHERE id = $3`,
-          [price, tradeRealizedPnl, tradeToClose.id],
+          `UPDATE trades SET status = 'CLOSED', exit_price = $1, pnl = $2, closed_at = NOW(), override_id = COALESCE($4, override_id) WHERE id = $3`,
+          [price, tradeRealizedPnl, tradeToClose.id, overrideId],
         );
         await client.query(`UPDATE orders SET trade_id = $1 WHERE id = $2`, [
           tradeToClose.id,

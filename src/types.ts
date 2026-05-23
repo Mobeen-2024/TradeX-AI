@@ -14,6 +14,7 @@ export interface PortfolioMetrics {
   totalValue: number;
   unrealizedPnl: number;
   realizedPnl: number;
+  execution_mode?: string;
 }
 
 export interface StrategyMetrics {

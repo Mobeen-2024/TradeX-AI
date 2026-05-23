@@ -8,6 +8,7 @@ export interface Portfolio {
   is_trading_enabled: boolean;
   max_position_size: number;
   max_loss: number;
+  execution_mode: string; // 'AUTO', 'SEMI_AUTO', 'SIMULATION'
   created_at: Date;
   updated_at: Date;
 }
@@ -18,6 +19,15 @@ export class PortfolioRepository {
     const result = await pool.query(
       "UPDATE portfolios SET is_trading_enabled = $1, max_position_size = $2, max_loss = $3, updated_at = NOW() WHERE id = $4 RETURNING *",
       [is_trading_enabled, max_position_size, max_loss, id]
+    );
+    return result.rows[0] as Portfolio;
+  }
+
+  static async updateExecutionMode(id: string, executionMode: string): Promise<Portfolio> {
+    const pool = getPool();
+    const result = await pool.query(
+      "UPDATE portfolios SET execution_mode = $1, updated_at = NOW() WHERE id = $2 RETURNING *",
+      [executionMode, id]
     );
     return result.rows[0] as Portfolio;
   }

@@ -161,11 +161,21 @@ export class Coordinator {
 
       // Fetch Recent Insights (Learning Loop)
       let recentInsights: any[] = [];
+      let feedbackMetrics: any = null;
+      let ragMemories: any[] = [];
       try {
         const { StrategyEvolutionService } = require("../services/strategyEvolutionService");
         recentInsights = await StrategyEvolutionService.getRecentInsights(portfolioId, 5);
+        feedbackMetrics = await StrategyEvolutionService.getFeedbackMetrics(portfolioId);
       } catch (e) {
-        console.warn("[Coordinator] Failed to fetch recent strategy insights:", e);
+        console.warn("[Coordinator] Failed to fetch recent strategy insights or metrics:", e);
+      }
+
+      try {
+        const queryText = `Market Regime: ${marketRegime}, Volatility Level: ${volatilityLevel}, Strategy: ${strategyTag}`;
+        ragMemories = await MemoryService.searchMemory(queryText, userId, portfolioId);
+      } catch (e) {
+        console.warn("[Coordinator] Failed to fetch context RAG memories:", e);
       }
 
       // 2. Aggregate Decision
@@ -188,7 +198,14 @@ Strategy Intelligence Profile:
 
 Recent System Failure Insights & Learning Log:
 ${JSON.stringify(recentInsights, null, 2)}
-Ensure you adapt your decision parameters to strictly avoid repeating these recent failures (e.g. reduce confidence, change bias, or hold if high risk / vol mismatch / whipsaw persists).
+
+Portfolio Performance Feedback Loop Metrics:
+${JSON.stringify(feedbackMetrics, null, 2)}
+
+Semantically Similar Historical Memories (RAG):
+${JSON.stringify(ragMemories.map(m => ({ regime: m.market_regime, rationale: m.ai_rationale, timestamp: m.timestamp })), null, 2)}
+
+Ensure you adapt your decision parameters to strictly avoid repeating these recent failures and exploit historical successes (e.g. reduce confidence, change bias, or hold if high risk / vol mismatch / whipsaw persists).
 
 1. Quant Analysis:
 ${JSON.stringify({ marketRegime: quantMemory.market_regime, rationale: quantMemory.ai_rationale, confidenceScore: quantConfidence, strategyTag }, null, 2)}
@@ -417,13 +434,28 @@ Format exactly as JSON:
       const allocations =
         await CapitalAllocationService.getAllocations(portfolioId);
 
-      // Fetch Recent Insights (Learning Loop)
+      const qMeta = (quantResult.rawOutput || {}) as any;
+      const strategyTag = qMeta.strategyTag || "default";
+      const marketRegime = qMeta.marketRegime || "UNKNOWN";
+      const volatilityLevel = qMeta.volatilityLevel || "NORMAL";
+
+      // Fetch Recent Insights & Metrics (Learning Loop)
       let recentInsights: any[] = [];
+      let feedbackMetrics: any = null;
+      let ragMemories: any[] = [];
       try {
         const { StrategyEvolutionService } = require("../services/strategyEvolutionService");
         recentInsights = await StrategyEvolutionService.getRecentInsights(portfolioId, 5);
+        feedbackMetrics = await StrategyEvolutionService.getFeedbackMetrics(portfolioId);
       } catch (e) {
-        console.warn("[Coordinator] Failed to fetch recent strategy insights:", e);
+        console.warn("[Coordinator] Failed to fetch recent strategy insights or metrics:", e);
+      }
+
+      try {
+        const queryText = `Market Regime: ${marketRegime}, Volatility Level: ${volatilityLevel}, Strategy: ${strategyTag}`;
+        ragMemories = await MemoryService.searchMemory(queryText, userId, portfolioId);
+      } catch (e) {
+        console.warn("[Coordinator] Failed to fetch context RAG memories:", e);
       }
 
       // 4. Aggregate Decision
@@ -438,7 +470,14 @@ ${JSON.stringify(allocations, null, 2)}
 
 Recent System Failure Insights & Learning Log:
 ${JSON.stringify(recentInsights, null, 2)}
-Ensure you adapt your decision parameters to strictly avoid repeating these recent failures (e.g. reduce confidence, change bias, or hold if high risk / vol mismatch / whipsaw persists).
+
+Portfolio Performance Feedback Loop Metrics:
+${JSON.stringify(feedbackMetrics, null, 2)}
+
+Semantically Similar Historical Memories (RAG):
+${JSON.stringify(ragMemories.map(m => ({ regime: m.market_regime, rationale: m.ai_rationale, timestamp: m.timestamp })), null, 2)}
+
+Ensure you adapt your decision parameters to strictly avoid repeating these recent failures and exploit historical successes (e.g. reduce confidence, change bias, or hold if high risk / vol mismatch / whipsaw persists).
 
 1. Quant Analysis:
 ${JSON.stringify(quantResult.rawOutput, null, 2)}
