@@ -3,6 +3,7 @@ export interface NewsArticle {
   source: string;
   timestamp: Date;
   assetIds?: string[];
+  sentiment?: string;
 }
 
 export interface NewsProvider {

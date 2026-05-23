@@ -1,6 +1,7 @@
 import express from "express";
 import { OverrideService } from "../../services/overrideService";
 import { PortfolioRepository } from "../../db/repositories/portfolios";
+import { SystemService } from "../../services/systemService";
 
 export const overridesRouter = express.Router();
 
@@ -51,7 +52,20 @@ overridesRouter.put("/portfolio/:id/mode", async (req, res) => {
       return res.status(400).json({ error: "Invalid mode. Must be AUTO, SEMI_AUTO, or SIMULATION." });
     }
 
+    const portfolio = await PortfolioRepository.findById(portfolioId);
+    if (!portfolio) {
+      return res.status(404).json({ error: "Portfolio not found" });
+    }
+    const previousMode = portfolio.execution_mode;
+
     const updated = await PortfolioRepository.updateExecutionMode(portfolioId, mode);
+    
+    await SystemService.logAuditEvent('EXECUTION_MODE_CHANGED', { 
+      from: previousMode, 
+      to: mode, 
+      portfolioId 
+    }, 'WARNING', 'USER', portfolio.user_id, portfolioId);
+
     res.json({
       success: true,
       message: `Successfully updated execution mode to ${mode}`,

@@ -62,7 +62,7 @@ export class NewsOracle {
       const newsProvider = getNewsProvider();
       const headlines = await newsProvider.getTopHeadlines(assetIds);
       const newsContext = headlines
-        .map((h) => `[${h.source}] ${h.timestamp.toISOString()}: ${h.headline}`)
+        .map((h) => `[${h.source}] ${h.timestamp.toISOString()}: ${h.headline} | Sentiment signal: ${h.sentiment || 'UNRATED'}`)
         .join("\n");
 
       // 3. Prompt Gemini
@@ -87,7 +87,7 @@ Format exactly as JSON:
       try {
         const textResponse = await aiService.generateContent(
           prompt,
-          "gemini-3.5-flash",
+          "gemini-2.0-flash",
         );
         responseText =
           textResponse

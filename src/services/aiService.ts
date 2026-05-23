@@ -1,6 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
 import { getPool } from "../db/connection";
-import { SystemTelemetryTab } from "../components/tabs/SystemTelemetryTab"; // wait, backend code can't import frontend component. I'll just use simple log.
 
 const pool = getPool();
 
@@ -127,7 +126,7 @@ class AiService {
         console.warn(
           `[AiService] Gemini Generation Attempt ${attempt}/${maxRetries} Failed. Error: ${error.message}`,
         );
-        
+
         if (attempt === maxRetries) {
           this.consecutiveFailures++;
           console.error(
@@ -150,32 +149,40 @@ class AiService {
           }
 
           // Return safe default JSON fallbacks instead of crashing the process
-          const isNewsOracle = prompt.includes("News Oracle") || prompt.includes("sentiment");
-          const isCoordinator = prompt.includes("Chief Investment Officer") || prompt.includes("Coordinator");
+          const isNewsOracle =
+            prompt.includes("News Oracle") || prompt.includes("sentiment");
+          const isCoordinator =
+            prompt.includes("Chief Investment Officer") ||
+            prompt.includes("Coordinator");
 
           if (isNewsOracle) {
             return JSON.stringify({
               sentiment: "NEUTRAL",
-              aiRationale: `[Fallback] Gemini API failed (Error: ${error.message}). Neutral fallback applied safely.`
+              aiRationale: `[Fallback] Gemini API failed (Error: ${error.message}). Neutral fallback applied safely.`,
             });
           } else if (isCoordinator) {
             return JSON.stringify({
               action: "HOLD",
               confidenceScore: 0.1,
               strategyTag: "default",
-              rationale: `[Fallback] Gemini API failed (Error: ${error.message}). Capital preserved: HOLD default applied.`
+              rationale: `[Fallback] Gemini API failed (Error: ${error.message}). Capital preserved: HOLD default applied.`,
             });
           } else {
             return JSON.stringify({
               action: "HOLD",
+              marketRegime: "CHOPPY",
+              strategyTag: "default",
               sentiment: "NEUTRAL",
               confidenceScore: 0.1,
-              rationale: `[Fallback] Gemini API failed (Error: ${error.message}).`
+              aiRationale: `[Fallback] Gemini API failed (Error: ${error.message}).`,
+              rationale: `[Fallback] Gemini API failed (Error: ${error.message}).`,
             });
           }
         }
         // Exponential backoff
-        await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt - 1)));
+        await new Promise((r) =>
+          setTimeout(r, baseDelay * Math.pow(2, attempt - 1)),
+        );
       }
     }
     return "";

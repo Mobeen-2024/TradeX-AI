@@ -1,6 +1,7 @@
 import { WebSocketServer, WebSocket } from "ws";
 import { Server } from "http";
 import { EventListener, EventType } from "../events";
+import jwt from "jsonwebtoken";
 
 export class TelemetryServer {
   private static wss: WebSocketServer | null = null;
@@ -9,6 +10,27 @@ export class TelemetryServer {
     this.wss = new WebSocketServer({ server, path: "/ws/agent-telemetry" });
 
     this.wss.on("connection", (ws, req) => {
+      let token = "";
+      const authHeader = req.headers["authorization"];
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7);
+      } else if (req.url) {
+        try {
+          const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+          token = url.searchParams.get("token") || "";
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret");
+        (ws as any).user = decoded;
+      } catch {
+        ws.close(4001, "Unauthorized");
+        return;
+      }
+
       // Extract optional correlationId filter from query params
       const url = new URL(req.url || "", `http://${req.headers.host}`);
       const correlationIdFilter = url.searchParams.get("correlationId");
@@ -97,6 +119,20 @@ export class TelemetryServer {
         if (!filter || filter === correlationId) {
           client.send(messageString);
         }
+      }
+    });
+  }
+
+  static getClientCount(): number {
+    return this.wss ? this.wss.clients.size : 0;
+  }
+
+  static broadcastGlobal(message: any) {
+    if (!this.wss) return;
+    const msgString = JSON.stringify(message);
+    this.wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msgString);
       }
     });
   }

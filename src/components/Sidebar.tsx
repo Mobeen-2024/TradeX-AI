@@ -47,10 +47,10 @@ export function Sidebar({
             </div>
             <div className="flex flex-col whitespace-nowrap opacity-0 group-hover/sidebar:opacity-100 transition-opacity duration-300">
               <span className="text-[14px] font-bold tracking-widest text-white/95 uppercase">
-                TradeX OS
+                DELTA-TIE
               </span>
-              <span className="text-[9px] text-[#00f0ff] font-mono tracking-widest uppercase">
-                Kernel v4.2.1
+              <span className="text-[9px] text-[#39ff14] font-mono tracking-widest uppercase">
+                Tactical Intelligence Engine
               </span>
             </div>
           </div>
@@ -181,6 +181,12 @@ export function Sidebar({
               label="System Configuration"
               active={activeTab === "System Configuration"}
               onClick={() => setActiveTab("System Configuration")}
+            />
+            <NavItem
+              icon={<Boxes className="w-3.5 h-3.5" />}
+              label="Knowledge Graph"
+              active={activeTab === "Knowledge Graph"}
+              onClick={() => setActiveTab("Knowledge Graph")}
             />
           </ul>
         </div>

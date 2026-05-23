@@ -8,9 +8,18 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useSystemStore } from "../../store/systemStore";
+import { Skeleton } from "../ui/Skeleton";
 
 export function AlphaGenerationTab() {
   const { strategyScores, systemInsights } = useSystemStore();
+  const [showEmptyState, setShowEmptyState] = React.useState(false);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowEmptyState(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <motion.div
@@ -33,13 +42,52 @@ export function AlphaGenerationTab() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {Object.keys(strategyScores).length === 0 && (
-          <div className="col-span-full border border-dashed border-[#222] p-8 text-center text-gray-500 font-mono rounded">
-            Awating Strategy Intelligence
-          </div>
-        )}
-
-        {Object.entries(strategyScores).map(([key, score]) => {
+        {Object.keys(strategyScores).length === 0 ? (
+          !showEmptyState ? (
+            <>
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-[#050505] border border-[#1a1a1a] rounded-xl p-5 space-y-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Skeleton className="h-5 w-32" />
+                    <Skeleton className="h-5 w-5 rounded-full" />
+                  </div>
+                  <div className="flex justify-between items-end">
+                    <div className="flex flex-col gap-2">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-6 w-20" />
+                    </div>
+                    <div className="flex flex-col gap-2 items-end">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-5 w-12" />
+                    </div>
+                  </div>
+                  <div className="space-y-3 pt-4 border-t border-[#1a1a1a]">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-3 w-20" />
+                      <Skeleton className="h-3 w-10" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-3 w-8" />
+                    </div>
+                    <div className="flex justify-between">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-3 w-12" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-1.5 w-full rounded-full" />
+                </div>
+              ))}
+            </>
+          ) : (
+            <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-600">
+              <Sparkles className="w-8 h-8 mb-3 opacity-30" />
+              <p className="font-mono text-sm">Awaiting Strategy Intelligence</p>
+              <p className="font-mono text-xs mt-1">System is initializing or no records exist</p>
+            </div>
+          )
+        ) : (
+          Object.entries(strategyScores).map(([key, score]) => {
           const matchingInsight = systemInsights.find(
             (i) => i.affectedComponent === "STRATEGY" && i.targetId === key,
           );
@@ -119,7 +167,7 @@ export function AlphaGenerationTab() {
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
     </motion.div>
   );

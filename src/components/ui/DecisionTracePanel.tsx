@@ -78,10 +78,13 @@ export const DecisionTracePanel: React.FC = () => {
                 </div>
                 <div>
                   <h2 className="text-sm font-bold text-white uppercase tracking-widest font-sans">
-                    Decision Intelligence
+                    {currentTrace?.coordinator?.metadata?.asset || "Decision Intelligence"}
                   </h2>
-                  <div className="text-[10px] text-gray-500 font-mono">
-                    TRACE ID: {activeCorrelationId}
+                  <div className="text-[10px] text-gray-500 font-mono flex gap-2">
+                    <span>TRACE ID: {activeCorrelationId?.substring(0,8)}</span>
+                    {currentTrace?.executionMeta && (
+                       <span>• {currentTrace.executionMeta.duration_ms}ms</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -142,18 +145,18 @@ export const DecisionTracePanel: React.FC = () => {
                                 "HOLD SCAN"}
                             </div>
                           </div>
-                          <div className="text-right">
-                            <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-1">
+                          <div className="text-right w-32">
+                            <h3 className="text-xs text-gray-500 uppercase tracking-widest mb-1 flex justify-end gap-1">
                               Confidence
                             </h3>
-                            <div className="text-lg font-bold text-[#00f0ff] font-mono">
-                              {(
-                                (currentTrace.coordinator?.metadata
-                                  ?.confidence ||
-                                  currentTrace.quant?.metadata?.confidence ||
-                                  0) * 100
-                              ).toFixed(1)}
-                              %
+                            <div className="h-2 w-full bg-white/10 rounded-full mt-2 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
+                              <div 
+                                className="h-full bg-gradient-to-r from-blue-500 to-[#00f0ff] animate-pulse"
+                                style={{ width: `${(currentTrace.coordinator?.metadata?.confidence || currentTrace.quant?.metadata?.confidence || 0) * 100}%` }}
+                              />
+                            </div>
+                            <div className="text-xs mt-1 font-bold text-[#00f0ff] font-mono">
+                              {((currentTrace.coordinator?.metadata?.confidence || currentTrace.quant?.metadata?.confidence || 0) * 100).toFixed(1)}%
                             </div>
                           </div>
                         </div>
@@ -185,6 +188,32 @@ export const DecisionTracePanel: React.FC = () => {
                         </div>
                       </div>
 
+                      {/* OVERRIDE BADGE (IF HITL INVOLVED) */}
+                      {currentTrace.override && (
+                        <div className="bg-[#ff6b00]/10 border border-[#ff6b00]/30 rounded-xl p-4 mb-4 relative overflow-hidden shadow-[0_0_15px_rgba(255,107,0,0.1)]">
+                           <div className="flex items-center gap-2 mb-2">
+                             <AlertCircle className="w-4 h-4 text-[#ff6b00]" />
+                             <span className="text-[#ff6b00] text-xs uppercase font-bold tracking-widest">
+                               Human Override Applied
+                             </span>
+                           </div>
+                           <div className="grid grid-cols-2 gap-4 mt-3">
+                             <div className="bg-black/40 p-2 rounded border border-white/5">
+                               <div className="text-[9px] text-gray-500 uppercase mb-1">Original AI Expected</div>
+                               <div className="text-sm font-mono text-gray-400 line-through">
+                                 {currentTrace.override.original_action} {parseFloat(currentTrace.override.original_size).toFixed(3)}
+                               </div>
+                             </div>
+                             <div className="bg-[#ff6b00]/20 p-2 rounded border border-[#ff6b00]/30">
+                               <div className="text-[9px] text-[#ff6b00] uppercase mb-1">Actual Routed</div>
+                               <div className="text-sm font-mono text-[#ff6b00] font-bold">
+                                 {currentTrace.override.override_action} {parseFloat(currentTrace.override.override_size).toFixed(3)}
+                               </div>
+                             </div>
+                           </div>
+                        </div>
+                      )}
+
                       {/* TIMELINE (STACKED REASONING) */}
                       <div className="space-y-4 relative">
                         <div className="absolute left-3.75 top-6 bottom-4 w-px bg-white/10 z-0"></div>
@@ -206,7 +235,24 @@ export const DecisionTracePanel: React.FC = () => {
                           />
                         )}
 
-                        {/* Step 2: Risk Adjustment */}
+                        {/* Step 2: News Sentiment */}
+                        {currentTrace.news && (
+                          <TraceStep
+                            title="News & Sentiment Analysis"
+                            icon={<Newspaper className="w-3 h-3 text-[#3b82f6]" />}
+                            color="border-[#3b82f6]"
+                            glowColor="#3b82f6"
+                            memory={currentTrace.news}
+                            tags={[
+                              {
+                                label: "sentiment",
+                                value: currentTrace.news.metadata?.sentiment || "NEUTRAL",
+                              },
+                            ]}
+                          />
+                        )}
+
+                        {/* Step 3: Risk Adjustment */}
                         {currentTrace.risk && (
                           <TraceStep
                             title="Risk Adjustment Filter"
@@ -372,48 +418,57 @@ export const DecisionTracePanel: React.FC = () => {
 
                   {viewMode === "OUTCOME" && (
                     <div className="space-y-4">
-                      <div className="bg-[#0a0a0a] rounded-xl border border-[#39ff14]/20 p-4">
-                        <h3 className="text-xs text-[#39ff14] uppercase tracking-widest mb-3 font-bold">
-                          Outcome Comparison
-                        </h3>
-                        <div className="flex flex-col gap-3">
-                          <div className="flex justify-between items-center bg-black/40 p-2 rounded border border-white/5">
-                            <span className="text-[10px] text-gray-400 font-mono uppercase">
-                              AI Expected
-                            </span>
-                            <span className="text-sm text-gray-300 font-bold">
-                              $1,250.00
-                            </span>
+                      {currentTrace.outcome ? (
+                        <div className="bg-[#0a0a0a] rounded-xl border border-[#39ff14]/20 p-4">
+                          <h3 className="text-xs text-[#39ff14] uppercase tracking-widest mb-3 font-bold">
+                            Outcome Comparison
+                          </h3>
+                          <div className="flex flex-col gap-3">
+                            <div className="flex justify-between items-center bg-black/40 p-2 rounded border border-white/5">
+                              <span className="text-[10px] text-gray-400 font-mono uppercase">
+                                AI Expected Alpha
+                              </span>
+                              <span className="text-sm text-gray-300 font-bold">
+                                {(currentTrace.outcome.alpha * 100).toFixed(2)}%
+                              </span>
+                            </div>
+                            {currentTrace.override && (
+                              <div className="flex justify-between items-center bg-[#ff6b00]/10 p-2 rounded border border-[#ff6b00]/20">
+                                <span className="text-[10px] text-[#ff6b00] font-mono uppercase">
+                                  User Override Alpha
+                                </span>
+                                <span className="text-sm text-[#ff6b00] font-bold">
+                                  {(currentTrace.outcome.override_alpha * 100).toFixed(2)}%
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center bg-[#39ff14]/10 p-2 rounded border border-[#39ff14]/20">
+                              <span className="text-[10px] text-[#39ff14] font-mono uppercase">
+                                Actual Realized PnL
+                              </span>
+                              <span className="text-sm text-[#39ff14] font-bold flex items-center gap-1">
+                                ${parseFloat(currentTrace.outcome.pnl).toFixed(2)}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center bg-[#ff6b00]/10 p-2 rounded border border-[#ff6b00]/20">
-                            <span className="text-[10px] text-[#ff6b00] font-mono uppercase">
-                              User Override Exp.
-                            </span>
-                            <span className="text-sm text-[#ff6b00] font-bold">
-                              $2,800.00
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center bg-[#39ff14]/10 p-2 rounded border border-[#39ff14]/20">
-                            <span className="text-[10px] text-[#39ff14] font-mono uppercase">
-                              Actual Realized
-                            </span>
-                            <span className="text-sm text-[#39ff14] font-bold">
-                              $3,105.00
-                            </span>
-                          </div>
-                        </div>
 
-                        <div className="mt-4 border-t border-white/5 pt-3">
-                          <div className="text-[10px] text-[#39ff14] uppercase tracking-widest flex items-center gap-2">
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Override
-                            Improved Result
-                          </div>
-                          <p className="text-xs text-gray-400 mt-1 font-mono">
-                            User override successfully capitalized on High
-                            Volatility setup vs AI Conservative hold.
-                          </p>
+                          {currentTrace.override && (
+                            <div className="mt-4 border-t border-white/5 pt-3">
+                              <div className={`text-[10px] uppercase tracking-widest flex items-center gap-2 ${currentTrace.outcome.override_alpha > 0 ? "text-[#39ff14]" : "text-red-500"}`}>
+                                {currentTrace.outcome.override_alpha > 0 ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertCircle className="w-3.5 h-3.5" />} 
+                                Override {currentTrace.outcome.override_alpha > 0 ? "Improved Result" : "Degraded Result"}
+                              </div>
+                              <p className="text-xs text-gray-400 mt-1 font-mono">
+                                The manual override resulted in a {currentTrace.outcome.override_alpha > 0 ? "positive" : "negative"} alpha delta vs AI baseline.
+                              </p>
+                            </div>
+                          )}
                         </div>
-                      </div>
+                      ) : (
+                        <div className="bg-[#0a0a0a] rounded-xl border border-white/10 p-6 text-center text-gray-500 font-mono text-xs">
+                          Trade still highly active or outcome pending evaluation. Full PnL realization invisible until position settles.
+                        </div>
+                      )}
                     </div>
                   )}
                 </>

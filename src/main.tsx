@@ -3,11 +3,14 @@ import {createRoot} from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { MarketRegimeProvider } from './contexts/MarketRegimeContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <MarketRegimeProvider>
-      <App />
-    </MarketRegimeProvider>
+    <ErrorBoundary>
+      <MarketRegimeProvider>
+        <App />
+      </MarketRegimeProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

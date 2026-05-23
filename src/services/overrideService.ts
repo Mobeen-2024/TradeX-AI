@@ -1,6 +1,7 @@
 import { DecisionOverridesRepository, DecisionOverride } from "../db/repositories/decisionOverrides";
 import { ExecutionService } from "./executionService";
 import { PortfolioRepository } from "../db/repositories/portfolios";
+import { SystemService } from "./systemService";
 
 export class OverrideService {
   static async getPending(portfolioId: string): Promise<DecisionOverride[]> {
@@ -23,6 +24,7 @@ export class OverrideService {
 
     if (action === "DISCARD") {
       await DecisionOverridesRepository.discardOverride(overrideId);
+      await SystemService.logAuditEvent('OVERRIDE_DISCARDED', { overrideId, asset: override.asset_id }, 'INFO', 'USER', undefined, override.portfolio_id);
       return { success: true, message: "Override discarded successfully." };
     }
 
@@ -34,6 +36,14 @@ export class OverrideService {
 
     // Update the override to EXECUTED in the DB
     await DecisionOverridesRepository.updateExecuted(overrideId, action, size);
+    
+    await SystemService.logAuditEvent('OVERRIDE_EXECUTED', { 
+      overrideId, 
+      originalAction: override.original_action,
+      overrideAction: action,
+      overrideSize: size,
+      asset: override.asset_id
+    }, 'WARNING', 'USER', portfolio.user_id, portfolio.id);
 
     // Call ExecutionService to execute the overridden order request
     const orderRequest = {

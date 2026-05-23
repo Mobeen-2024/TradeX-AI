@@ -50,9 +50,7 @@ export class ExecutionAgent {
         userId = userId || portfolio.user_id;
         executionMode = portfolio.execution_mode || "AUTO";
       } else {
-        console.error(
-          "[ExecutionAgent] Portfolio not found: " + portfolioId,
-        );
+        console.error("[ExecutionAgent] Portfolio not found: " + portfolioId);
         return;
       }
     } catch (err) {
@@ -60,34 +58,187 @@ export class ExecutionAgent {
       return;
     }
 
-    let currentDecision = decision || payload.decision;
-    if (!currentDecision || !currentDecision.action) {
-      console.warn(
-        "[ExecutionAgent] Invalid decision or action missing, defaulting to HOLD",
-      );
-      currentDecision = {
-        action: "HOLD",
-        rationale: "Fallback: Missing decision",
-        confidenceScore: 0,
-      };
+    if (!userId) {
+      console.error("[ExecutionAgent] Missing userId after portfolio fetch");
+      return;
     }
 
-    try {
-      if (currentDecision.action === "BUY" || currentDecision.action === "SELL") {
-        // Kill-switch: check risk level before execution
-        const riskMemory = await MemoryService.getByCorrelation(
-          correlationId,
-          "RiskGuardian",
-        );
-        const isCriticalRiskState = riskMemory?.metadata?.risk_state === "CRITICAL";
-        if ((riskMemory && riskMemory.market_regime && riskMemory.market_regime.includes("HIGH")) || isCriticalRiskState) {
-          console.warn(
-            `[ExecutionAgent] Blocking execution due to HIGH risk/CRITICAL risk state for correlation ${correlationId}`,
+    const { PositionRepository } = require("../db/repositories/positions");
+    const positions = await PositionRepository.findByPortfolioId(portfolioId);
+
+    const currentDecision = decision || payload.decision;
+    const decisionsList =
+      payload.decisions ||
+      currentDecision?.decisions ||
+      (currentDecision ? [currentDecision] : []);
+
+    if (!decisionsList || decisionsList.length === 0) {
+      console.warn("[ExecutionAgent] No decisions available to execute");
+      return;
+    }
+
+    for (const dec of decisionsList) {
+      const assetId = dec.assetId || "XAUUSD";
+      const action = dec.action || "HOLD";
+      const confidenceScore =
+        dec.confidenceScore !== undefined
+          ? dec.confidenceScore
+          : dec.confidence || 0;
+      const rationale = dec.rationale || "No rationale";
+
+      try {
+        if (action === "BUY" || action === "SELL") {
+          // Kill-switch: check risk level before execution
+          const riskMemory = await MemoryService.getByCorrelation(
+            correlationId,
+            "RiskGuardian",
+          );
+          const isCriticalRiskState =
+            riskMemory?.metadata?.risk_state === "CRITICAL";
+          if (
+            (riskMemory &&
+              riskMemory.market_regime &&
+              riskMemory.market_regime.includes("HIGH")) ||
+            isCriticalRiskState
+          ) {
+            console.warn(
+              `[ExecutionAgent] Blocking execution for ${assetId} due to HIGH risk/CRITICAL risk state for correlation ${correlationId}`,
+            );
+
+            await MemoryService.logMemory(
+              `SKIPPED_EXECUTION`,
+              `Execution blocked for ${assetId} by RiskGuardian (Risk=HIGH/CRITICAL). Rationale: ${riskMemory ? riskMemory.ai_rationale : "No risk assessment available"}`,
+              userId,
+              portfolioId,
+              correlationId,
+              "ExecutionAgent",
+            );
+
+            const durationMs = Date.now() - startTimestamp.getTime();
+            await ExecutionLogRepository.insertLog({
+              agent_name: "ExecutionAgent",
+              start_timestamp: startTimestamp,
+              duration_ms: durationMs,
+              success: true,
+              error_message: `Blocked by RiskGuardian for ${assetId}`,
+              user_id: userId,
+              portfolio_id: portfolioId,
+            });
+
+            await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
+              orderId:
+                "blocked-" +
+                (correlationId ? correlationId.substring(0, 6) : "default"),
+              portfolioId,
+              userId,
+              correlationId,
+              action: "BLOCKED",
+            });
+            continue; // Abort execution for this asset
+          }
+
+          // Compute adaptive position size using advanced mathematical engine scaling
+          // FinalSize = BaseSize * StrategyWeight * RiskMultiplier * GlobalPortfolioWeight
+          const baseSize = 1.0;
+          const strategyWeight =
+            currentDecision?.strategyWeight !== undefined
+              ? Number(currentDecision.strategyWeight)
+              : 1.0;
+          const riskMultiplier =
+            currentDecision?.riskMultiplier !== undefined
+              ? Number(currentDecision.riskMultiplier)
+              : 1.0;
+          const globalPortfolioWeight =
+            currentDecision?.globalPortfolioWeight !== undefined
+              ? Number(currentDecision.globalPortfolioWeight)
+              : 1.0;
+
+          let adaptiveSize =
+            baseSize * strategyWeight * riskMultiplier * globalPortfolioWeight;
+          // Bound the size to safe, logical limits [0.05, 3.0] to prevent zero or excessively leveraged sizing
+          adaptiveSize = Number(
+            Math.max(0.05, Math.min(3.0, adaptiveSize)).toFixed(4),
           );
 
+          console.log(
+            `[ExecutionAgent] Mathematically scaled position size for ${assetId}: ${adaptiveSize} (Base: ${baseSize}, StrategyWeight: ${strategyWeight}, RiskMultiplier: ${riskMultiplier}, GlobalWeight: ${globalPortfolioWeight})`,
+          );
+
+          if (executionMode === "SEMI_AUTO") {
+            console.log(
+              `[ExecutionAgent] Pipeline PAUSED (SEMI_AUTO mode) for ${assetId} under correlation ${correlationId}. Waiting for user override.`,
+            );
+
+            const overrideId = await DecisionOverridesRepository.insertOverride(
+              portfolioId,
+              correlationId || uuidv4(),
+              assetId,
+              action,
+              adaptiveSize,
+              rationale,
+            );
+
+            await MemoryService.logMemory(
+              `SKIPPED_EXECUTION`,
+              `Execution paused for manual review (SEMI_AUTO) on ${assetId}. Original Decision: ${action} ${adaptiveSize} units. Rationale: ${rationale}`,
+              userId,
+              portfolioId,
+              correlationId,
+              "ExecutionAgent",
+            );
+
+            const durationMs = Date.now() - startTimestamp.getTime();
+            await ExecutionLogRepository.insertLog({
+              agent_name: "ExecutionAgent",
+              start_timestamp: startTimestamp,
+              duration_ms: durationMs,
+              success: true,
+              error_message: `Paused for User Override (SEMI_AUTO) on ${assetId}`,
+              user_id: userId,
+              portfolio_id: portfolioId,
+            });
+
+            await EventDispatcher.emit(EventType.EXECUTION_PAUSED, {
+              overrideId,
+              portfolioId,
+              userId,
+              correlationId,
+              action: action,
+              size: adaptiveSize,
+              rationale: rationale,
+            });
+            continue; // Pause and do not place the order for this asset
+          }
+
+          const isSimulation = executionMode === "SIMULATION";
+          const orderRequest = {
+            portfolioId,
+            userId,
+            assetId: assetId,
+            action: action,
+            size: adaptiveSize,
+            correlationId: correlationId || uuidv4(),
+            strategyId: payload.strategyId,
+            isBacktest: payload.isBacktest || isSimulation,
+          };
+
+          const { orderId, price } =
+            await ExecutionService.placeOrder(orderRequest);
+
+          // Log to agent_decisions
+          await AgentDecisionsRepository.insertDecision(
+            "QuantAgent",
+            portfolioId,
+            assetId,
+            action,
+            price,
+            rationale,
+          );
+
+          // Track execution in memory
           await MemoryService.logMemory(
-            `SKIPPED_EXECUTION`,
-            `Execution blocked by RiskGuardian (Risk=HIGH/CRITICAL). Rationale: ${riskMemory ? riskMemory.ai_rationale : "No risk assessment available"}`,
+            `EXECUTED_ORDER`,
+            `Executed ${action} order on ${assetId}. Order ID: ${orderId}. ConfidenceScore: ${confidenceScore}. Rationale: ${rationale}`,
             userId,
             portfolioId,
             correlationId,
@@ -100,55 +251,27 @@ export class ExecutionAgent {
             start_timestamp: startTimestamp,
             duration_ms: durationMs,
             success: true,
-            error_message: "Blocked by RiskGuardian",
+            error_message: null,
             user_id: userId,
             portfolio_id: portfolioId,
           });
 
           await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
-            orderId: "blocked-" + (correlationId ? correlationId.substring(0, 6) : "default"),
+            orderId,
             portfolioId,
             userId,
             correlationId,
-            action: "BLOCKED",
+            action: action,
           });
-          return; // Abort execution
-        }
-
-        // Compute adaptive position size using advanced mathematical engine scaling
-        // FinalSize = BaseSize * StrategyWeight * RiskMultiplier * GlobalPortfolioWeight
-        const baseSize = 1.0;
-        const strategyWeight = currentDecision.strategyWeight !== undefined ? Number(currentDecision.strategyWeight) : 1.0;
-        const riskMultiplier = currentDecision.riskMultiplier !== undefined ? Number(currentDecision.riskMultiplier) : 1.0;
-        const globalPortfolioWeight = currentDecision.globalPortfolioWeight !== undefined ? Number(currentDecision.globalPortfolioWeight) : 1.0;
-
-        let adaptiveSize = baseSize * strategyWeight * riskMultiplier * globalPortfolioWeight;
-        // Bound the size to safe, logical limits [0.05, 3.0] to prevent zero or excessively leveraged sizing
-        adaptiveSize = Number(Math.max(0.05, Math.min(3.0, adaptiveSize)).toFixed(4));
-
-        console.log(
-          `[ExecutionAgent] Mathematically scaled position size: ${adaptiveSize} (Base: ${baseSize}, StrategyWeight: ${strategyWeight}, RiskMultiplier: ${riskMultiplier}, GlobalWeight: ${globalPortfolioWeight})`
-        );
-
-        if (executionMode === "SEMI_AUTO") {
-          console.log(`[ExecutionAgent] Pipeline PAUSED (SEMI_AUTO mode) for correlation ${correlationId}. Waiting for user override.`);
-          
-          const overrideId = await DecisionOverridesRepository.insertOverride(
-            portfolioId,
-            correlationId || uuidv4(),
-            currentDecision.assetId || "BTC",
-            currentDecision.action,
-            adaptiveSize,
-            currentDecision.rationale
-          );
-
+        } else {
+          // HOLD or unknown action, log it but don't place order
           await MemoryService.logMemory(
             `SKIPPED_EXECUTION`,
-            `Execution paused for manual review (SEMI_AUTO). Original Decision: ${currentDecision.action} ${adaptiveSize} units. Rationale: ${currentDecision.rationale}`,
+            `Decision for ${assetId} was ${action}, no order placed. ConfidenceScore: ${confidenceScore}. Rationale: ${rationale}`,
             userId,
             portfolioId,
             correlationId,
-            "ExecutionAgent"
+            "ExecutionAgent",
           );
 
           const durationMs = Date.now() - startTimestamp.getTime();
@@ -157,131 +280,51 @@ export class ExecutionAgent {
             start_timestamp: startTimestamp,
             duration_ms: durationMs,
             success: true,
-            error_message: "Paused for User Override (SEMI_AUTO)",
+            error_message: null,
             user_id: userId,
             portfolio_id: portfolioId,
           });
 
-          await EventDispatcher.emit(EventType.EXECUTION_PAUSED, {
-            overrideId,
+          await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
+            orderId:
+              "skipped-" +
+              (correlationId ? correlationId.substring(0, 6) : "default"),
             portfolioId,
             userId,
             correlationId,
-            action: currentDecision.action,
-            size: adaptiveSize,
-            rationale: currentDecision.rationale,
+            action: action,
           });
-          return; // Pause and do not place the order
         }
-
-        const isSimulation = executionMode === "SIMULATION";
-        const orderRequest = {
-          portfolioId,
-          userId,
-          assetId: currentDecision.assetId || "BTC", // Default to BTC if unspecified
-          action: currentDecision.action,
-          size: adaptiveSize,
-          correlationId: correlationId || uuidv4(),
-          strategyId: payload.strategyId,
-          isBacktest: payload.isBacktest || isSimulation,
-        };
-
-        const { orderId, price } =
-          await ExecutionService.placeOrder(orderRequest);
-
-        // Log to agent_decisions
-        await AgentDecisionsRepository.insertDecision(
-          "QuantAgent",
-          portfolioId,
-          currentDecision.assetId || "BTC",
-          currentDecision.action,
-          price,
-          currentDecision.rationale,
-        );
-
-        // Track execution in memory
-        await MemoryService.logMemory(
-          `EXECUTED_ORDER`,
-          `Executed ${currentDecision.action} order. Order ID: ${orderId}. ConfidenceScore: ${currentDecision.confidenceScore || currentDecision.confidence || 0}. Rationale: ${currentDecision.rationale}`,
-          userId,
-          portfolioId,
-          correlationId,
-          "ExecutionAgent",
-        );
-
+      } catch (error: any) {
         const durationMs = Date.now() - startTimestamp.getTime();
         await ExecutionLogRepository.insertLog({
           agent_name: "ExecutionAgent",
           start_timestamp: startTimestamp,
           duration_ms: durationMs,
-          success: true,
-          error_message: null,
+          success: false,
+          error_message: `Failed executing order for ${assetId}: ${error.message || "Unknown error"}`,
           user_id: userId,
           portfolio_id: portfolioId,
         });
 
-        await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
-          orderId,
-          portfolioId,
-          userId,
-          correlationId,
-          action: currentDecision.action,
-        });
-      } else {
-        // HOLD or unknown action, log it but don't place order
-        await MemoryService.logMemory(
-          `SKIPPED_EXECUTION`,
-          `Decision was ${currentDecision.action}, no order placed. ConfidenceScore: ${currentDecision.confidenceScore || currentDecision.confidence || 0}. Rationale: ${currentDecision.rationale}`,
-          userId,
-          portfolioId,
-          correlationId,
-          "ExecutionAgent",
-        );
-
-        const durationMs = Date.now() - startTimestamp.getTime();
-        await ExecutionLogRepository.insertLog({
-          agent_name: "ExecutionAgent",
-          start_timestamp: startTimestamp,
-          duration_ms: durationMs,
-          success: true,
-          error_message: null,
-          user_id: userId,
-          portfolio_id: portfolioId,
-        });
-
-        await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
-          orderId: "skipped-" + (correlationId ? correlationId.substring(0, 6) : "default"),
-          portfolioId,
-          userId,
-          correlationId,
-          action: currentDecision.action,
-        });
+        // Emit order executed with FAILED status to close telemetry loop safely
+        try {
+          await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
+            orderId:
+              "failed-" +
+              (correlationId ? correlationId.substring(0, 6) : "default"),
+            portfolioId,
+            userId,
+            correlationId,
+            action: "FAILED",
+          });
+        } catch (evtErr) {
+          console.error(
+            "[ExecutionAgent] Failed emitting ORDER_EXECUTED fallback event:",
+            evtErr,
+          );
+        }
       }
-    } catch (error: any) {
-      const durationMs = Date.now() - startTimestamp.getTime();
-      await ExecutionLogRepository.insertLog({
-        agent_name: "ExecutionAgent",
-        start_timestamp: startTimestamp,
-        duration_ms: durationMs,
-        success: false,
-        error_message: error.message || "Unknown error",
-        user_id: userId,
-        portfolio_id: portfolioId,
-      });
-
-      // Emit order executed with FAILED status to close telemetry loop safely
-      try {
-        await EventDispatcher.emit(EventType.ORDER_EXECUTED, {
-          orderId: "failed-" + (correlationId ? correlationId.substring(0, 6) : "default"),
-          portfolioId,
-          userId,
-          correlationId,
-          action: "FAILED",
-        });
-      } catch (evtErr) {
-        console.error("[ExecutionAgent] Failed emitting ORDER_EXECUTED fallback event:", evtErr);
-      }
-      throw error;
     }
   }
 }

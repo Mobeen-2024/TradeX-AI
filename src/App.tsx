@@ -12,6 +12,7 @@ import { MobileApp } from "./components/MobileApp";
 import { AIVoiceAssistant } from "./components/AIVoiceAssistant";
 import { DecisionTracePanel } from "./components/ui/DecisionTracePanel";
 import { SimulationOverlay } from "./components/ui/SimulationOverlay";
+import { ToastSystem } from "./components/ui/ToastSystem";
 import { useState } from "react";
 import { useMarketRegime } from "./contexts/MarketRegimeContext";
 
@@ -30,11 +31,14 @@ export type TabType =
   | "Backtesting Engine"
   | "System Telemetry"
   | "Audit & Governance"
-  | "System Configuration";
+  | "System Configuration"
+  | "Knowledge Graph";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("PnL Dashboard");
-  const [isAuthenticated, setIsAuthenticated] = useState((import.meta as any).env?.DEV || false);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    (import.meta as any).env?.DEV || false,
+  );
   const { regime } = useMarketRegime();
 
   if (!isAuthenticated) {
@@ -72,6 +76,7 @@ export default function App() {
           <MobileApp />
         </div>
         <div className="relative z-50">
+          <ToastSystem />
           <AIVoiceAssistant />
           <DecisionTracePanel />
           <SimulationOverlay />

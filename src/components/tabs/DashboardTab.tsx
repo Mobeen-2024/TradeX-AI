@@ -17,6 +17,7 @@ import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 import { useSystemStore } from "../../store/systemStore";
 import { useMarketStore } from "../../store/marketStore";
 import { InsightsPanel } from "../ui/InsightsPanel";
+import { Skeleton, SkeletonRow } from "../ui/Skeleton";
 
 function TickerData() {
   const { ticker } = useMarketStore();
@@ -24,46 +25,80 @@ function TickerData() {
   const currentPrice =
     ticker.dataStream.length > 0
       ? ticker.dataStream[ticker.dataStream.length - 1]
-      : 64320.5;
+      : 2560.5;
+
+  const euroPrice = currentPrice * 0.925;
+  const gbpPrice = currentPrice * 0.782;
+  const gldPrice = currentPrice / 10;
 
   return (
     <>
       <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
-        <span className="text-gray-400 text-[10px] font-bold">BTC/USDT</span>
-        <span className="text-white font-sans font-bold text-lg">
-          {currentPrice.toFixed(2)}
+        <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+          XAU/USD Spot Gold
+        </span>
+        <span className="text-[#39ff14] font-sans font-bold text-lg">
+          ${currentPrice.toFixed(2)}
         </span>
         <div className="flex items-center justify-between mt-1">
           <span
             className={`text-[10px] font-bold ${ticker.isPositive ? "text-[#39ff14]" : "text-[#ff4500]"}`}
           >
             {ticker.isPositive ? "+" : ""}
-            {(ticker.changePercent || 2.4).toFixed(2)}%
+            {(ticker.changePercent || 0.45).toFixed(2)}%
           </span>
-          <span className="text-[9px] text-gray-600">RSI: 68</span>
+          <span className="text-[9px] text-gray-600">Vol: Spot</span>
         </div>
       </div>
       <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
-        <span className="text-gray-400 text-[10px] font-bold">ETH/USDT</span>
-        <span className="text-white font-sans font-bold text-lg">3,450.20</span>
+        <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+          XAU/EUR Spot
+        </span>
+        <span className="text-white font-sans font-bold text-lg">
+          €{euroPrice.toFixed(2)}
+        </span>
         <div className="flex items-center justify-between mt-1">
-          <span className={`text-[10px] font-bold text-[#39ff14]`}>+1.8%</span>
-          <span className="text-[9px] text-gray-600">RSI: 62</span>
+          <span
+            className={`text-[10px] font-bold ${ticker.isPositive ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+          >
+            {ticker.isPositive ? "+" : ""}
+            {(ticker.changePercent || 0.45).toFixed(2)}%
+          </span>
+          <span className="text-[9px] text-gray-600">Gold (EUR)</span>
         </div>
       </div>
       <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
-        <span className="text-gray-400 text-[10px] font-bold">SOL/USDT</span>
-        <span className="text-white font-sans font-bold text-lg">142.75</span>
+        <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+          XAU/GBP Spot
+        </span>
+        <span className="text-white font-sans font-bold text-lg">
+          £{gbpPrice.toFixed(2)}
+        </span>
         <div className="flex items-center justify-between mt-1">
-          <span className={`text-[10px] font-bold text-[#ff4500]`}>-0.5%</span>
-          <span className="text-[9px] text-gray-600">RSI: 45</span>
+          <span
+            className={`text-[10px] font-bold ${ticker.isPositive ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+          >
+            {ticker.isPositive ? "+" : ""}
+            {(ticker.changePercent || 0.45).toFixed(2)}%
+          </span>
+          <span className="text-[9px] text-gray-600">Gold (GBP)</span>
         </div>
       </div>
       <div className="flex flex-col gap-1 p-3 bg-[#0a0a0a] border border-[#1a1a1a] rounded-sm">
-        <span className="text-gray-400 text-[10px] font-bold">TOTAL CAP</span>
-        <span className="text-white font-sans font-bold text-lg">$2.4T</span>
+        <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+          GLD ETF Shares
+        </span>
+        <span className="text-[#00f0ff] font-sans font-bold text-lg">
+          ${gldPrice.toFixed(2)}
+        </span>
         <div className="flex items-center justify-between mt-1">
-          <span className={`text-[10px] font-bold text-[#39ff14]`}>+1.2%</span>
+          <span
+            className={`text-[10px] font-bold ${ticker.isPositive ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+          >
+            {ticker.isPositive ? "+" : ""}
+            {(ticker.changePercent || 0.45).toFixed(2)}%
+          </span>
+          <span className="text-[9px] text-gray-600">1:10 Reserve</span>
         </div>
       </div>
     </>
@@ -78,7 +113,7 @@ export function DashboardTab() {
     setActiveCorrelationId,
   } = useSystemStore();
 
-  const isAutonomous = true; // Can be derived from portfolio or config later
+  const isAutonomous = (portfolio as any)?.execution_mode === "AUTO";
 
   const strategies = Object.values(strategyScores);
   const activeStrategy = strategies.length > 0 ? strategies[0] : null;
@@ -102,53 +137,67 @@ export function DashboardTab() {
               <Brain className="w-4 h-4 text-[#0ea5e9]" />
               Nexus Core Status
             </h3>
-            <span
-              className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${isAutonomous ? "bg-[#0ea5e9]/10 text-[#0ea5e9] border-[#0ea5e9]/20" : "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}
-            >
-              {isAutonomous ? "Autonomous Mode" : "Manual Mode"}
-            </span>
+            {portfolio ? (
+              <span
+                className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border ${isAutonomous ? "bg-[#0ea5e9]/10 text-[#0ea5e9] border-[#0ea5e9]/20" : "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}
+              >
+                {isAutonomous ? "Autonomous Mode" : "Manual Mode"}
+              </span>
+            ) : (
+              <Skeleton className="w-20 h-4" />
+            )}
           </div>
 
-          <div className="grid grid-cols-2 gap-y-4 gap-x-2 relative z-10">
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 uppercase mb-2">
-                Confidence
-              </span>
-              <div className="flex items-center gap-3">
-                <AIConfidenceRing
-                  confidence={
-                    activeStrategy ? activeStrategy.baseScore * 100 : 87.4
-                  }
-                  size={48}
-                  theme="cyan"
-                />
+          {portfolio === null ? (
+            <div className="flex flex-col gap-2 w-full mt-2">
+              <SkeletonRow />
+              <SkeletonRow />
+              <SkeletonRow />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-y-4 gap-x-2 relative z-10">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-500 uppercase mb-2">
+                  Confidence
+                </span>
+                <div className="flex items-center gap-3">
+                  <AIConfidenceRing
+                    confidence={
+                      activeStrategy ? activeStrategy.baseScore * 100 : 87.4
+                    }
+                    size={48}
+                    theme="cyan"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-500 uppercase">
+                  Expectancy
+                </span>
+                <span className="text-sm text-gray-200 font-sans font-bold">
+                  {activeStrategy
+                    ? activeStrategy.expectancy.toFixed(2)
+                    : "N/A"}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-500 uppercase">
+                  Last Strategy
+                </span>
+                <span className="text-sm text-[#00f0ff] font-sans font-bold">
+                  {activeStrategy?.name || "Initializing..."}
+                </span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-500 uppercase">
+                  Risk Protocol
+                </span>
+                <span className="text-sm text-[#facc15] font-sans font-bold flex items-center gap-1">
+                  <ShieldAlert className="w-3.5 h-3.5" /> Level 2: Scaled
+                </span>
               </div>
             </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 uppercase">
-                Expectancy
-              </span>
-              <span className="text-sm text-gray-200 font-sans font-bold">
-                {activeStrategy ? activeStrategy.expectancy.toFixed(2) : "N/A"}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 uppercase">
-                Last Strategy
-              </span>
-              <span className="text-sm text-[#00f0ff] font-sans font-bold">
-                {activeStrategy?.name || "Initializing..."}
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[10px] text-gray-500 uppercase">
-                Risk Protocol
-              </span>
-              <span className="text-sm text-[#facc15] font-sans font-bold flex items-center gap-1">
-                <ShieldAlert className="w-3.5 h-3.5" /> Level 2: Scaled
-              </span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Market Overview (spanning 8 cols) */}
@@ -159,7 +208,237 @@ export function DashboardTab() {
           </h3>
 
           <div className="grid grid-cols-4 gap-4 flex-1 items-end">
-            <TickerData />
+            {portfolio === null ? (
+              <>
+                <Skeleton className="w-full h-16" />
+                <Skeleton className="w-full h-16" />
+                <Skeleton className="w-full h-16" />
+                <Skeleton className="w-full h-16" />
+              </>
+            ) : (
+              <TickerData />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* DELTA-TIE 7-LAYER SYSTEM DECISION ENGINE MATRIX */}
+      <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 hover:border-[#222] transition-colors relative">
+        <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+          <Cpu className="w-16 h-16 text-[#39ff14]" />
+        </div>
+        <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#1a1a1a]">
+          <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#39ff14]" />
+            DELTA Tactical Intelligence Cores — 7-Layer Institutional Flow
+          </h3>
+          <span className="text-[9px] px-1.5 py-0.5 bg-[#39ff14]/10 border border-[#39ff14]/30 text-[#39ff14] rounded-sm font-bold uppercase tracking-widest">
+            Synchronized
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-7 gap-4">
+          {/* Layer 1 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#00f0ff]">
+                  L1 STRUCTURE
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-[#39ff14] rounded-full animate-pulse"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Market Structure Engine
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Trend Bias:</span>{" "}
+                <span className="text-[#39ff14] font-bold">BULLISH</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">BOS Level:</span>{" "}
+                <span className="text-gray-300 font-mono">$2590.50</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">CHOCH Level:</span>{" "}
+                <span className="text-gray-300 font-mono">$2545.20</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Layer 2 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#00f0ff]">
+                  L2 REGIME
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-[#39ff14] rounded-full"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Regime Detection Unit
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Detected:</span>{" "}
+                <span className="text-[#00f0ff] font-bold">EXPANSION</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Volatility:</span>{" "}
+                <span className="text-[#facc15] font-bold">HIGH</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Stop Mult:</span>{" "}
+                <span className="text-gray-300">0.8x StdDev</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Layer 3 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#00f0ff]">
+                  L3 CONFLUENCE
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-[#39ff14] rounded-full animate-pulse"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Tactical Signal Synthesis
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Signal Score:</span>{" "}
+                <span className="text-[#39ff14] font-bold">88 / 100</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Cdl Vol:</span>{" "}
+                <span className="text-gray-300 font-mono">+230%</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Spread:</span>{" "}
+                <span className="text-gray-300 font-mono">0.08 bps</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Layer 4 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#facc15]">
+                  L4 RISK
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-[#39ff14] rounded-full"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Dynamic Intelligence Risk
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Max Expos:</span>{" "}
+                <span className="text-gray-300 font-mono">$1.30M</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Drawdown Cap:</span>{" "}
+                <span className="text-[#ff4500] font-mono">-3.5%</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Safe-Stop:</span>{" "}
+                <span className="text-gray-300 font-mono">$2420.50</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Layer 5 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#a855f7]">
+                  L5 HEDGING
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-gray-500 rounded-full"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Tactical Hedging Matrix
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Hedge Ratio:</span>{" "}
+                <span className="text-[#a855f7] font-bold">18.4%</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Balance:</span>{" "}
+                <span className="text-gray-300 font-mono">82% L / 18% S</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Auto-Hedge:</span>{" "}
+                <span className="text-[#39ff14]">ACTIVE</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Layer 6 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#ff00f0]">
+                  L6 AI COGNITIVE
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-[#39ff14] rounded-full animate-pulse"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Realtime LLM Ingests
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Sentiment:</span>{" "}
+                <span className="text-[#39ff14] font-bold">+15% Boost</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Macro Ingest:</span>{" "}
+                <span className="text-[#00f0ff] font-bold">Safe-Haven</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Anomalies:</span>{" "}
+                <span className="text-[#39ff14] font-mono">0 Clean</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Layer 7 */}
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-[10px] font-bold text-[#e11d48]">
+                  L7 EXECUTION
+                </span>
+                <span className="inline-block w-1.5 h-1.5 bg-[#39ff14] rounded-full"></span>
+              </div>
+              <p className="text-[9px] text-gray-500 mb-2 font-sans">
+                Execution Unit
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Venue Latency:</span>{" "}
+                <span className="text-gray-300 font-mono">45ms</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Slippage Bps:</span>{" "}
+                <span className="text-gray-300 font-mono">0.12 bps</span>
+              </div>
+              <div className="flex justify-between text-[9px]">
+                <span className="text-gray-600">Breaker:</span>{" "}
+                <span className="text-gray-300">ARMED</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

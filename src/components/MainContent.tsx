@@ -16,6 +16,7 @@ import { SystemTelemetryTab } from "./tabs/SystemTelemetryTab";
 import { SystemConfigurationTab } from "./tabs/SystemConfigurationTab";
 import { AlphaGenerationTab } from "./tabs/AlphaGenerationTab";
 import { AuditTrailTab } from "./tabs/AuditTrailTab";
+import { KnowledgeGraphTab } from "./tabs/KnowledgeGraphTab";
 import { useMarketRegime } from "../contexts/MarketRegimeContext";
 
 export function MainContent({ activeTab }: { activeTab: TabType }) {
@@ -73,6 +74,8 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
               <AuditTrailTab />
             ) : activeTab === "System Configuration" ? (
               <SystemConfigurationTab />
+            ) : activeTab === "Knowledge Graph" ? (
+              <KnowledgeGraphTab />
             ) : (
               <motion.div
                 key="clean-slate"

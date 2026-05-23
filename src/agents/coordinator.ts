@@ -69,6 +69,13 @@ export class Coordinator {
         correlationId,
         "QuantAgent",
       );
+
+      const { PositionRepository } = require("../db/repositories/positions");
+      const positions = await PositionRepository.findByPortfolioId(portfolioId);
+      const activeAssets = positions.length > 0 
+        ? [...new Set(positions.map((p: any) => p.asset_id))] 
+        : ["BTC"];
+
       const riskMemory = await MemoryService.getByCorrelation(
         correlationId,
         "RiskGuardian",
@@ -86,7 +93,8 @@ export class Coordinator {
           action: "HOLD",
           confidenceScore: 0.1,
           strategyTag: "default",
-          rationale: `[Fallback] Missing prerequisite agent memories (Quant: ${!!quantMemory}, Risk: ${!!riskMemory}, News: ${!!newsMemory}). Capital preserved: HOLD applied.`
+          rationale: `[Fallback] Missing prerequisite agent memories (Quant: ${!!quantMemory}, Risk: ${!!riskMemory}, News: ${!!newsMemory}). Capital preserved: HOLD applied.`,
+          decisions: [{ assetId: "BTC", action: "HOLD", confidenceScore: 0.1, strategyTag: "default", rationale: "Fallback: missing prerequisite agent memories." }]
         };
 
         const loggedMemory = await MemoryService.logMemory(
@@ -217,12 +225,22 @@ ${JSON.stringify({ riskLevel: riskMemory.market_regime, rationale: riskMemory.ai
 ${JSON.stringify({ sentiment: newsMemory.market_regime, rationale: newsMemory.ai_rationale }, null, 2)}
 
 Provide a JSON output with the final aggregate decision.
-Format exactly as JSON:
+
+Active assets in portfolio: ${activeAssets.join(", ")}
+Format exactly as JSON with per-asset decisions:
 {
-  "action": "BUY" | "SELL" | "HOLD",
-  "confidenceScore": 0.85,
-  "strategyTag": "trend_following",
-  "rationale": "Your detailed synthesis and final decision reasoning..."
+  "decisions": [
+    {
+      "assetId": "BTC",
+      "action": "BUY" | "SELL" | "HOLD",
+      "confidenceScore": 0.85,
+      "strategyTag": "trend_following",
+      "rationale": "..."
+    }
+  ],
+  "primaryAction": "BUY" | "SELL" | "HOLD",
+  "overallConfidenceScore": 0.85,
+  "globalRationale": "Overall synthesis..."
 }`;
 
       let responseText = "{}";
@@ -231,7 +249,7 @@ Format exactly as JSON:
       try {
         const textResponse = await aiService.generateContent(
           prompt,
-          "gemini-3.5-flash",
+          "gemini-2.0-flash",
         );
         responseText =
           textResponse
@@ -246,10 +264,9 @@ Format exactly as JSON:
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
-          action: "HOLD",
-          confidenceScore: 0.1,
-          strategyTag: "default",
-          rationale: "API Error, fallback to HOLD. " + apiError.message,
+          primaryAction: "HOLD",
+          overallConfidenceScore: 0.1,
+          decisions: [{ assetId: "BTC", action: "HOLD", confidenceScore: 0.1, strategyTag: "default", rationale: "API Error, fallback to HOLD. " + apiError.message }]
         });
       }
 
@@ -261,7 +278,32 @@ Format exactly as JSON:
         if (jsonMatch) {
           jsonStr = jsonMatch[0];
         }
-        aggregateDecision = JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        aggregateDecision = { ...parsed };
+        
+        if (parsed.decisions && Array.isArray(parsed.decisions)) {
+          aggregateDecision.action = parsed.primaryAction || "HOLD";
+          aggregateDecision.confidenceScore = typeof parsed.overallConfidenceScore === "number" ? parsed.overallConfidenceScore : quantConfidence;
+          aggregateDecision.rationale = parsed.globalRationale || "Multi-asset synthesis";
+          aggregateDecision.decisions = parsed.decisions;
+        } else {
+          const action = parsed.action || "HOLD";
+          const confidence = typeof parsed.confidenceScore === "number" ? parsed.confidenceScore : quantConfidence;
+          aggregateDecision.action = action;
+          aggregateDecision.confidenceScore = confidence;
+          aggregateDecision.strategyTag = parsed.strategyTag || strategyTag;
+          aggregateDecision.rationale = parsed.rationale || "Fallback synthesis";
+          aggregateDecision.decisions = [
+            {
+              assetId: "BTC",
+              action: action,
+              confidenceScore: confidence,
+              strategyTag: parsed.strategyTag || strategyTag,
+              rationale: parsed.rationale || "Single asset legacy synthesis"
+            }
+          ];
+        }
+
         if (typeof aggregateDecision.confidenceScore !== "number")
           aggregateDecision.confidenceScore = quantConfidence;
         if (!aggregateDecision.strategyTag)
@@ -276,6 +318,15 @@ Format exactly as JSON:
           confidenceScore: quantConfidence || 0.1,
           strategyTag: strategyTag || "default",
           rationale: "Failed to parse AI output. Raw: " + text,
+          decisions: [
+            {
+              assetId: "BTC",
+              action: "HOLD",
+              confidenceScore: quantConfidence || 0.1,
+              strategyTag: strategyTag || "default",
+              rationale: "Failed to parse AI output. Raw: " + text
+            }
+          ]
         };
       }
 
@@ -315,6 +366,7 @@ Format exactly as JSON:
         correlationId,
         decision: {
           ...aggregateDecision,
+          decisions: aggregateDecision.decisions || [{ assetId: "BTC", action: aggregateDecision.action }],
           strategyWeight,
           riskMultiplier: riskMemory.metadata?.risk_multiplier || 1.0,
           globalPortfolioWeight: riskMemory.metadata?.global_weight || 1.0,
@@ -332,7 +384,8 @@ Format exactly as JSON:
         action: "HOLD",
         confidenceScore: 0.1,
         strategyTag: "default",
-        rationale: `[Critical Fallback] Unhandled coordinator error: ${error.message || "Unknown error"}. Safe HOLD decision applied.`
+        rationale: `[Critical Fallback] Unhandled coordinator error: ${error.message || "Unknown error"}. Safe HOLD decision applied.`,
+        decisions: [{ assetId: "BTC", action: "HOLD", confidenceScore: 0.1, strategyTag: "default", rationale: `Critical Fallback: ${error.message || "Unknown error"}` }]
       };
 
       let loggedMemory = null;
@@ -410,6 +463,12 @@ Format exactly as JSON:
         correlationId,
       );
 
+      const { PositionRepository } = require("../db/repositories/positions");
+      const positions = await PositionRepository.findByPortfolioId(portfolioId);
+      const activeAssets = positions.length > 0 
+        ? [...new Set(positions.map((p: any) => p.asset_id))] 
+        : ["BTC"];
+
       // 2. Run Risk (RiskGuardian uses latest memory, which is now quantResult)
       const riskResult = await RiskGuardian.evaluateRisk(
         portfolioId,
@@ -438,6 +497,7 @@ Format exactly as JSON:
       const strategyTag = qMeta.strategyTag || "default";
       const marketRegime = qMeta.marketRegime || "UNKNOWN";
       const volatilityLevel = qMeta.volatilityLevel || "NORMAL";
+      const quantConfidence = qMeta.confidenceScore || 0.5;
 
       // Fetch Recent Insights & Metrics (Learning Loop)
       let recentInsights: any[] = [];
@@ -489,12 +549,22 @@ ${JSON.stringify(riskResult.rawOutput, null, 2)}
 ${JSON.stringify(newsResult.rawOutput, null, 2)}
 
 Provide a JSON output with the final aggregate decision.
-Format exactly as JSON:
+
+Active assets in portfolio: ${activeAssets.join(", ")}
+Format exactly as JSON with per-asset decisions:
 {
-  "action": "BUY" | "SELL" | "HOLD",
-  "confidenceScore": 0.85,
-  "strategyTag": "trend_following",
-  "rationale": "Your detailed synthesis and final decision reasoning..."
+  "decisions": [
+    {
+      "assetId": "BTC",
+      "action": "BUY" | "SELL" | "HOLD",
+      "confidenceScore": 0.85,
+      "strategyTag": "trend_following",
+      "rationale": "..."
+    }
+  ],
+  "primaryAction": "BUY" | "SELL" | "HOLD",
+  "overallConfidenceScore": 0.85,
+  "globalRationale": "Overall synthesis..."
 }`;
 
       let responseText = "{}";
@@ -503,7 +573,7 @@ Format exactly as JSON:
       try {
         const textResponse = await aiService.generateContent(
           prompt,
-          "gemini-3.5-flash",
+          "gemini-2.0-flash",
         );
         responseText =
           textResponse
@@ -518,10 +588,9 @@ Format exactly as JSON:
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
-          action: "HOLD",
-          confidenceScore: 0.1,
-          strategyTag: "default",
-          rationale: "API Error, fallback to HOLD. " + apiError.message,
+          primaryAction: "HOLD",
+          overallConfidenceScore: 0.1,
+          decisions: [{ assetId: "BTC", action: "HOLD", confidenceScore: 0.1, strategyTag: "default", rationale: "API Error, fallback to HOLD. " + apiError.message }]
         });
       }
 
@@ -533,11 +602,36 @@ Format exactly as JSON:
         if (jsonMatch) {
           jsonStr = jsonMatch[0];
         }
-        aggregateDecision = JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        aggregateDecision = { ...parsed };
+        
+        if (parsed.decisions && Array.isArray(parsed.decisions)) {
+          aggregateDecision.action = parsed.primaryAction || "HOLD";
+          aggregateDecision.confidenceScore = typeof parsed.overallConfidenceScore === "number" ? parsed.overallConfidenceScore : quantConfidence;
+          aggregateDecision.rationale = parsed.globalRationale || "Multi-asset synthesis";
+          aggregateDecision.decisions = parsed.decisions;
+        } else {
+          const action = parsed.action || "HOLD";
+          const confidence = typeof parsed.confidenceScore === "number" ? parsed.confidenceScore : quantConfidence;
+          aggregateDecision.action = action;
+          aggregateDecision.confidenceScore = confidence;
+          aggregateDecision.strategyTag = parsed.strategyTag || strategyTag;
+          aggregateDecision.rationale = parsed.rationale || "Fallback synthesis";
+          aggregateDecision.decisions = [
+            {
+              assetId: "BTC",
+              action: action,
+              confidenceScore: confidence,
+              strategyTag: parsed.strategyTag || strategyTag,
+              rationale: parsed.rationale || "Single asset legacy synthesis"
+            }
+          ];
+        }
+
         if (typeof aggregateDecision.confidenceScore !== "number")
-          aggregateDecision.confidenceScore = 0.5;
+          aggregateDecision.confidenceScore = quantConfidence;
         if (!aggregateDecision.strategyTag)
-          aggregateDecision.strategyTag = "default";
+          aggregateDecision.strategyTag = strategyTag;
         if (!aggregateDecision.action) aggregateDecision.action = "HOLD"; // Default action
       } catch (e) {
         console.warn("Coordinator Gemini parsing failed, fallback");
@@ -548,6 +642,15 @@ Format exactly as JSON:
           confidenceScore: 0.1,
           strategyTag: "default",
           rationale: "Failed to parse AI output. Raw: " + text,
+          decisions: [
+            {
+              assetId: "BTC",
+              action: "HOLD",
+              confidenceScore: 0.1,
+              strategyTag: "default",
+              rationale: "Failed to parse AI output. Raw: " + text
+            }
+          ]
         };
       }
 
@@ -592,7 +695,8 @@ Format exactly as JSON:
         action: "HOLD",
         confidenceScore: 0.1,
         strategyTag: "default",
-        rationale: `[Critical Fallback] Unhandled runCycle error: ${error.message || "Unknown error"}. Safe HOLD decision applied.`
+        rationale: `[Critical Fallback] Unhandled runCycle error: ${error.message || "Unknown error"}. Safe HOLD decision applied.`,
+        decisions: [{ assetId: "BTC", action: "HOLD", confidenceScore: 0.1, strategyTag: "default", rationale: `Unhandled runCycle error: ${error.message || "Unknown error"}` }]
       };
 
       let loggedMemory = null;

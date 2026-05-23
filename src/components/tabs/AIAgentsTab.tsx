@@ -19,6 +19,7 @@ import {
 import { AIConfidenceRing } from "../ui/AIConfidenceRing";
 import { useSystemStore } from "../../store/systemStore";
 import { OverrideAnalyticsPanel } from "../ui/OverrideAnalyticsPanel";
+import { Skeleton } from "../ui/Skeleton";
 
 const AGENT_DEFINITIONS = [
   {
@@ -51,6 +52,9 @@ export function AIAgentsTab() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("Coordinator");
   const { agentStates, telemetryFeed, setActiveCorrelationId } =
     useSystemStore();
+
+  const isAgentStatesAllIdle = Object.values(agentStates).length === 0 || Object.values(agentStates).every((state) => state.status === "idle" || !state.status);
+  const isInitializing = isAgentStatesAllIdle && telemetryFeed.length === 0;
 
   const selectedAgentDef =
     AGENT_DEFINITIONS.find((a) => a.id === selectedAgentId) ||
@@ -125,101 +129,122 @@ export function AIAgentsTab() {
             animate="show"
             className="flex flex-col gap-4"
           >
-            {AGENT_DEFINITIONS.map((agentDef) => {
-              const state = agentStates[agentDef.id] || {
-                status: "idle",
-                lastMessage: "Idle",
-              };
-              const confidence = state.status === "running" ? 85 : 95; // derived for visual
-
-              return (
-                <motion.button
-                  key={agentDef.id}
-                  onClick={() => setSelectedAgentId(agentDef.id)}
-                  variants={{
-                    hidden: { opacity: 0, x: -20 },
-                    show: { opacity: 1, x: 0 },
-                  }}
-                  animate={{
-                    borderLeftWidth:
-                      selectedAgentId === agentDef.id ? "4px" : "1px",
-                    borderLeftColor:
-                      selectedAgentId === agentDef.id
-                        ? agentDef.color
-                        : "rgba(26,26,26,1)",
-                    borderColor:
-                      selectedAgentId === agentDef.id
-                        ? `${agentDef.color}40`
-                        : "rgba(26,26,26,1)",
-                    backgroundColor:
-                      selectedAgentId === agentDef.id
-                        ? `${agentDef.color}10`
-                        : "rgba(5,5,5,1)",
-                  }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="group flex flex-col p-4 rounded-sm border text-left w-full hover:border-[#333]"
-                >
-                  <div className="flex items-center justify-between w-full mb-3">
-                    <div>
-                      <h4 className="text-gray-200 text-sm font-bold font-sans group-hover:text-white transition-colors">
-                        {agentDef.name}
-                      </h4>
-                      <span className="text-[10px] text-gray-500 uppercase tracking-widest">
-                        {agentDef.role}
-                      </span>
+            {isInitializing ? (
+              [1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex flex-col p-4 rounded-sm border border-[#1a1a1a] bg-[#050505] w-full gap-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col gap-1.5 w-2/3">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-16" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex h-2 w-2">
-                        {state.status === "running" && (
+                    <Skeleton className="h-4 w-12" />
+                  </div>
+                  <div className="bg-[#0a0a0a] p-2 rounded border border-[#111] flex justify-between items-center">
+                    <div className="flex flex-col gap-1.5 w-3/4">
+                      <Skeleton className="h-2 w-12" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                    <Skeleton className="w-7 h-7 rounded-sm" />
+                  </div>
+                </div>
+              ))
+            ) : (
+              AGENT_DEFINITIONS.map((agentDef) => {
+                const state = agentStates[agentDef.id] || {
+                  status: "idle",
+                  lastMessage: "Idle",
+                };
+                const confidence = state.status === "running" ? 85 : 95; // derived for visual
+
+                return (
+                  <motion.button
+                    key={agentDef.id}
+                    onClick={() => setSelectedAgentId(agentDef.id)}
+                    variants={{
+                      hidden: { opacity: 0, x: -20 },
+                      show: { opacity: 1, x: 0 },
+                    }}
+                    animate={{
+                      borderLeftWidth:
+                        selectedAgentId === agentDef.id ? "4px" : "1px",
+                      borderLeftColor:
+                        selectedAgentId === agentDef.id
+                          ? agentDef.color
+                          : "rgba(26,26,26,1)",
+                      borderColor:
+                        selectedAgentId === agentDef.id
+                          ? `${agentDef.color}40`
+                          : "rgba(26,26,26,1)",
+                      backgroundColor:
+                        selectedAgentId === agentDef.id
+                          ? `${agentDef.color}10`
+                          : "rgba(5,5,5,1)",
+                    }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="group flex flex-col p-4 rounded-sm border text-left w-full hover:border-[#333]"
+                  >
+                    <div className="flex items-center justify-between w-full mb-3">
+                      <div>
+                        <h4 className="text-gray-200 text-sm font-bold font-sans group-hover:text-white transition-colors">
+                          {agentDef.name}
+                        </h4>
+                        <span className="text-[10px] text-gray-500 uppercase tracking-widest">
+                          {agentDef.role}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex h-2 w-2">
+                          {state.status === "running" && (
+                            <span
+                              className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                              style={{ backgroundColor: agentDef.color }}
+                            ></span>
+                          )}
                           <span
-                            className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                            className="relative inline-flex rounded-full h-2 w-2"
                             style={{ backgroundColor: agentDef.color }}
                           ></span>
-                        )}
+                        </div>
                         <span
-                          className="relative inline-flex rounded-full h-2 w-2"
-                          style={{ backgroundColor: agentDef.color }}
-                        ></span>
+                          className="text-[9px] uppercase tracking-widest"
+                          style={{ color: agentDef.color }}
+                        >
+                          {state.status}
+                        </span>
                       </div>
-                      <span
-                        className="text-[9px] uppercase tracking-widest"
-                        style={{ color: agentDef.color }}
-                      >
-                        {state.status}
-                      </span>
                     </div>
-                  </div>
 
-                  <div className="w-full mt-1">
-                    <div className="flex justify-between items-center bg-[#0a0a0a] p-2 rounded-sm border border-[#1a1a1a] mb-2">
-                      <div className="flex flex-col gap-1 overflow-hidden">
-                        <span className="text-[9px] uppercase font-bold tracking-widest text-gray-500">
-                          Neural Sync
-                        </span>
-                        <span className="text-[10px] font-mono text-gray-300 truncate">
-                          {state.lastMessage || "Awaiting task..."}
-                        </span>
-                      </div>
-                      <div className="shrink-0 flex items-center justify-center pl-2">
-                        <AIConfidenceRing
-                          confidence={confidence}
-                          size={28}
-                          theme={
-                            agentDef.color === "#39ff14"
-                              ? "green"
-                              : agentDef.color === "#00f0ff"
-                                ? "cyan"
-                                : agentDef.color === "#a855f7"
-                                  ? "purple"
-                                  : "amber"
-                          }
-                        />
+                    <div className="w-full mt-1">
+                      <div className="flex justify-between items-center bg-[#0a0a0a] p-2 rounded-sm border border-[#1a1a1a] mb-2">
+                        <div className="flex flex-col gap-1 overflow-hidden">
+                          <span className="text-[9px] uppercase font-bold tracking-widest text-gray-500">
+                            Neural Sync
+                          </span>
+                          <span className="text-[10px] font-mono text-gray-300 truncate">
+                            {state.lastMessage || "Awaiting task..."}
+                          </span>
+                        </div>
+                        <div className="shrink-0 flex items-center justify-center pl-2">
+                          <AIConfidenceRing
+                            confidence={confidence}
+                            size={28}
+                            theme={
+                              agentDef.color === "#39ff14"
+                                ? "green"
+                                : agentDef.color === "#00f0ff"
+                                  ? "cyan"
+                                  : agentDef.color === "#a855f7"
+                                    ? "purple"
+                                    : "amber"
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </motion.button>
-              );
-            })}
+                  </motion.button>
+                );
+              })
+            )}
           </motion.div>
         </div>
 
@@ -281,65 +306,72 @@ export function AIAgentsTab() {
             </div>
 
             {/* Reasoning Stream Container */}
-            <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4 mb-4 flex flex-col">
-              {/* Actual Reasoning Blocks based on telemetryFeed */}
-              <AnimatePresence mode="sync">
-                {agentLogs
-                  .filter((log) => log.message.startsWith(selectedAgentId))
-                  .map((log) => (
-                    <motion.div
-                      key={log.id}
-                      initial={{ opacity: 0, x: -20, height: 0 }}
-                      animate={{ opacity: 1, x: 0, height: "auto" }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.2 }}
-                      className={`border-l-2 pl-4 py-2 mt-4 bg-[#111]/50 border border-[#222]`}
-                      style={{
-                        borderLeftColor: selectedAgentDef.color,
-                      }}
-                    >
-                      <div className="text-[10px] text-gray-500 mb-1 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Command
-                            className="w-3 h-3"
-                            style={{ color: selectedAgentDef.color }}
-                          />
-                          <span style={{ color: selectedAgentDef.color }}>
-                            {new Date(log.timestamp).toLocaleTimeString([], {
-                              hour12: false,
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              second: "2-digit",
-                              fractionalSecondDigits: 3,
-                            })}
-                          </span>
+            <div className="flex-1 overflow-y-auto no-scrollbar font-mono text-xs space-y-4 pr-4 mb-4 flex flex-col justify-center">
+              {isInitializing ? (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                  <Cpu className="w-8 h-8 mb-3 text-[#0ea5e9] animate-spin" />
+                  <p className="font-mono text-sm font-bold">Agents initializing...</p>
+                  <p className="font-mono text-xs text-gray-500 mt-1">Establishing neural connections with coordinator</p>
+                </div>
+              ) : (
+                <AnimatePresence mode="sync">
+                  {agentLogs
+                    .filter((log) => log.message.startsWith(selectedAgentId))
+                    .map((log) => (
+                      <motion.div
+                        key={log.id}
+                        initial={{ opacity: 0, x: -20, height: 0 }}
+                        animate={{ opacity: 1, x: 0, height: "auto" }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.2 }}
+                        className={`border-l-2 pl-4 py-2 mt-4 bg-[#111]/50 border border-[#222]`}
+                        style={{
+                          borderLeftColor: selectedAgentDef.color,
+                        }}
+                      >
+                        <div className="text-[10px] text-gray-500 mb-1 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Command
+                              className="w-3 h-3"
+                              style={{ color: selectedAgentDef.color }}
+                            />
+                            <span style={{ color: selectedAgentDef.color }}>
+                              {new Date(log.timestamp).toLocaleTimeString([], {
+                                hour12: false,
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                                fractionalSecondDigits: 3,
+                              })}
+                            </span>
+                          </div>
+                          {log.metadata?.correlation_id && (
+                            <button
+                              onClick={() =>
+                                setActiveCorrelationId(
+                                  log.metadata.correlation_id,
+                                )
+                              }
+                              className="bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-2 py-0.5 rounded text-[8px] uppercase tracking-widest flex items-center gap-1 transition-colors"
+                            >
+                              <Network className="w-2.5 h-2.5" /> Trace
+                            </button>
+                          )}
                         </div>
-                        {log.metadata?.correlation_id && (
-                          <button
-                            onClick={() =>
-                              setActiveCorrelationId(
-                                log.metadata.correlation_id,
-                              )
-                            }
-                            className="bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/30 text-[#a855f7] px-2 py-0.5 rounded text-[8px] uppercase tracking-widest flex items-center gap-1 transition-colors"
-                          >
-                            <Network className="w-2.5 h-2.5" /> Trace
-                          </button>
-                        )}
-                      </div>
-                      <div className="text-gray-300">
-                        {log.message.replace(`${selectedAgentId}: `, "")}
-                      </div>
-                    </motion.div>
-                  ))}
-                {agentLogs.filter((log) =>
-                  log.message.startsWith(selectedAgentId),
-                ).length === 0 && (
-                  <div className="text-gray-600 italic mt-4 text-center">
-                    Waiting for telemetry from {selectedAgentDef.name}...
-                  </div>
-                )}
-              </AnimatePresence>
+                        <div className="text-gray-300">
+                          {log.message.replace(`${selectedAgentId}: `, "")}
+                        </div>
+                      </motion.div>
+                    ))}
+                  {agentLogs.filter((log) =>
+                    log.message.startsWith(selectedAgentId),
+                  ).length === 0 && (
+                    <div className="text-gray-600 italic mt-4 text-center">
+                      Waiting for telemetry from {selectedAgentDef.name}...
+                    </div>
+                  )}
+                </AnimatePresence>
+              )}
             </div>
             <div className="pt-4 border-t border-[#1a1a1a] flex justify-between items-center relative z-10 shrink-0">
               <div className="text-[10px] text-gray-500 font-mono flex items-center gap-2">
@@ -372,8 +404,10 @@ export function AIAgentsTab() {
         <div className="relative pl-6 space-y-6 before:absolute before:inset-0 before:ml-2.75 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-[#333] before:to-transparent pt-4">
           <AnimatePresence>
             {telemetryFeed.length === 0 && (
-              <div className="text-gray-500 font-mono text-center text-xs opacity-50 py-4">
-                No recent decisions in this session.
+              <div className="flex flex-col items-center justify-center py-16 text-gray-600 w-full">
+                <Clock className="w-8 h-8 mb-3 opacity-30" />
+                <p className="font-mono text-sm">No data available</p>
+                <p className="font-mono text-xs mt-1">System is initializing or no records exist</p>
               </div>
             )}
             {telemetryFeed.slice(0, 15).map((log, i) => {

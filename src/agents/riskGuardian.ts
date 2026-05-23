@@ -76,17 +76,28 @@ export class RiskGuardian {
       } catch (e) {}
 
       // 3. Evaluate exposure and risk using advanced mathematical engines
-      const assetId = positions.length > 0 ? positions[0].asset_id : "BTC";
-      const riskAssessment = await RiskStateService.assessRiskState(portfolioId, assetId);
-      const globalWeight = await GlobalPortfolioService.getPortfolioWeight(portfolioId);
+      const assetId = positions.length > 0 ? positions[0].asset_id : "XAUUSD";
+      const riskAssessment = await RiskStateService.assessRiskState(
+        portfolioId,
+        assetId,
+      );
+      const globalWeight =
+        await GlobalPortfolioService.getPortfolioWeight(portfolioId);
 
       let riskLevel = "LOW";
       let marginRisk = "SAFE";
 
-      if (riskAssessment.state === "CRITICAL" || hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD) {
+      if (
+        riskAssessment.state === "CRITICAL" ||
+        hasPositionLimitBreach ||
+        totalExposureUsd > MAX_PORTFOLIO_USD
+      ) {
         riskLevel = "HIGH";
         marginRisk = "DANGER";
-      } else if (riskAssessment.state === "ELEVATED" || totalExposureUsd > MAX_PORTFOLIO_USD * 0.8) {
+      } else if (
+        riskAssessment.state === "ELEVATED" ||
+        totalExposureUsd > MAX_PORTFOLIO_USD * 0.8
+      ) {
         riskLevel = "MODERATE";
         marginRisk = "WARNING";
       }
@@ -102,7 +113,11 @@ export class RiskGuardian {
       const apiErrorMessage = "";
 
       // HARD ENFORCEMENT OF LIMITS (Authoritative check)
-      if (hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD || riskAssessment.state === "CRITICAL") {
+      if (
+        hasPositionLimitBreach ||
+        totalExposureUsd > MAX_PORTFOLIO_USD ||
+        riskAssessment.state === "CRITICAL"
+      ) {
         riskEvaluation.riskLevel = "HIGH";
         riskEvaluation.aiRationale =
           "[SYSTEM OVERRIDE] Hard risk limits breached / CRITICAL risk state. " +
@@ -126,7 +141,7 @@ export class RiskGuardian {
           loss_streak: riskAssessment.lossStreak,
           risk_state: riskAssessment.state,
           correlation_spike: riskAssessment.correlationSpike,
-        }
+        },
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();

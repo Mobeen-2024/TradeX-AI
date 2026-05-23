@@ -50,8 +50,8 @@ function createMockPool(): pg.Pool {
                 description: "Created by memory mock",
                 created_at: new Date(),
                 updated_at: new Date(),
-              }
-            ]
+              },
+            ],
           };
         }
         return {
@@ -107,20 +107,10 @@ function createMockPool(): pg.Pool {
             {
               id: "pos-1",
               portfolio_id: params?.[0],
-              asset_id: "BTC",
-              size: "1.5",
-              avg_entry_price: "45000",
-              pnl_realized: "1200",
-              created_at: new Date(),
-              updated_at: new Date(),
-            },
-            {
-              id: "pos-2",
-              portfolio_id: params?.[0],
-              asset_id: "ETH",
-              size: "10.0",
-              avg_entry_price: "2500",
-              pnl_realized: "300",
+              asset_id: "XAUUSD",
+              size: "25.0",
+              avg_entry_price: "2485.00",
+              pnl_realized: "2150",
               created_at: new Date(),
               updated_at: new Date(),
             },
@@ -128,17 +118,28 @@ function createMockPool(): pg.Pool {
         };
       }
 
+      if (sql.includes("SELECT COUNT(*) FROM trades")) {
+        return { rows: [{ count: "0" }] };
+      }
+
       if (sql.includes("SELECT price FROM market_ticks")) {
-        if (params?.[0] === "BTC") return { rows: [{ price: "66000.00" }] };
-        if (params?.[0] === "ETH") return { rows: [{ price: "3500.00" }] };
-        return { rows: [{ price: "100.00" }] };
+        if (
+          params?.[0] === "XAUUSD" ||
+          params?.[0] === "BTC" ||
+          params?.[0] === "ETH"
+        )
+          return { rows: [{ price: "2560.50" }] };
+        return { rows: [{ price: "2560.50" }] };
       }
 
       if (sql.includes("INSERT INTO orders") || sql.includes("UPDATE orders")) {
         return { rows: [{ id: "mock-order-id" }] };
       }
 
-      if (sql.includes("INSERT INTO decision_overrides") || sql.includes("UPDATE decision_overrides")) {
+      if (
+        sql.includes("INSERT INTO decision_overrides") ||
+        sql.includes("UPDATE decision_overrides")
+      ) {
         return { rows: [{ id: "mock-override-id" }] };
       }
 

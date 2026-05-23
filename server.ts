@@ -20,6 +20,9 @@ import { memoryRouter } from "./src/api/routes/memory";
 import { marketRouter } from "./src/api/routes/market";
 import { intelligenceRouter } from "./src/api/routes/intelligence";
 import { eventsRouter } from "./src/api/routes/events";
+import { overridesRouter } from "./src/api/routes/overrides";
+import { systemRouter } from "./src/api/routes/system";
+import { backtestRouter } from "./src/api/routes/backtest";
 
 dotenv.config();
 
@@ -132,6 +135,9 @@ async function startServer() {
   apiRouter.use("/market", marketRouter);
   apiRouter.use("/intelligence", intelligenceRouter);
   apiRouter.use("/events", eventsRouter);
+  apiRouter.use("/overrides", overridesRouter);
+  apiRouter.use("/system", systemRouter);
+  apiRouter.use("/backtest", backtestRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {

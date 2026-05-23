@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { useSystemStore } from "../../store/systemStore";
 import {
   TestTube,
   Play,
@@ -29,7 +30,7 @@ import {
   ReferenceDot,
 } from "recharts";
 
-const performanceData = [
+const initialPerformanceData = [
   { day: "Day 1", pnl: 0, btc: 0 },
   { day: "Day 2", pnl: 2.4, btc: -1.2 },
   { day: "Day 3", pnl: 1.8, btc: -2.5 },
@@ -46,7 +47,7 @@ const performanceData = [
   { day: "Day 14", pnl: 20.1, btc: 11.2 },
 ];
 
-const decisionLog = [
+const initialDecisionLog = [
   {
     time: "Day 5, 14:30",
     agent: "Quant-v4",
@@ -85,6 +86,8 @@ const decisionLog = [
 ];
 
 export function SimulationEngineTab() {
+  const { activePortfolio } = useSystemStore();
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(65);
   const [viewMode, setViewMode] = useState<"replay" | "compare">("compare");
@@ -93,15 +96,21 @@ export function SimulationEngineTab() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationProgress, setOptimizationProgress] = useState(0);
 
-  const [dateStart, setDateStart] = useState("2024-01-01");
-  const [dateEnd, setDateEnd] = useState("2024-01-14");
   const [startingCapital, setStartingCapital] = useState("10000");
   const [leverage, setLeverage] = useState("1x");
   const [executionFee, setExecutionFee] = useState("0.02");
 
-  const [realPerformanceData, setRealPerformanceData] =
-    useState(performanceData);
-  const [realDecisionLog, setRealDecisionLog] = useState(decisionLog);
+  // Required states
+  const [performanceData, setPerformanceData] = useState<any[]>(initialPerformanceData);
+  const [isRunning, setIsRunning] = useState(false);
+  const [backtestConfig, setBacktestConfig] = useState({
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+  });
+
+  const realPerformanceData = performanceData;
+
+  const [realDecisionLog, setRealDecisionLog] = useState<any[]>(initialDecisionLog);
   const [realStats, setRealStats] = useState({
     totalReturn: 20.1,
     sharpe: 2.45,
@@ -111,36 +120,35 @@ export function SimulationEngineTab() {
   });
 
   const runBacktest = async () => {
-    setIsOptimizing(true);
-    setOptimizationProgress(10);
-
+    if (!activePortfolio) {
+      console.warn("No active portfolio detected");
+      return;
+    }
+    setIsRunning(true);
     try {
-      const res = await fetch("/api/intelligence/backtest", {
+      const res = await fetch("/api/backtest/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          symbol: "BTCUSDT",
-          limit: 30,
-          startingCapital: parseFloat(startingCapital) || 10000,
+          portfolioId: activePortfolio.id,
+          startDate: backtestConfig.startDate,
+          endDate: backtestConfig.endDate,
         }),
       });
-
-      if (res.ok) {
-        const result = await res.json();
-        const { history, stats } = result.data;
-        if (history && history.length > 0) {
-          setRealPerformanceData(history);
-          setRealDecisionLog(
-            history.filter((h: any) => h.action !== "NO ACTION"),
-          );
-          setRealStats(stats);
-        }
+      const data = await res.json();
+      if (data.performanceSeries) {
+        setPerformanceData(data.performanceSeries);
       }
-    } catch (e) {
-      console.error("Backtest failed", e);
+      if (data.decisionLog) {
+        setRealDecisionLog(data.decisionLog);
+      }
+      if (data.stats) {
+        setRealStats(data.stats);
+      }
+    } catch (err) {
+      console.error("Backtest failed", err);
     } finally {
-      setOptimizationProgress(100);
-      setTimeout(() => setIsOptimizing(false), 500);
+      setIsRunning(false);
     }
   };
 
@@ -239,15 +247,15 @@ export function SimulationEngineTab() {
                   <div className="flex items-center gap-2">
                     <input
                       type="date"
-                      value={dateStart}
-                      onChange={(e) => setDateStart(e.target.value)}
+                      value={backtestConfig.startDate}
+                      onChange={(e) => setBacktestConfig(prev => ({ ...prev, startDate: e.target.value }))}
                       className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50"
                     />
                     <span className="text-gray-600">-</span>
                     <input
                       type="date"
-                      value={dateEnd}
-                      onChange={(e) => setDateEnd(e.target.value)}
+                      value={backtestConfig.endDate}
+                      onChange={(e) => setBacktestConfig(prev => ({ ...prev, endDate: e.target.value }))}
                       className="w-full bg-[#0a0a0a] border border-[#222] rounded p-2 text-xs text-white outline-none focus:border-[#ff00f0]/50"
                     />
                   </div>
@@ -306,6 +314,11 @@ export function SimulationEngineTab() {
                         ></div>
                       </div>
                     </div>
+                  ) : isRunning ? (
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#ff00f0]">
+                      <div className="w-4 h-4 rounded-full border border-t-[#ff00f0] border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                      Running simulation...
+                    </div>
                   ) : (
                     <button
                       onClick={runBacktest}
@@ -340,11 +353,12 @@ export function SimulationEngineTab() {
                 <SkipBack className="w-4 h-4" />
               </button>
               <button
-                onClick={() => setIsPlaying(!isPlaying)}
-                className={`p-1.5 rounded transition-colors ${isPlaying ? "bg-[#ff00f0]/20 text-[#ff00f0]" : "text-gray-400 hover:text-white hover:bg-[#111]"}`}
+                onClick={runBacktest}
+                disabled={isRunning}
+                className={`p-1.5 rounded transition-colors ${isRunning ? "bg-[#ff00f0]/20 text-[#ff00f0]" : "text-gray-400 hover:text-white hover:bg-[#111]"}`}
               >
-                {isPlaying ? (
-                  <Pause className="w-4 h-4" />
+                {isRunning ? (
+                  <Pause className="w-4 h-4 animate-spin" />
                 ) : (
                   <Play className="w-4 h-4" />
                 )}
@@ -426,6 +440,12 @@ export function SimulationEngineTab() {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[400px]">
             {/* Chart Area */}
             <div className="col-span-1 xl:col-span-8 bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-4 relative">
+              {isRunning && (
+                <div className="absolute inset-0 bg-[#050505]/80 backdrop-blur-sm z-50 flex flex-col justify-center items-center gap-3 rounded">
+                  <div className="w-8 h-8 rounded-full border-2 border-t-[#ff00f0] border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                  <span className="text-xs text-gray-400 font-bold uppercase tracking-widest animate-pulse">Running Backtest Simulation...</span>
+                </div>
+              )}
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-[10px] uppercase font-bold text-gray-500 tracking-widest flex items-center gap-2">
                   <BarChart2 className="w-3.5 h-3.5 text-white" />

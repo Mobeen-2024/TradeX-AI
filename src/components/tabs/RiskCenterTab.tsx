@@ -17,39 +17,7 @@ import {
   Ban,
 } from "lucide-react";
 import { useSystemStore } from "../../store/systemStore";
-
-const heatmapData = [
-  {
-    symbol: "BTC",
-    exposure: "45%",
-    risk: "Low",
-    color: "bg-[#39ff14]/10 border-[#39ff14]/30 text-[#39ff14]",
-  },
-  {
-    symbol: "ETH",
-    exposure: "25%",
-    risk: "Med",
-    color: "bg-[#facc15]/10 border-[#facc15]/30 text-[#facc15]",
-  },
-  {
-    symbol: "SOL",
-    exposure: "15%",
-    risk: "High",
-    color: "bg-[#ff4500]/10 border-[#ff4500]/30 text-[#ff4500]",
-  },
-  {
-    symbol: "AVAX",
-    exposure: "10%",
-    risk: "High",
-    color: "bg-[#ff4500]/10 border-[#ff4500]/30 text-[#ff4500]",
-  },
-  {
-    symbol: "DOGE",
-    exposure: "5%",
-    risk: "Extreme",
-    color: "bg-red-600/10 border-red-600/30 text-red-500",
-  },
-];
+import { Skeleton } from "../ui/Skeleton";
 
 export function RiskCenterTab() {
   const {
@@ -66,6 +34,36 @@ export function RiskCenterTab() {
 
   const [stressLevel, setStressLevel] = useState(68);
   const [loading, setLoading] = useState(false);
+  const [positions, setPositions] = useState<any[]>([]);
+  const [positionsLoading, setPositionsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!portfolio?.id) return;
+    
+    let active = true;
+    const fetchPositions = async () => {
+      setPositionsLoading(true);
+      try {
+        const res = await fetch(`/api/portfolio/${portfolio.id}/positions`);
+        if (!res.ok) throw new Error("Failed to fetch positions");
+        const data = await res.json();
+        if (active) {
+          setPositions(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) {
+          setPositionsLoading(false);
+        }
+      }
+    };
+    
+    fetchPositions();
+    return () => {
+      active = false;
+    };
+  }, [portfolio?.id]);
 
   useEffect(() => {
     // Sync stress level based on real risk level if available
@@ -311,34 +309,78 @@ export function RiskCenterTab() {
           </h3>
 
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 flex-1">
-            {heatmapData.map((item) => (
-              <div
-                key={item.symbol}
-                className={`rounded p-4 border flex flex-col justify-between ${item.color}`}
-              >
-                <div className="flex justify-between items-start">
-                  <span className="font-bold font-sans tracking-tight text-white">
-                    {item.symbol}
-                  </span>
-                  <span className="text-[9px] uppercase tracking-widest py-1 px-2 rounded-sm bg-black/20 font-bold">
-                    {item.risk} Risk
-                  </span>
-                </div>
-                <div className="flex justify-between items-end mt-6">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] uppercase tracking-widest opacity-60 mb-1 font-bold">
-                      Allocation
-                    </span>
-                    <span className="font-bold font-mono text-xl text-white/90">
-                      {item.exposure}
-                    </span>
+            {positionsLoading ? (
+              [1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="rounded p-4 border border-[#1a1a1a] bg-[#050505] flex flex-col justify-between"
+                >
+                  <div className="flex justify-between items-start">
+                    <Skeleton className="h-5 w-16" />
+                    <Skeleton className="h-4 w-12 rounded-sm" />
                   </div>
-                  <div className="w-8 h-8 rounded-full border border-current opacity-40 flex items-center justify-center">
-                    <LineChartIcon className="w-4 h-4" />
+                  <div className="flex justify-between items-end mt-6">
+                    <div className="flex flex-col gap-1.5 w-1/2">
+                      <Skeleton className="h-2 w-16" />
+                      <Skeleton className="h-5 w-12" />
+                    </div>
+                    <Skeleton className="w-8 h-8 rounded-full animate-pulse" />
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              (() => {
+                const totalVal = Number(portfolio?.totalValue || positions.reduce((acc, p) => acc + Math.abs(p.size) * p.current_price, 0) || 1);
+                
+                return positions.map((pos) => {
+                  const posValue = Math.abs(pos.size) * pos.current_price;
+                  const exposurePct = (posValue / totalVal) * 100;
+                  
+                  let risk = "Low";
+                  let color = "bg-[#39ff14]/10 border-[#39ff14]/30 text-[#39ff14]";
+                  
+                  if (exposurePct > 40) {
+                    risk = "Extreme";
+                    color = "bg-red-600/10 border-red-600/30 text-red-500";
+                  } else if (exposurePct > 25) {
+                    risk = "High";
+                    color = "bg-[#ff4500]/10 border-[#ff4500]/30 text-[#ff4500]";
+                  } else if (exposurePct > 15) {
+                    risk = "Med";
+                    color = "bg-[#facc15]/10 border-[#facc15]/30 text-[#facc15]";
+                  }
+                  
+                  return (
+                    <div
+                      key={pos.asset_id}
+                      className={`rounded p-4 border flex flex-col justify-between ${color}`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="font-bold font-sans tracking-tight text-white">
+                          {pos.asset_id}
+                        </span>
+                        <span className="text-[9px] uppercase tracking-widest py-1 px-2 rounded-sm bg-black/20 font-bold">
+                          {risk} Risk
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-end mt-6">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] uppercase tracking-widest opacity-60 mb-1 font-bold">
+                            Allocation
+                          </span>
+                          <span className="font-bold font-mono text-xl text-white/90">
+                            {exposurePct.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full border border-current opacity-40 flex items-center justify-center font-mono text-[9px]">
+                          {pos.size >= 0 ? "LONG" : "SHRT"}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()
+            )}
             <div className="rounded p-4 border border-[#1a1a1a] border-dashed flex flex-col items-center justify-center text-gray-600 gap-2 hover:border-[#333] hover:text-gray-400 transition-colors cursor-pointer">
               <div className="w-8 h-8 rounded-full border border-current flex items-center justify-center">
                 <span className="text-xl leading-none font-light mb-0.5">

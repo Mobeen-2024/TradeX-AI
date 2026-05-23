@@ -159,7 +159,7 @@ export class EventListener {
     } catch (err) {
       console.warn(
         "[EventListener] Failed to connect PostgreSQL listener. Falling back to mock event loop.",
-        err,
+        err
       );
       this.client = null;
     }

@@ -76,11 +76,10 @@ export class SystemIntelligenceService {
       SELECT start_timestamp, duration_ms, success, error_message
       FROM execution_logs
       WHERE agent_name = 'ExecutionAgent' 
-      -- Note: execution logs might need a correlation_id if they don't have it. 
-      -- But we can skip it or just add that to the ExecutionAgent in the future.
       ORDER BY start_timestamp DESC LIMIT 1
     `;
-    const execResult = /* we might not have correlation id in execution_logs */ null;
+    const execResult = await pool.query(execQuery);
+    trace.executionMeta = execResult.rows[0] || null;
 
     // 3. Fetch trade outcomes matching this correlation if we had one
     const tradeQuery = `
@@ -89,6 +88,14 @@ export class SystemIntelligenceService {
     `;
     const tradeResult = await pool.query(tradeQuery, [correlationId]);
     trace.outcome = tradeResult.rows[0] || null;
+
+    // 4. Fetch decision overrides
+    const overrideQuery = `
+      SELECT * FROM decision_overrides
+      WHERE correlation_id = $1
+    `;
+    const overrideResult = await pool.query(overrideQuery, [correlationId]);
+    trace.override = overrideResult.rows[0] || null;
 
     return trace;
   }
