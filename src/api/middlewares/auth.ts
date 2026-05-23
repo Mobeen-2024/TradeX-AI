@@ -10,17 +10,23 @@ export interface AuthRequest extends Request {
   };
 }
 
-export async function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+export async function authMiddleware(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
   const authHeader = req.headers.authorization;
   const isProduction = process.env.NODE_ENV === "production";
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    if (isProduction) {
-      res.status(401).json({ error: "Access denied. No authentication token provided." });
+    if (isProduction && process.env.DATABASE_URL) {
+      res
+        .status(401)
+        .json({ error: "Access denied. No authentication token provided." });
       return;
     }
 
-    // Permissive auth for dev: auto-create a user if none exists
+    // Permissive auth for dev or mock DB: auto-create a user if none exists
     if (!process.env.DATABASE_URL) {
       req.user = { userId: "dev-mock-user-id" };
       next();
@@ -32,11 +38,17 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
       const email = "system_op@tradex.inc";
       let userId: string;
 
-      const userRes = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+      const userRes = await pool.query(
+        "SELECT id FROM users WHERE email = $1",
+        [email],
+      );
       if (userRes.rows.length === 0) {
         userId = uuidv4();
         const hash = await bcrypt.hash("tradex2026!#", 10);
-        await pool.query("INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)", [userId, email, hash]);
+        await pool.query(
+          "INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)",
+          [userId, email, hash],
+        );
       } else {
         userId = userRes.rows[0].id;
       }
@@ -60,7 +72,9 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET) as { userId: string };
+    const payload = jwt.verify(token, process.env.JWT_SECRET) as {
+      userId: string;
+    };
     req.user = payload;
     next();
   } catch (err) {

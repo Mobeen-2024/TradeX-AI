@@ -308,8 +308,8 @@ export const useSystemStore = create<SystemState>((set, get) => ({
   setWsConnected: (connected) => set({ wsConnected: connected }),
 
   fetchInitialData: async () => {
+    // 1. Fetch Portfolios
     try {
-      // 1. Fetch Portfolios
       const portRes = await fetch("/api/portfolio/me");
       if (portRes.ok) {
         const data = await portRes.json();
@@ -328,29 +328,43 @@ export const useSystemStore = create<SystemState>((set, get) => ({
             totalExposure: p.totalValue || 0,
           });
         }
+      } else {
+        console.warn("fetch portfolios returned not ok", portRes.status);
       }
+    } catch (e) {
+      console.error("Failed to fetch initial portfolios:", e);
+    }
 
-      // 2. Fetch Risk State
-      const riskRes = await fetch("/api/intelligence/risk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-      if (riskRes.ok) {
-        const riskData = await riskRes.json();
-        if (riskData.riskState) {
-          get().setRiskState(riskData.riskState);
+    // 2. Fetch Risk State
+    try {
+      const activePortId = get().activePortfolio?.id;
+      if (activePortId) {
+        const riskRes = await fetch("/api/intelligence/risk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ portfolioId: activePortId }),
+        });
+        if (riskRes.ok) {
+          const riskData = await riskRes.json();
+          if (riskData.riskState) {
+            get().setRiskState(riskData.riskState);
+          }
+        } else {
+          console.warn("fetch risk returned not ok", riskRes.status);
         }
       }
+    } catch (e) {
+      console.error("Failed to fetch initial risk state:", e);
+    }
 
-      // 3. Fetch Strategy / Intelligence (mocked endpoint or backtest if available, assuming events/recent acts as a general pulse)
+    // 3. Fetch Strategy / Intelligence
+    try {
       const eventsRes = await fetch("/api/events/recent");
-      if (eventsRes.ok) {
-        const evData = await eventsRes.json();
-        // This doesn't strictly set strategy scores yet, just prewarms the API cache
+      if (!eventsRes.ok) {
+        console.warn("fetch events returned not ok", eventsRes.status);
       }
-    } catch (error) {
-      console.error("Failed to fetch initial data", error);
+    } catch (e) {
+      console.error("Failed to fetch initial events:", e);
     }
   },
 

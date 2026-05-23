@@ -142,19 +142,31 @@ export class EventListener {
   }
 
   static async initialize() {
-    if (isUsingMockDb()) {
+    if (isUsingMockDb() || !process.env.DATABASE_URL) {
       console.log(
-        "[EventListener] [Mock Mode] Database is in mock mode. Running using in-memory event loop.",
+        "[EventListener] [Mock Mode] Database is in mock mode or DATABASE_URL is missing. Running using in-memory event loop.",
       );
       return;
     }
     if (this.client) return;
 
-    this.client = new Client({
-      connectionString: process.env.DATABASE_URL,
-    });
+    try {
+      this.client = new Client({
+        connectionString: process.env.DATABASE_URL,
+      });
 
-    await this.client.connect();
+      await this.client.connect();
+    } catch (err) {
+      console.warn(
+        "[EventListener] Failed to connect PostgreSQL listener. Falling back to mock event loop.",
+        err,
+      );
+      this.client = null;
+    }
+
+    if (!this.client) {
+      return;
+    }
 
     this.client.on("notification", async (msg) => {
       if (msg.channel === "tradex_events" && msg.payload) {
