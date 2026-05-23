@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
 import {
   Shield,
   Zap,
@@ -10,6 +10,7 @@ import {
   Lock,
   AlertTriangle,
   CheckCircle,
+  Briefcase,
 } from "lucide-react";
 import { useMarketRegime, MarketRegime } from "../contexts/MarketRegimeContext";
 import { useSystemStore } from "../store/systemStore";
@@ -22,7 +23,28 @@ export function TopIntelligenceBar() {
     overrideState,
     overrideHistory,
     lockOverrides,
+    portfolios,
+    activePortfolio,
+    setActivePortfolio,
   } = useSystemStore();
+
+  useEffect(() => {
+    if (!portfolios || portfolios.length === 0) {
+      fetch("/api/portfolio/create", {
+        method: "POST",
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && !data.error) {
+            useSystemStore.setState({ portfolios: [data] });
+            setActivePortfolio(data);
+          }
+        })
+        .catch((err) => console.error("Error creating portfolio", err));
+    } else if (!activePortfolio) {
+      setActivePortfolio(portfolios[0]);
+    }
+  }, [portfolios, activePortfolio, setActivePortfolio]);
 
   const getRegimeColor = (r: string) => {
     switch (r) {
@@ -103,7 +125,7 @@ export function TopIntelligenceBar() {
   }, [overrideHistory]);
 
   return (
-    <header className="h-12 bg-[#020202] border-b border-[#1a1a1a] flex items-center justify-between px-4 shrink-0 z-50">
+    <header className="h-12 bg-[#020202] border-b border-[#1a1a1a] flex items-center justify-between px-4 flex-shrink-0 z-50">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 pr-2 border-r border-[#1a1a1a]">
           {isSimulationMode ? (
@@ -121,7 +143,7 @@ export function TopIntelligenceBar() {
           </span>
         </div>
 
-        <div className="hidden lg:flex items-center gap-2 px-2 border-r border-[#1a1a1a] text-[10px] font-mono whitespace-nowrap">
+        <div className="hidden border-r border-[#1a1a1a] pr-2 lg:flex items-center gap-2 text-[10px] font-mono whitespace-nowrap">
           {trustMetrics.status === "stable" ? (
             <div className="flex items-center gap-1.5 text-[#39ff14]">
               <CheckCircle className="w-3.5 h-3.5" /> Stable System
@@ -141,7 +163,33 @@ export function TopIntelligenceBar() {
           </span>
         </div>
 
-        <div className="hidden md:flex items-center gap-2 text-[10px] font-mono text-gray-500">
+        <div className="hidden md:flex items-center gap-2 px-2 border-r border-[#1a1a1a] text-[10px] font-mono text-gray-500">
+          <Briefcase className="w-3.5 h-3.5 text-[#a855f7]" />
+          Portfolio:
+          <select
+            value={activePortfolio?.id || ""}
+            onChange={(e) =>
+              setActivePortfolio(
+                portfolios.find((p) => p.id === e.target.value) ||
+                  portfolios[0],
+              )
+            }
+            className="bg-transparent outline-none cursor-pointer uppercase font-bold tracking-widest text-[#a855f7]"
+          >
+            {portfolios.length === 0 && (
+              <option value="" className="bg-[#111] text-gray-400">
+                Loading...
+              </option>
+            )}
+            {portfolios.map((p) => (
+              <option key={p.id} value={p.id} className="bg-[#111] text-white">
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="hidden md:flex items-center gap-2 px-2 text-[10px] font-mono text-gray-500">
           <Shield className="w-3.5 h-3.5 text-[#0ea5e9]" />
           Risk Guard: <span className="text-[#0ea5e9]">Level 2</span>
         </div>
@@ -196,7 +244,7 @@ export function TopIntelligenceBar() {
           </button>
         )}
 
-        <div className="h-6 w-px bg-[#1a1a1a] mx-2 hidden sm:block"></div>
+        <div className="h-6 w-[1px] bg-[#1a1a1a] mx-2 hidden sm:block"></div>
         <div className="relative hidden sm:block">
           <Search className="w-3.5 h-3.5 text-gray-600 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input

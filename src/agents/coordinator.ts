@@ -21,18 +21,43 @@ export class Coordinator {
     EventListener.subscribe(EventType.NEWS_PROCESSED, (payload) => {
       console.log(`[Coordinator] Received NEWS_PROCESSED:`, payload);
     });
-    EventListener.subscribe(EventType.COORDINATOR_DECISION_REQUESTED, async (payload) => {
-      console.log(`[Coordinator] Received COORDINATOR_DECISION_REQUESTED:`, payload);
-      try {
-        await this.makeDecision(payload.portfolioId, payload.userId, payload.correlationId, payload.isBacktest);
-      } catch (err) {
-        console.error(`[Coordinator] error:`, err);
-        throw err;
-      }
-    });
+    EventListener.subscribe(
+      EventType.COORDINATOR_DECISION_REQUESTED,
+      async (payload) => {
+        console.log(
+          `[Coordinator] Received COORDINATOR_DECISION_REQUESTED:`,
+          payload,
+        );
+        try {
+          await this.makeDecision(
+            payload.portfolioId,
+            payload.userId,
+            payload.correlationId,
+            payload.isBacktest,
+          );
+        } catch (err) {
+          console.error(`[Coordinator] error:`, err);
+          throw err;
+        }
+      },
+    );
   }
 
-  static async makeDecision(portfolioId: string, userId: string, correlationId: string, isBacktest: boolean = false) {
+  static async makeDecision(
+    portfolioId: string,
+    userId: string,
+    correlationId: string,
+    isBacktest: boolean = false,
+  ) {
+    if (!portfolioId || !userId || !correlationId) {
+      console.error(
+        `[Coordinator] Missing inputs: portfolioId=${portfolioId}, userId=${userId}, correlationId=${correlationId}`,
+      );
+      return {
+        aggregateDecision: { action: "HOLD", rationale: "Missing inputs" },
+        coordinatorMemory: null,
+      };
+    }
     const startTimestamp = new Date();
     try {
       if (!process.env.GEMINI_API_KEY) {
@@ -40,24 +65,39 @@ export class Coordinator {
       }
 
       // 1. Fetch results using correlationId
-      const quantMemory = await MemoryService.getByCorrelation(correlationId, "QuantAgent");
-      const riskMemory = await MemoryService.getByCorrelation(correlationId, "RiskGuardian");
-      const newsMemory = await MemoryService.getByCorrelation(correlationId, "NewsOracle");
+      const quantMemory = await MemoryService.getByCorrelation(
+        correlationId,
+        "QuantAgent",
+      );
+      const riskMemory = await MemoryService.getByCorrelation(
+        correlationId,
+        "RiskGuardian",
+      );
+      const newsMemory = await MemoryService.getByCorrelation(
+        correlationId,
+        "NewsOracle",
+      );
 
       if (!quantMemory || !riskMemory || !newsMemory) {
-        throw new Error("Missing prerequisite agent memories for correlationId: " + correlationId);
+        throw new Error(
+          "Missing prerequisite agent memories for correlationId: " +
+            correlationId,
+        );
       }
 
       const qMeta = quantMemory.metadata || {};
       const quantConfidence = qMeta.confidence_score || 0.5;
       const strategyTag = qMeta.strategy_tag || "default";
 
-      // 1.5 Fetch Best Strategy 
+      // 1.5 Fetch Best Strategy
       const strategy = await StrategyService.getBestStrategy(portfolioId);
       const strategyContext = strategy ? strategy.parameters : {};
 
-      const { CapitalAllocationService } = require('../services/capitalAllocationService');
-      const allocations = await CapitalAllocationService.getAllocations(portfolioId);
+      const {
+        CapitalAllocationService,
+      } = require("../services/capitalAllocationService");
+      const allocations =
+        await CapitalAllocationService.getAllocations(portfolioId);
 
       // 2. Aggregate Decision
       const prompt = `You are the Chief Investment Officer (Coordinator).
@@ -92,35 +132,53 @@ Format exactly as JSON:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
-        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
+        const textResponse = await aiService.generateContent(
+          prompt,
+          "gemini-3.5-flash",
+        );
+        responseText =
+          textResponse
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim() || "{}";
       } catch (apiError: any) {
-        console.warn("Coordinator Gemini API failed, fallback", apiError.message);
+        console.warn(
+          "Coordinator Gemini API failed, fallback",
+          apiError.message,
+        );
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           action: "HOLD",
           confidenceScore: 0.1,
           strategyTag: "default",
-          rationale: "API Error, fallback to HOLD. " + apiError.message
+          rationale: "API Error, fallback to HOLD. " + apiError.message,
         });
       }
 
       const text = responseText;
       let aggregateDecision: any;
       try {
-        aggregateDecision = JSON.parse(text);
-        if (typeof aggregateDecision.confidenceScore !== 'number') aggregateDecision.confidenceScore = quantConfidence;
-        if (!aggregateDecision.strategyTag) aggregateDecision.strategyTag = strategyTag;
+        let jsonStr = text;
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0];
+        }
+        aggregateDecision = JSON.parse(jsonStr);
+        if (typeof aggregateDecision.confidenceScore !== "number")
+          aggregateDecision.confidenceScore = quantConfidence;
+        if (!aggregateDecision.strategyTag)
+          aggregateDecision.strategyTag = strategyTag;
+        if (!aggregateDecision.action) aggregateDecision.action = "HOLD"; // Default action
       } catch (e) {
         console.warn("Coordinator Gemini parsing failed, fallback");
         fallbackUsed = true;
         apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
         aggregateDecision = {
           action: "HOLD",
-          confidenceScore: 0.1,
-          strategyTag: "default",
-          rationale: "Failed to parse AI output. Raw: " + text
+          confidenceScore: quantConfidence || 0.1,
+          strategyTag: strategyTag || "default",
+          rationale: "Failed to parse AI output. Raw: " + text,
         };
       }
 
@@ -132,8 +190,11 @@ Format exactly as JSON:
         portfolioId,
         correlationId,
         "Coordinator", // Uses "Coordinator" preserving idempotency
-        { confidence_score: aggregateDecision.confidenceScore, strategy_tag: aggregateDecision.strategyTag },
-        strategy?.id
+        {
+          confidence_score: aggregateDecision.confidenceScore,
+          strategy_tag: aggregateDecision.strategyTag,
+        },
+        strategy?.id,
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -146,19 +207,19 @@ Format exactly as JSON:
         error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
         portfolio_id: portfolioId,
-        strategy_id: strategy?.id
+        strategy_id: strategy?.id,
       });
 
       await EventDispatcher.emit(EventType.COORDINATOR_DECISION_COMPLETED, {
         portfolioId,
         correlationId,
         decision: aggregateDecision,
-        isBacktest
+        isBacktest,
       });
 
       return {
         aggregateDecision,
-        coordinatorMemory: loggedMemory
+        coordinatorMemory: loggedMemory,
       };
     } catch (error: any) {
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -169,13 +230,23 @@ Format exactly as JSON:
         success: false,
         error_message: error.message || "Unknown error",
         user_id: userId,
-        portfolio_id: portfolioId
+        portfolio_id: portfolioId,
       });
       throw error;
     }
   }
 
-  static async runCycle(portfolioId: string, userId: string, correlationId?: string) {
+  static async runCycle(
+    portfolioId: string,
+    userId: string,
+    correlationId?: string,
+  ) {
+    if (!portfolioId || !userId) {
+      console.error(
+        `[Coordinator] runCycle missing inputs: portfolioId=${portfolioId}, userId=${userId}`,
+      );
+      return { aggregateDecision: { action: "HOLD" }, coordinatorMemory: null };
+    }
     const startTimestamp = new Date();
     try {
       if (!process.env.GEMINI_API_KEY) {
@@ -183,20 +254,35 @@ Format exactly as JSON:
       }
 
       // 1. Run Quant
-      const quantResult = await QuantAgent.analyzeMarket(portfolioId, userId, correlationId);
+      const quantResult = await QuantAgent.analyzeMarket(
+        portfolioId,
+        userId,
+        correlationId,
+      );
 
       // 2. Run Risk (RiskGuardian uses latest memory, which is now quantResult)
-      const riskResult = await RiskGuardian.evaluateRisk(portfolioId, userId, correlationId);
+      const riskResult = await RiskGuardian.evaluateRisk(
+        portfolioId,
+        userId,
+        correlationId,
+      );
 
       // 3. Run News
-      const newsResult = await NewsOracle.analyzeSentiment(portfolioId, userId, correlationId);
+      const newsResult = await NewsOracle.analyzeSentiment(
+        portfolioId,
+        userId,
+        correlationId,
+      );
 
       // 3.5 Fetch Best Strategy
       const strategy = await StrategyService.getBestStrategy(portfolioId);
       const strategyContext = strategy ? strategy.parameters : {};
 
-      const { CapitalAllocationService } = require('../services/capitalAllocationService');
-      const allocations = await CapitalAllocationService.getAllocations(portfolioId);
+      const {
+        CapitalAllocationService,
+      } = require("../services/capitalAllocationService");
+      const allocations =
+        await CapitalAllocationService.getAllocations(portfolioId);
 
       // 4. Aggregate Decision
       const prompt = `You are the Chief Investment Officer (Coordinator).
@@ -230,26 +316,44 @@ Format exactly as JSON:
       let fallbackUsed = false;
       let apiErrorMessage = "";
       try {
-        const textResponse = await aiService.generateContent(prompt, "gemini-3.1-pro-preview");
-        responseText = textResponse.replace(/```json/g, "").replace(/```/g, "").trim() || "{}";
+        const textResponse = await aiService.generateContent(
+          prompt,
+          "gemini-3.5-flash",
+        );
+        responseText =
+          textResponse
+            .replace(/```json/g, "")
+            .replace(/```/g, "")
+            .trim() || "{}";
       } catch (apiError: any) {
-        console.warn("Coordinator Gemini API failed, fallback", apiError.message);
+        console.warn(
+          "Coordinator Gemini API failed, fallback",
+          apiError.message,
+        );
         fallbackUsed = true;
         apiErrorMessage = apiError.message;
         responseText = JSON.stringify({
           action: "HOLD",
           confidenceScore: 0.1,
           strategyTag: "default",
-          rationale: "API Error, fallback to HOLD. " + apiError.message
+          rationale: "API Error, fallback to HOLD. " + apiError.message,
         });
       }
 
       const text = responseText;
       let aggregateDecision: any;
       try {
-        aggregateDecision = JSON.parse(text);
-        if (typeof aggregateDecision.confidenceScore !== 'number') aggregateDecision.confidenceScore = 0.5;
-        if (!aggregateDecision.strategyTag) aggregateDecision.strategyTag = "default";
+        let jsonStr = text;
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0];
+        }
+        aggregateDecision = JSON.parse(jsonStr);
+        if (typeof aggregateDecision.confidenceScore !== "number")
+          aggregateDecision.confidenceScore = 0.5;
+        if (!aggregateDecision.strategyTag)
+          aggregateDecision.strategyTag = "default";
+        if (!aggregateDecision.action) aggregateDecision.action = "HOLD"; // Default action
       } catch (e) {
         console.warn("Coordinator Gemini parsing failed, fallback");
         fallbackUsed = true;
@@ -258,7 +362,7 @@ Format exactly as JSON:
           action: "HOLD",
           confidenceScore: 0.1,
           strategyTag: "default",
-          rationale: "Failed to parse AI output. Raw: " + text
+          rationale: "Failed to parse AI output. Raw: " + text,
         };
       }
 
@@ -270,8 +374,11 @@ Format exactly as JSON:
         portfolioId,
         correlationId,
         "Coordinator",
-        { confidence_score: aggregateDecision.confidenceScore, strategy_tag: aggregateDecision.strategyTag },
-        strategy?.id
+        {
+          confidence_score: aggregateDecision.confidenceScore,
+          strategy_tag: aggregateDecision.strategyTag,
+        },
+        strategy?.id,
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -284,7 +391,7 @@ Format exactly as JSON:
         error_message: fallbackUsed ? apiErrorMessage : null,
         user_id: userId,
         portfolio_id: portfolioId,
-        strategy_id: strategy?.id
+        strategy_id: strategy?.id,
       });
 
       return {
@@ -292,7 +399,7 @@ Format exactly as JSON:
         riskResult: riskResult.rawOutput,
         newsResult: newsResult.rawOutput,
         aggregateDecision: aggregateDecision,
-        coordinatorMemory: loggedMemory
+        coordinatorMemory: loggedMemory,
       };
     } catch (error: any) {
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -303,10 +410,9 @@ Format exactly as JSON:
         success: false,
         error_message: error.message || "Unknown error",
         user_id: userId,
-        portfolio_id: portfolioId
+        portfolio_id: portfolioId,
       });
       throw error;
     }
   }
 }
-

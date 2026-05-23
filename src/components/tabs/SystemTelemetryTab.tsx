@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { AgentPipeline } from "../ui/AgentPipeline";
 import {
@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Ban,
   Terminal,
+  AlertCircle,
 } from "lucide-react";
 import { useSystemStore } from "../../store/systemStore";
 
@@ -16,32 +17,48 @@ export function SystemTelemetryTab() {
   const [isTriggering, setIsTriggering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { telemetryFeed, activePortfolio } = useSystemStore();
+  const { telemetryFeed, activePortfolio, portfolios, setActivePortfolio } =
+    useSystemStore();
+
+  useEffect(() => {
+    if (!activePortfolio && portfolios.length > 0) {
+      setActivePortfolio(portfolios[0]);
+      console.log("[Telemetry] Auto-selected portfolio:", portfolios[0].name);
+    }
+  }, [activePortfolio, portfolios, setActivePortfolio]);
 
   const handleTriggerPipeline = async () => {
+    console.log("🔥 TRIGGER CLICKED", { activePortfolio });
+
+    if (!activePortfolio) {
+      setError("System Warning: Please create/select a portfolio first.");
+      return;
+    }
+
     setIsTriggering(true);
     setError(null);
-    try {
-      if (!activePortfolio) throw new Error("No active portfolio to analyze.");
 
-      const triggerRes = await fetch("/api/intelligence/analyze", {
+    try {
+      const res = await fetch("/api/intelligence/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           portfolioId: activePortfolio.id,
-          useWorker: true,
-          async: true,
+          mode: "debug",
         }),
       });
 
-      if (!triggerRes.ok) {
-        const data = await triggerRes.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to trigger pipeline");
+      if (!res.ok) {
+        throw new Error(`Failed to trigger: ${res.status} ${res.statusText}`);
       }
+
+      const data = await res.json();
+      console.log("✅ RESPONSE:", data);
     } catch (err: any) {
-      setError(err.message || "Failed to trigger pipeline");
+      console.error("❌ ERROR:", err);
+      setError(err.message || "Pipeline trigger failed");
     } finally {
       setIsTriggering(false);
     }
@@ -66,11 +83,12 @@ export function SystemTelemetryTab() {
             Real-time multi-agent execution pipeline monitoring via WebSocket.
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 relative z-[100]">
           <button
+            type="button"
             onClick={handleTriggerPipeline}
-            disabled={isTriggering || !activePortfolio}
-            className="flex items-center gap-2 px-4 py-2 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] rounded border border-[#00f0ff]/30 transition-colors text-sm font-bold disabled:opacity-50"
+            disabled={isTriggering}
+            className="flex items-center gap-2 px-4 py-2 bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 text-[#00f0ff] rounded border border-[#00f0ff]/30 transition-colors text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto"
           >
             {isTriggering ? (
               <Activity className="w-4 h-4 animate-spin" />
@@ -87,6 +105,13 @@ export function SystemTelemetryTab() {
           </div>
         </div>
       </div>
+
+      {!activePortfolio && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 p-4 rounded text-sm mb-4 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4" />
+          Select or create a portfolio to start telemetry
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 text-red-500 p-4 rounded text-sm mb-4">

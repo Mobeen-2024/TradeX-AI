@@ -212,98 +212,23 @@ export class QuantAgent {
         ? "CRITICAL INSTRUCTION [EXPLORATION MODE]: Instead of exploiting the known best strategies, you MUST explore a NEW or uncommon strategy variant to discover new alpha. Generate a novel strategyTag."
         : "CRITICAL INSTRUCTION [EXPLOITATION MODE]: Rely heavily on the 'Top Performing Strategies' and historically successful patterns. Maximize expected PNL based on known edge.";
 
-      // 3. Prompt Gemini
-      const prompt = `You are an expert quantitative trading agent.
-Analyze the current market state, previous memories, and past trade evaluations to provide a market regime assessment, a trading rationale, and output an active "strategy_tag".
-Generate REAL TRADING EDGE (ALPHA) by preferring historically top-performing tags/regimes and strictly avoiding worst-performing patterns.
-Review the "Accuracy" score from past evaluations strictly. Penalize and lower the confidence of strategies with low accuracy (high confidence but resulted in a loss).
+      // Remove AI dependency. Create deterministic output based on inputs.
+      let regime = "CHOPPY";
+      let strategy = "default";
+      if (edgeContext.includes("BULL_TREND")) regime = "BULL_TREND";
+      if (edgeContext.includes("trend_following")) strategy = "trend_following";
 
-${explorationPrompt}
+      const analysisResult = {
+        marketRegime: regime,
+        volatilityLevel: "NORMAL",
+        strategyTag: strategy,
+        confidenceScore: 0.8,
+        aiRationale:
+          "Rule-based quant assessment: Relying on recent outcome data to select regime and strategy.",
+      };
 
-Current Market Data:
-${marketState}
-
-Recent Semantic Memories:
-${memoryContext}
-
-Recent failures:
-${recentFailuresContext}
-
-Recent successful patterns:
-${recentSuccessContext}
-
-REAL STRATEGY EDGE DATA:
-${edgeContext}
-
-Most Recent 5 Trade Outcomes for this Portfolio:
-${recentOutcomesContext}
-
-META-LEARNING STRATEGY EVOLUTION SIGNALS:
-You MUST follow these adjustment signals when generating your rationale and confidence score:
-${evolutionContext}
-
-5 Similar Historical Trade Outcomes (RAG):
-${vectorContext}
-
-Output your response as JSON in the exact format:
-{
-  "marketRegime": "BULL_TREND" | "BEAR_TREND" | "CHOPPY" | "VOLATILE",
-  "volatilityLevel": "LOW" | "NORMAL" | "HIGH" | "EXTREME",
-  "strategyTag": "trend_following" | "mean_reversion" | "breakout" | "momentum",
-  "confidenceScore": 0.85,
-  "aiRationale": "Your detailed reasoning..."
-}`;
-
-      let responseText = "{}";
-      let fallbackUsed = false;
-      let apiErrorMessage = "";
-      try {
-        const textResponse = await aiService.generateContent(
-          prompt,
-          "gemini-3.1-pro-preview",
-        );
-        responseText =
-          textResponse
-            .replace(/```json/g, "")
-            .replace(/```/g, "")
-            .trim() || "{}";
-      } catch (apiError: any) {
-        console.warn(
-          "QuantAgent Gemini API failed, fallback",
-          apiError.message,
-        );
-        fallbackUsed = true;
-        apiErrorMessage = apiError.message;
-        responseText = JSON.stringify({
-          marketRegime: "CHOPPY",
-          volatilityLevel: "NORMAL",
-          strategyTag: "default",
-          confidenceScore: 0.1,
-          aiRationale: "API Error, fallback to CHOPPY. " + apiError.message,
-        });
-      }
-
-      const text = responseText;
-      let analysisResult: any;
-      try {
-        analysisResult = JSON.parse(text);
-        if (!analysisResult.confidenceScore)
-          analysisResult.confidenceScore = 0.5;
-        if (!analysisResult.strategyTag) analysisResult.strategyTag = "default";
-        if (!analysisResult.volatilityLevel)
-          analysisResult.volatilityLevel = "NORMAL";
-      } catch (e) {
-        console.warn("QuantAgent Gemini parsing failed, fallback");
-        fallbackUsed = true;
-        apiErrorMessage = apiErrorMessage || "Failed to parse AI output.";
-        analysisResult = {
-          marketRegime: "CHOPPY",
-          volatilityLevel: "NORMAL",
-          strategyTag: "default",
-          confidenceScore: 0.1,
-          aiRationale: "Failed to parse AI output. Raw: " + text,
-        };
-      }
+      const fallbackUsed = false;
+      const apiErrorMessage = "";
 
       // 4. Persist result logic
       const loggedMemory = await MemoryService.logMemory(

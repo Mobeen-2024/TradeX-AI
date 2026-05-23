@@ -58,30 +58,24 @@ async function startServer() {
     await checkDbConnection();
   }
 
-  if (process.env.DATABASE_URL) {
-    try {
-      console.log("[TradeX OS Daemon] Initializing EventListener...");
-      await EventListener.initialize();
-      Coordinator.initialize();
-      QuantWorker.initialize();
-      RiskWorker.initialize();
-      NewsWorker.initialize();
-      ExecutionAgent.initialize();
-      MetricsWorker.initialize();
-      EventRetryWorker.initialize();
-      StrategyEvolutionWorker.initialize();
+  try {
+    console.log("[TradeX OS Daemon] Initializing EventListener and Workers...");
+    await EventListener.initialize();
+    Coordinator.initialize();
+    QuantWorker.initialize();
+    RiskWorker.initialize();
+    NewsWorker.initialize();
+    ExecutionAgent.initialize();
+    MetricsWorker.initialize();
+    EventRetryWorker.initialize();
+    StrategyEvolutionWorker.initialize();
 
-      const { AllocationWorker } = require("./workers/allocationWorker");
-      AllocationWorker.initialize();
-    } catch (e) {
-      console.error(
-        "[TradeX OS Daemon] Failed to initialize EventListener:",
-        e,
-      );
-    }
-  } else {
-    console.warn(
-      "[TradeX OS Daemon] DATABASE_URL is missing. Background workers and EventListener are disabled.",
+    const { AllocationWorker } = require("./workers/allocationWorker");
+    AllocationWorker.initialize();
+  } catch (e) {
+    console.error(
+      "[TradeX OS Daemon] Failed to initialize EventListener/Workers:",
+      e,
     );
   }
 
@@ -157,34 +151,6 @@ async function startServer() {
       res.json({ status: "system_operational", db_connected: true });
     } catch (e) {
       res.status(500).json({ status: "system_degraded", error: String(e) });
-    }
-  });
-
-  apiRouter.post("/intelligence/analyze", async (req, res) => {
-    try {
-      const { prompt } = req.body;
-      if (!prompt) {
-        return res.status(400).json({ error: "No prompt provided" });
-      }
-
-      if (!process.env.GEMINI_API_KEY) {
-        console.warn("Mocking AI response because GEMINI_API_KEY is not set.");
-        return res.json({
-          response: "Simulated Agent: Trade logic initialized based on prompt.",
-          isMock: true,
-        });
-      }
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
-        contents: `You are the Quant Strategy Agent for TradeX OS. Analyze the following request and give institutional-grade insight.
-        Request: ${prompt}`,
-      });
-
-      res.json({ response: response.text });
-    } catch (e) {
-      console.error(e);
-      res.status(500).json({ error: "Failed to generate AI content" });
     }
   });
 
