@@ -475,7 +475,7 @@ export function AutoTradingTab() {
           <Activity className="w-4 h-4 text-[#39ff14]" />
           Autonomous Telemetry Feed
         </h3>
-        <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto no-scrollbar font-mono">
+        <div className="flex flex-col gap-2 max-h-75 overflow-y-auto no-scrollbar font-mono">
           {telemetryFeed.filter((t) => t.type === "EXECUTION").length === 0 && (
             <div className="text-gray-600 text-xs text-center font-mono py-4">
               Awaiting telemetry synchronization stream...

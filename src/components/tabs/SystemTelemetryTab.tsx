@@ -84,7 +84,7 @@ export function SystemTelemetryTab() {
             Real-time multi-agent execution pipeline monitoring via WebSocket.
           </p>
         </div>
-        <div className="flex items-center gap-4 relative z-[100]">
+        <div className="flex items-center gap-4 relative z-100">
           <button
             type="button"
             onClick={handleTriggerPipeline}
@@ -130,7 +130,7 @@ export function SystemTelemetryTab() {
             <Terminal className="w-4 h-4" /> Raw Telemetry Stream
           </h2>
         </div>
-        <div className="p-4 max-h-[300px] overflow-y-auto no-scrollbar space-y-2">
+        <div className="p-4 max-h-75 overflow-y-auto no-scrollbar space-y-2">
           {telemetryFeed.length === 0 ? (
             <div className="text-gray-500 text-xs font-mono uppercase text-center py-4">
               Awaiting telemetry stream...

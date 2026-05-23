@@ -95,7 +95,7 @@ export function MarketResearchTab() {
               </h3>
             </div>
 
-            <div className="flex-1 flex flex-col divide-y divide-[#1a1a1a] overflow-y-auto min-h-[300px]">
+            <div className="flex-1 flex flex-col divide-y divide-[#1a1a1a] overflow-y-auto min-h-75">
               <AnimatePresence>
                 {filteredInsights.length === 0 && (
                   <div className="p-8 text-center text-gray-500 font-mono text-xs">

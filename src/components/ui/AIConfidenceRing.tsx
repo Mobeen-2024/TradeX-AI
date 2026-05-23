@@ -40,13 +40,13 @@ export function AIConfidenceRing({
 
       {/* Neural pulse ripples */}
       <motion.div
-        className="absolute inset-0 rounded-full border-[2px] opacity-30"
+        className="absolute inset-0 rounded-full border-2 opacity-30"
         style={{ color: actualColor, borderColor: actualColor, filter: `drop-shadow(0 0 10px ${actualColor})` }}
         animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
         transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute inset-0 rounded-full border-[1px] opacity-20"
+        className="absolute inset-0 rounded-full border opacity-20"
         style={{ color: actualColor, borderColor: actualColor, filter: `drop-shadow(0 0 5px ${actualColor})` }}
         animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
         transition={{

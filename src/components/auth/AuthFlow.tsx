@@ -8,13 +8,13 @@ export function AuthFlow({ onAuthenticate }: { onAuthenticate: () => void }) {
   const [step, setStep] = useState<AuthStep>('login');
 
   return (
-    <div className="min-h-[100dvh] bg-[#020202] flex items-center justify-center relative overflow-hidden font-sans text-white">
+    <div className="min-h-dvh bg-[#020202] flex items-center justify-center relative overflow-hidden font-sans text-white">
       {/* Animated Background Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] [background-size:40px_40px] opacity-40 z-0 mask-image:linear-gradient(to_bottom,black,transparent)] animate-[pulse_4s_ease-in-out_infinite]"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-size-[40px_40px] opacity-40 z-0 mask-image:linear-gradient(to_bottom,black,transparent)] animate-[pulse_4s_ease-in-out_infinite]"></div>
       
       {/* Glowing Orbs */}
-      <div className="absolute top-[20%] left-[30%] w-[500px] h-[500px] bg-[#0ea5e9]/10 blur-[120px] rounded-full mix-blend-screen z-0 pointer-events-none"></div>
-      <div className="absolute bottom-[20%] right-[30%] w-[400px] h-[400px] bg-[#39ff14]/5 blur-[120px] rounded-full mix-blend-screen z-0 pointer-events-none"></div>
+      <div className="absolute top-[20%] left-[30%] w-125 h-125 bg-[#0ea5e9]/10 blur-[120px] rounded-full mix-blend-screen z-0 pointer-events-none"></div>
+      <div className="absolute bottom-[20%] right-[30%] w-100 h-100 bg-[#39ff14]/5 blur-[120px] rounded-full mix-blend-screen z-0 pointer-events-none"></div>
       
       {/* Auth Container */}
       <div className="relative z-10 w-full max-w-md mx-4 pb-20">

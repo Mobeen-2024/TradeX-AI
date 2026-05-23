@@ -112,7 +112,7 @@ export class TelemetryServer {
 
     const messageString = JSON.stringify(messageObj);
 
-    this.wss.clients.forEach((client) => {
+    this.wss.clients.forEach((client: any) => {
       if (client.readyState === WebSocket.OPEN) {
         const filter = (client as any).correlationIdFilter;
         // If client has no filter, or filter matches, send the message

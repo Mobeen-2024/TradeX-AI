@@ -21,7 +21,7 @@ export function MobileApp() {
   const [showApproval, setShowApproval] = useState(true);
 
   return (
-    <div className="flex flex-col min-h-[100dvh] w-full bg-[#050505] text-white font-sans md:hidden relative overflow-hidden">
+    <div className="flex flex-col min-h-dvh w-full bg-[#050505] text-white font-sans md:hidden relative overflow-hidden">
       {/* Top Bar */}
       <div className="p-4 border-b border-[#1a1a1a] flex justify-between items-center bg-[#0a0a0a]">
          <div className="flex items-center gap-2">

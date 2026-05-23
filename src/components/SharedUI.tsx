@@ -90,7 +90,7 @@ export function ArchNode({ icon, title, desc, color, active }: { icon: React.Rea
 
 export function ArchConnector() {
   return (
-    <div className="flex-1 h-0.5 bg-linear-to-r from-gray-800 via-gray-600 to-gray-800 w-full min-w-[20px] md:min-w-[40px] relative">
+    <div className="flex-1 h-0.5 bg-linear-to-r from-gray-800 via-gray-600 to-gray-800 w-full min-w-5 md:min-w-10 relative">
       <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#ff4500]/30 to-transparent w-full h-full"></div>
       <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 rotate-45 border-t-2 border-r-2 border-gray-500"></div>
     </div>

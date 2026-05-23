@@ -117,7 +117,7 @@ export function HistoryTab() {
         <button
           onClick={handleRefresh}
           disabled={loading || !activePortfolio}
-          className="flex items-center gap-2 bg-[#050505] border border-white/10 text-gray-400 hover:text-white hover:border-[#39ff14]/50 focus:border-[#39ff14] px-4 py-2 rounded text-xs px-3 py-1.5 font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-2 bg-[#050505] border border-white/10 text-gray-400 hover:text-white hover:border-[#39ff14]/50 focus:border-[#39ff14] px-3 py-1.5 rounded text-xs font-bold transition-all shadow-md active:scale-95 cursor-pointer disabled:opacity-50"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-[#39ff14]" : ""}`} />
           Refresh Ledger

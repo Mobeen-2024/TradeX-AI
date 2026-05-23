@@ -345,7 +345,7 @@ export class ExecutionService {
           await client.query(
             `UPDATE global_system_controls SET exchange_api_failures = 0`,
           );
-        } catch (err) {
+        } catch (err: any) {
           // Circuit Breaker Trigger
           const updateRes = await client.query(`
                         UPDATE global_system_controls
@@ -643,7 +643,7 @@ export class ExecutionService {
             }
             return pendingOrders.rows;
           }
-        } catch (err) {
+        } catch (err: any) {
           console.error(
             `[ExecutionService] Failed to sync order ${order.id}:`,
             err,

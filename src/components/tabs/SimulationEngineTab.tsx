@@ -339,7 +339,7 @@ export function SimulationEngineTab() {
 
       {viewMode === "replay" ? (
         <>
-          <div className="flex justify-end gap-4 items-center absolute right-8 top-[140px] z-10">
+          <div className="flex justify-end gap-4 items-center absolute right-8 top-35 z-10">
             <div className="flex flex-col items-end mr-4">
               <span className="text-[10px] text-gray-500 uppercase tracking-widest">
                 Active Model
@@ -437,7 +437,7 @@ export function SimulationEngineTab() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-[400px]">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 flex-1 min-h-100">
             {/* Chart Area */}
             <div className="col-span-1 xl:col-span-8 bg-[#050505] border border-[#1a1a1a] rounded flex flex-col p-4 relative">
               {isRunning && (
@@ -629,7 +629,7 @@ export function SimulationEngineTab() {
                 ))}
               </div>
               {/* Fade out bottom */}
-              <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[#050505] to-transparent pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 right-0 h-16 bg-linear-to-t from-[#050505] to-transparent pointer-events-none"></div>
             </div>
           </div>
         </>
@@ -802,7 +802,7 @@ export function SimulationEngineTab() {
           </div>
 
           <div className="col-span-full border border-[#1a1a1a] rounded bg-[#0a0a0a] p-6 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-50"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] bg-size-[24px_24px] pointer-events-none opacity-50"></div>
             <div className="flex flex-col lg:flex-row justify-between items-center gap-6 relative z-10">
               <div>
                 <h3 className="text-white font-bold mb-2 flex items-center gap-2">
