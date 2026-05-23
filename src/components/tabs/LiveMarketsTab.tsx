@@ -220,7 +220,7 @@ function AIPatternScanner({ detectedPatterns }: { detectedPatterns: any[] }) {
   ];
 
   return (
-    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-[220px]">
+    <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 relative overflow-hidden flex flex-col font-mono text-[10px] leading-tight flex-1 min-h-55">
       <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-r from-transparent to-[#facc15]/5 pointer-events-none"></div>
       <h3 className="text-gray-500 font-bold uppercase tracking-widest mb-3 flex items-center justify-between border-b border-[#1a1a1a] pb-2 relative z-10">
         <div className="flex items-center gap-2">
@@ -1148,13 +1148,13 @@ function MarketChart({
             </div>
             <div className="flex justify-between gap-6">
               <span className="text-gray-400">Retests:</span>
-              <span className="text-white font-bold">
+              <span className="font-bold">
                 {activeTooltip.retests}
               </span>
             </div>
             <div className="flex justify-between gap-6">
               <span className="text-gray-400">Break Prob:</span>
-              <span className="text-white font-bold">{activeTooltip.prob}</span>
+              <span className="font-bold">{activeTooltip.prob}</span>
             </div>
           </div>
         </div>
@@ -1229,7 +1229,7 @@ function MarketChart({
             <div className="flex flex-col gap-2 font-mono text-[10px]">
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">Confidence:</span>
-                <span className="text-white font-bold">
+                <span className="font-bold">
                   {aiInsight.confidence}%
                 </span>
               </div>
@@ -1243,7 +1243,7 @@ function MarketChart({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-gray-400">AI Outlook:</span>
-                <span className="text-white font-bold text-right max-w-30">
+                <span className="font-bold text-right max-w-30">
                   {aiInsight.outlook}
                 </span>
               </div>
@@ -1516,7 +1516,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
           <button
             key={t}
             onClick={() => handleOrderType(t)}
-            className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all shadow-none ${orderType === t ? "bg-[#1a1a1a] text-white border border-[#333]" : "bg-transparent text-gray-500 border border-transparent hover:bg-[#111]"}`}
+            className={`px-3 py-1.5 rounded-sm text-[10px] font-bold uppercase tracking-widest transition-all shadow-none ${orderType === t ? "bg-[#1a1a1a] border border-[#333]" : "bg-transparent text-gray-500 border border-transparent hover:bg-[#111]"}`}
           >
             {t}
           </button>
@@ -1536,7 +1536,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
                 type="number"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                className={`w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors ${orderType === "market" ? "text-gray-500" : ""}`}
+                className={`w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors ${orderType === "market" ? "text-gray-500" : ""}`}
                 disabled={orderType === "market" || isExecuting}
               />
               {orderType === "market" && (
@@ -1559,7 +1559,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
                 type="number"
                 value={size}
                 onChange={(e) => setSize(e.target.value)}
-                className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 text-white font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors"
+                className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-2 px-3 font-mono text-sm focus:outline-none focus:border-[#0ea5e9]/50 transition-colors"
                 disabled={isExecuting}
               />
             </div>
@@ -1619,7 +1619,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
               onChange={(e) => setTp(e.target.value)}
               placeholder="Optional"
               disabled={isExecuting}
-              className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#39ff14]/50"
+              className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 font-mono text-xs focus:outline-none focus:border-[#39ff14]/50"
             />
           </div>
           <div>
@@ -1632,7 +1632,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
               onChange={(e) => setSl(e.target.value)}
               placeholder="Optional"
               disabled={isExecuting}
-              className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 text-white font-mono text-xs focus:outline-none focus:border-[#ff4500]/50"
+              className="w-full bg-[#0a0a0a] border border-[#222] rounded-sm py-1.5 px-2 font-mono text-xs focus:outline-none focus:border-[#ff4500]/50"
             />
           </div>
         </div>
@@ -1642,13 +1642,13 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
           <div className="absolute top-0 right-0 w-16 h-16 bg-linear-to-br from-transparent to-[#1a1a1a] pointer-events-none"></div>
           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
             <span>Required Margin</span>
-            <span className="text-white font-bold">
+            <span className="font-bold">
               ~ ${isNaN(Number(requiredMargin)) ? "0.00" : requiredMargin}
             </span>
           </div>
           <div className="flex justify-between text-[10px] font-mono text-gray-400 relative z-10">
             <span>Estimated Fee</span>
-            <span className="text-white font-bold">
+            <span className="font-bold">
               ~ ${isNaN(Number(estFee)) ? "0.00" : estFee}
             </span>
           </div>
@@ -1658,7 +1658,7 @@ function TradeExecutionPanel({ currentPrice }: { currentPrice?: number }) {
       <button
         onClick={handleExecute}
         disabled={isExecuting}
-        className={`w-full py-3.5 rounded-sm font-bold tracking-widest uppercase text-sm mt-4 transition-all flex items-center justify-center gap-2 relative overflow-hidden group shrink-0 ${isExecuting ? "bg-gray-600 text-gray-300" : side === "buy" ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.15)] hover:brightness-110" : "bg-[#ff4500] text-white shadow-[0_0_15px_rgba(255,69,0,0.15)] hover:brightness-110"}`}
+        className={`w-full py-3.5 rounded-sm font-bold tracking-widest uppercase text-sm mt-4 transition-all flex items-center justify-center gap-2 relative overflow-hidden group shrink-0 ${isExecuting ? "bg-gray-600 text-gray-300" : side === "buy" ? "bg-[#39ff14] text-black shadow-[0_0_15px_rgba(57,255,20,0.15)] hover:brightness-110" : "bg-[#ff4500] shadow-[0_0_15px_rgba(255,69,0,0.15)] hover:brightness-110"}`}
       >
         {!isExecuting && (
           <div className="absolute inset-0 w-[150%] h-full bg-linear-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-in-out"></div>
@@ -1895,7 +1895,7 @@ export function LiveMarketsTab() {
               <div className="w-8 h-8 rounded-lg bg-[#0ea5e9]/10 border border-[#0ea5e9]/30 flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.2)]">
                 <Radio className="w-4 h-4 text-[#0ea5e9] animate-pulse" />
               </div>
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white bg-clip-text text-transparent bg-linear-to-r from-white to-gray-400">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-clip-text text-transparent bg-linear-to-r from-white to-gray-400">
                 Live Market Feed
               </h1>
             </div>
@@ -1911,14 +1911,14 @@ export function LiveMarketsTab() {
 
           <div className="flex flex-col items-start xl:items-start xl:pl-2">
             <div className="flex items-center gap-2 mb-0.5">
-              <h2 className="text-base font-bold text-white tracking-tight">
+              <h2 className="text-base font-bold tracking-tight">
                 XAU/USD-SPOT
               </h2>
               <span className="px-1.5 py-0.5 rounded bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30 text-[9px] font-mono font-bold leading-none">
                 LONG
               </span>
             </div>
-            <div className="font-mono text-xl text-white font-medium flex items-center gap-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+            <div className="font-mono text-xl font-medium flex items-center gap-2 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
               <span className="text-gray-500 text-base">$</span>
               {dataStream[dataStream.length - 1].toLocaleString("en-US", {
                 minimumFractionDigits: 1,
@@ -2121,7 +2121,7 @@ export function LiveMarketsTab() {
                 ))}
                 {/* Overlay Text */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="bg-[#050505]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold text-white border border-white/10 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
+                  <span className="bg-[#050505]/80 px-4 py-1.5 font-mono text-[10px] uppercase tracking-widest font-bold border border-white/10 rounded-md shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-md">
                     Concentration at $64,800
                   </span>
                 </div>
