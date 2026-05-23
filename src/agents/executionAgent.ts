@@ -79,14 +79,15 @@ export class ExecutionAgent {
           correlationId,
           "RiskGuardian",
         );
-        if (riskMemory && riskMemory.market_regime && riskMemory.market_regime.includes("HIGH")) {
+        const isCriticalRiskState = riskMemory?.metadata?.risk_state === "CRITICAL";
+        if ((riskMemory && riskMemory.market_regime && riskMemory.market_regime.includes("HIGH")) || isCriticalRiskState) {
           console.warn(
-            `[ExecutionAgent] Blocking execution due to HIGH risk for correlation ${correlationId}`,
+            `[ExecutionAgent] Blocking execution due to HIGH risk/CRITICAL risk state for correlation ${correlationId}`,
           );
 
           await MemoryService.logMemory(
             `SKIPPED_EXECUTION`,
-            `Execution blocked by RiskGuardian (Risk=HIGH). Rationale: ${riskMemory.ai_rationale}`,
+            `Execution blocked by RiskGuardian (Risk=HIGH/CRITICAL). Rationale: ${riskMemory ? riskMemory.ai_rationale : "No risk assessment available"}`,
             userId,
             portfolioId,
             correlationId,
@@ -114,19 +115,20 @@ export class ExecutionAgent {
           return; // Abort execution
         }
 
-        // Extract adaptive position size from RiskGuardian
-        let adaptiveSize = 1; // Default
-        if (riskMemory && riskMemory.ai_rationale) {
-          const match = riskMemory.ai_rationale.match(
-            /Position Size: ([\d.]+)/,
-          );
-          if (match && match[1]) {
-            adaptiveSize = parseFloat(match[1]);
-            console.log(
-              `[ExecutionAgent] Using adaptive position size from RiskGuardian: ${adaptiveSize}`,
-            );
-          }
-        }
+        // Compute adaptive position size using advanced mathematical engine scaling
+        // FinalSize = BaseSize * StrategyWeight * RiskMultiplier * GlobalPortfolioWeight
+        const baseSize = 1.0;
+        const strategyWeight = currentDecision.strategyWeight !== undefined ? Number(currentDecision.strategyWeight) : 1.0;
+        const riskMultiplier = currentDecision.riskMultiplier !== undefined ? Number(currentDecision.riskMultiplier) : 1.0;
+        const globalPortfolioWeight = currentDecision.globalPortfolioWeight !== undefined ? Number(currentDecision.globalPortfolioWeight) : 1.0;
+
+        let adaptiveSize = baseSize * strategyWeight * riskMultiplier * globalPortfolioWeight;
+        // Bound the size to safe, logical limits [0.05, 3.0] to prevent zero or excessively leveraged sizing
+        adaptiveSize = Number(Math.max(0.05, Math.min(3.0, adaptiveSize)).toFixed(4));
+
+        console.log(
+          `[ExecutionAgent] Mathematically scaled position size: ${adaptiveSize} (Base: ${baseSize}, StrategyWeight: ${strategyWeight}, RiskMultiplier: ${riskMultiplier}, GlobalWeight: ${globalPortfolioWeight})`
+        );
 
         const orderRequest = {
           portfolioId,

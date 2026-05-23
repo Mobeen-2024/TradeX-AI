@@ -19,6 +19,9 @@ interface StageState {
   status: StageStatus;
   timestamp?: number;
   summary?: string;
+  reasoning?: string;
+  confidence?: number;
+  metrics?: any;
 }
 
 interface PipelineRun {
@@ -111,6 +114,9 @@ export function AgentPipeline({
           status,
           timestamp: msg.timestamp,
           summary: msg.message,
+          reasoning: msg.metadata?.reasoning,
+          confidence: msg.metadata?.confidence,
+          metrics: msg.metadata?.metrics,
         };
 
         if (agentName === "Coordinator" && status === "completed") {
@@ -265,12 +271,12 @@ const PipelineCard: React.FC<{ run: PipelineRun }> = ({ run }) => {
                 </div>
 
                 {/* Summary Box */}
-                {stage.summary && (
+                {(stage.summary || stage.reasoning) && (
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      "mt-3 md:mt-4 p-3 rounded text-[10px] sm:text-xs leading-relaxed border ml-14 md:ml-0 shadow-sm",
+                      "mt-3 md:mt-4 p-3 rounded text-[10px] sm:text-xs leading-relaxed border ml-14 md:ml-0 shadow-sm flex flex-col gap-2",
                       isCompleted
                         ? "bg-[#00f0ff]/5 border-[#00f0ff]/20 text-gray-300"
                         : isActive
@@ -280,7 +286,39 @@ const PipelineCard: React.FC<{ run: PipelineRun }> = ({ run }) => {
                             : "bg-[#111] border-[#222] text-gray-500",
                     )}
                   >
-                    {stage.summary}
+                    <div>{stage.summary}</div>
+                    
+                    {stage.reasoning && (
+                      <div className="text-[10px] text-gray-400 border-t border-[#1a1a1a] pt-1 mt-1">
+                        <span className="font-bold text-gray-500">THINKING:</span> {stage.reasoning}
+                      </div>
+                    )}
+
+                    {stage.confidence !== undefined && stage.confidence > 0 ? (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] text-gray-500 font-bold">CONFIDENCE:</span>
+                        <div className="flex-1 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-[#00f0ff] rounded-full" 
+                            style={{ width: `${stage.confidence * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[9px] text-[#00f0ff] font-bold">{(stage.confidence * 100).toFixed(0)}%</span>
+                      </div>
+                    ) : null}
+
+                    {stage.metrics && Object.keys(stage.metrics).some(k => stage.metrics[k] !== undefined && stage.metrics[k] !== null && stage.metrics[k] !== "") && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {Object.entries(stage.metrics).map(([key, val]) => {
+                          if (val === undefined || val === null || val === "") return null;
+                          return (
+                            <span key={key} className="px-1.5 py-0.5 rounded-sm bg-[#111] border border-[#222] text-[9px] text-gray-400 font-bold uppercase tracking-wider">
+                              {key}: <span className="text-gray-300">{String(val)}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </div>

@@ -434,16 +434,32 @@ export const useSystemStore = create<SystemState>((set, get) => ({
               get().addTelemetryEvent({
                 id: crypto.randomUUID(),
                 type: "EXECUTION",
+                agent: data.agent_name,
+                correlationId: data.correlationId,
                 message: data.summary || "Order Executed",
                 timestamp: new Date(data.timestamp).getTime(),
+                metadata: {
+                  status: data.status,
+                  reasoning: data.reasoning,
+                  confidence: data.confidence,
+                  metrics: data.metrics,
+                },
               });
               get().fetchInitialData();
             } else {
               get().addTelemetryEvent({
                 id: crypto.randomUUID(),
                 type: "AGENT_DECISION",
+                agent: data.agent_name,
+                correlationId: data.correlationId,
                 message: `[${data.agent_name}] ${data.summary}`,
                 timestamp: new Date(data.timestamp).getTime(),
+                metadata: {
+                  status: data.status,
+                  reasoning: data.reasoning,
+                  confidence: data.confidence,
+                  metrics: data.metrics,
+                },
               });
             }
 

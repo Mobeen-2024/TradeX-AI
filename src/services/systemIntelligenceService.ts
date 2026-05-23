@@ -67,6 +67,7 @@ export class SystemIntelligenceService {
       if (row.agent_name === "RiskGuardian") trace.risk = row;
       if (row.agent_name === "NewsOracle") trace.news = row;
       if (row.agent_name === "Coordinator") trace.coordinator = row;
+      if (row.agent_name === "ExecutionAgent") trace.execution = row;
       if (row.agent_name === "EvaluationCoordinator") trace.evaluation = row;
     });
 

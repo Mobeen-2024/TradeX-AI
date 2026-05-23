@@ -6,6 +6,8 @@ import { TradeRepository } from "../db/repositories/trades";
 import { MarketTickRepository } from "../db/repositories/marketTicks";
 import { aiService } from "../services/aiService";
 import { EventDispatcher, EventType } from "../events";
+import { RiskStateService } from "../services/riskStateService";
+import { GlobalPortfolioService } from "../services/globalPortfolioService";
 
 export class RiskGuardian {
   static async evaluateRisk(
@@ -73,38 +75,37 @@ export class RiskGuardian {
         }
       } catch (e) {}
 
-      // 3. Evaluate exposure and risk using deterministic rules
+      // 3. Evaluate exposure and risk using advanced mathematical engines
+      const assetId = positions.length > 0 ? positions[0].asset_id : "BTC";
+      const riskAssessment = await RiskStateService.assessRiskState(portfolioId, assetId);
+      const globalWeight = await GlobalPortfolioService.getPortfolioWeight(portfolioId);
+
       let riskLevel = "LOW";
       let marginRisk = "SAFE";
-      let position_size = 1.0;
 
-      if (hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD) {
+      if (riskAssessment.state === "CRITICAL" || hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD) {
         riskLevel = "HIGH";
         marginRisk = "DANGER";
-        position_size = 0.5;
-      } else if (
-        totalExposureUsd > MAX_PORTFOLIO_USD * 0.8 ||
-        volatilityContext.includes("HIGH")
-      ) {
+      } else if (riskAssessment.state === "ELEVATED" || totalExposureUsd > MAX_PORTFOLIO_USD * 0.8) {
         riskLevel = "MODERATE";
         marginRisk = "WARNING";
-        position_size = 0.8;
       }
 
       const riskEvaluation = {
         riskLevel,
         marginRisk,
-        position_size,
-        aiRationale: `Rule-based risk assessment. Exposure: $${totalExposureUsd}. Position limit breach: ${hasPositionLimitBreach}.`,
+        position_size: riskAssessment.riskMultiplier, // Continuous multiplier
+        globalWeight,
+        aiRationale: `Continuous mathematical risk assessment. RiskState: ${riskAssessment.state}, Multiplier: ${riskAssessment.riskMultiplier.toFixed(4)}, GlobalWeight: ${globalWeight.toFixed(4)}. Drawdown: ${(riskAssessment.drawdown * 100).toFixed(2)}%, Loss Streak: ${riskAssessment.lossStreak}, Volatility: ${(riskAssessment.volatility * 100).toFixed(2)}%. Exposure: $${totalExposureUsd}. Position limit breach: ${hasPositionLimitBreach}.`,
       };
       const fallbackUsed = false;
       const apiErrorMessage = "";
 
       // HARD ENFORCEMENT OF LIMITS (Authoritative check)
-      if (hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD) {
+      if (hasPositionLimitBreach || totalExposureUsd > MAX_PORTFOLIO_USD || riskAssessment.state === "CRITICAL") {
         riskEvaluation.riskLevel = "HIGH";
         riskEvaluation.aiRationale =
-          "[SYSTEM OVERRIDE] Hard risk limits breached. " +
+          "[SYSTEM OVERRIDE] Hard risk limits breached / CRITICAL risk state. " +
           riskEvaluation.aiRationale;
       }
 
@@ -117,6 +118,15 @@ export class RiskGuardian {
         portfolioId,
         correlationId,
         "RiskGuardian",
+        {
+          risk_multiplier: riskEvaluation.position_size,
+          global_weight: riskEvaluation.globalWeight,
+          drawdown: riskAssessment.drawdown,
+          volatility: riskAssessment.volatility,
+          loss_streak: riskAssessment.lossStreak,
+          risk_state: riskAssessment.state,
+          correlation_spike: riskAssessment.correlationSpike,
+        }
       );
 
       const durationMs = Date.now() - startTimestamp.getTime();
@@ -135,6 +145,7 @@ export class RiskGuardian {
         portfolioId,
         riskLevel: riskEvaluation.riskLevel,
         correlationId,
+        rawOutput: riskEvaluation,
       });
 
       return {

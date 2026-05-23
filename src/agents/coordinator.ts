@@ -130,6 +130,8 @@ export class Coordinator {
       const qMeta = quantMemory.metadata || {};
       const quantConfidence = qMeta.confidence_score || 0.5;
       const strategyTag = qMeta.strategy_tag || "default";
+      const marketRegime = quantMemory.market_regime || "UNKNOWN";
+      const volatilityLevel = qMeta.volatility_level || "NORMAL";
 
       // 1.5 Fetch Best Strategy
       const strategy = await StrategyService.getBestStrategy(portfolioId);
@@ -139,7 +141,32 @@ export class Coordinator {
         CapitalAllocationService,
       } = require("../services/capitalAllocationService");
       const allocations =
-        await CapitalAllocationService.getAllocations(portfolioId);
+        await CapitalAllocationService.getContextualAllocations(portfolioId, marketRegime, volatilityLevel);
+
+      const { StrategyIntelligenceService } = require("../services/strategyIntelligenceService");
+      const intel = await StrategyIntelligenceService.getStrategyScore(portfolioId, marketRegime);
+
+      let strategyScore = intel.baseScore * 2 * intel.regimeScore * (1 - intel.edgeDecayPenalty);
+      if (strategyScore === 0) strategyScore = 1.0;
+
+      let activeAllocationPct = 1.0;
+      if (strategy && allocations.length > 0) {
+        const matchingAlloc = allocations.find((a: any) => a.strategy_id === strategy.id);
+        if (matchingAlloc) {
+          activeAllocationPct = Number(matchingAlloc.allocation_percentage) || 1.0;
+        }
+      }
+
+      const strategyWeight = strategyScore * activeAllocationPct;
+
+      // Fetch Recent Insights (Learning Loop)
+      let recentInsights: any[] = [];
+      try {
+        const { StrategyEvolutionService } = require("../services/strategyEvolutionService");
+        recentInsights = await StrategyEvolutionService.getRecentInsights(portfolioId, 5);
+      } catch (e) {
+        console.warn("[Coordinator] Failed to fetch recent strategy insights:", e);
+      }
 
       // 2. Aggregate Decision
       const prompt = `You are the Chief Investment Officer (Coordinator).
@@ -149,8 +176,19 @@ The QuantAgent provides a base confidence_score (0-1.0) and a strategyTag. Incor
 Active Strategy Profile Context:
 ${JSON.stringify(strategyContext, null, 2)}
 
-Current Strategy Allocations:
+Current Strategy Allocations (Regime-Adjusted):
 ${JSON.stringify(allocations, null, 2)}
+
+Strategy Intelligence Profile:
+- Base Score: ${intel.baseScore}
+- Regime Score: ${intel.regimeScore}
+- Edge Decay Penalty: ${intel.edgeDecayPenalty}
+- Math Strategy Score: ${strategyScore}
+- Active Strategy Weight: ${strategyWeight}
+
+Recent System Failure Insights & Learning Log:
+${JSON.stringify(recentInsights, null, 2)}
+Ensure you adapt your decision parameters to strictly avoid repeating these recent failures (e.g. reduce confidence, change bias, or hold if high risk / vol mismatch / whipsaw persists).
 
 1. Quant Analysis:
 ${JSON.stringify({ marketRegime: quantMemory.market_regime, rationale: quantMemory.ai_rationale, confidenceScore: quantConfidence, strategyTag }, null, 2)}
@@ -235,6 +273,9 @@ Format exactly as JSON:
         {
           confidence_score: aggregateDecision.confidenceScore,
           strategy_tag: aggregateDecision.strategyTag,
+          strategy_weight: strategyWeight,
+          risk_multiplier: riskMemory.metadata?.risk_multiplier || 1.0,
+          global_weight: riskMemory.metadata?.global_weight || 1.0,
         },
         strategy?.id,
       );
@@ -255,7 +296,12 @@ Format exactly as JSON:
       await EventDispatcher.emit(EventType.COORDINATOR_DECISION_COMPLETED, {
         portfolioId,
         correlationId,
-        decision: aggregateDecision,
+        decision: {
+          ...aggregateDecision,
+          strategyWeight,
+          riskMultiplier: riskMemory.metadata?.risk_multiplier || 1.0,
+          globalPortfolioWeight: riskMemory.metadata?.global_weight || 1.0,
+        },
         isBacktest,
       });
 
@@ -371,6 +417,15 @@ Format exactly as JSON:
       const allocations =
         await CapitalAllocationService.getAllocations(portfolioId);
 
+      // Fetch Recent Insights (Learning Loop)
+      let recentInsights: any[] = [];
+      try {
+        const { StrategyEvolutionService } = require("../services/strategyEvolutionService");
+        recentInsights = await StrategyEvolutionService.getRecentInsights(portfolioId, 5);
+      } catch (e) {
+        console.warn("[Coordinator] Failed to fetch recent strategy insights:", e);
+      }
+
       // 4. Aggregate Decision
       const prompt = `You are the Chief Investment Officer (Coordinator).
 Synthesize the analysis from your three specialized agents and produce a final aggregated trading decision.
@@ -380,6 +435,10 @@ ${JSON.stringify(strategyContext, null, 2)}
 
 Current Strategy Allocations:
 ${JSON.stringify(allocations, null, 2)}
+
+Recent System Failure Insights & Learning Log:
+${JSON.stringify(recentInsights, null, 2)}
+Ensure you adapt your decision parameters to strictly avoid repeating these recent failures (e.g. reduce confidence, change bias, or hold if high risk / vol mismatch / whipsaw persists).
 
 1. Quant Analysis:
 ${JSON.stringify(quantResult.rawOutput, null, 2)}

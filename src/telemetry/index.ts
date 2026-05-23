@@ -44,6 +44,37 @@ export class TelemetryServer {
 
     const correlationId = payload?.correlationId;
 
+    // Extract rich telemetry metadata
+    let reasoning = "";
+    let confidence = 0;
+    let metrics: any = {};
+
+    if (payload?.rawOutput) {
+      reasoning = payload.rawOutput.aiRationale || "";
+      confidence = payload.rawOutput.confidenceScore || 0;
+      metrics = {
+        marketRegime: payload.rawOutput.marketRegime,
+        volatilityLevel: payload.rawOutput.volatilityLevel,
+        strategyTag: payload.rawOutput.strategyTag,
+        riskLevel: payload.rawOutput.riskLevel,
+        marginRisk: payload.rawOutput.marginRisk,
+        position_size: payload.rawOutput.position_size,
+        sentiment: payload.rawOutput.sentiment,
+      };
+    } else if (payload?.decision) {
+      reasoning = payload.decision.rationale || "";
+      confidence = payload.decision.confidenceScore || 0;
+      metrics = {
+        action: payload.decision.action,
+        strategyTag: payload.decision.strategyTag,
+      };
+    } else if (payload?.action) {
+      metrics = {
+        action: payload.action,
+        orderId: payload.orderId,
+      };
+    }
+
     // Create the message to broadcast
     const messageObj = {
       correlationId: correlationId || "unknown",
@@ -51,7 +82,10 @@ export class TelemetryServer {
       status: status,
       timestamp: new Date().toISOString(),
       eventType: eventType,
-      summary: this.extractSummary(eventType, payload)
+      summary: this.extractSummary(eventType, payload),
+      reasoning: reasoning || payload?.message || "",
+      confidence: confidence,
+      metrics: metrics,
     };
 
     const messageString = JSON.stringify(messageObj);
