@@ -252,7 +252,7 @@ export function AuditTrailTab() {
         </div>
 
         {/* PANEL 3: Immutable Audit Log */}
-        <div className="lg:col-span-3 bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 flex flex-col h-[750px] overflow-hidden">
+        <div className="lg:col-span-3 bg-[#050505] border border-[#1a1a1a] rounded-sm p-6 flex flex-col h-187.5 overflow-hidden">
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 mb-4 border-b border-[#1a1a1a] pb-4">
             <div className="flex items-center gap-2">
               <History className="w-5 h-5 text-gray-400" />

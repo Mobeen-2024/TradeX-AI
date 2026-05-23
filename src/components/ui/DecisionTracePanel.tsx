@@ -151,7 +151,7 @@ export const DecisionTracePanel: React.FC = () => {
                             </h3>
                             <div className="h-2 w-full bg-white/10 rounded-full mt-2 overflow-hidden shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
                               <div 
-                                className="h-full bg-gradient-to-r from-blue-500 to-[#00f0ff] animate-pulse"
+                                className="h-full bg-linear-to-r from-blue-500 to-[#00f0ff] animate-pulse"
                                 style={{ width: `${(currentTrace.coordinator?.metadata?.confidence || currentTrace.quant?.metadata?.confidence || 0) * 100}%` }}
                               />
                             </div>

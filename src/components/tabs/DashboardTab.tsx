@@ -239,7 +239,7 @@ export function DashboardTab() {
 
         <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-7 gap-4">
           {/* Layer 1 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#00f0ff]">
@@ -268,7 +268,7 @@ export function DashboardTab() {
           </div>
 
           {/* Layer 2 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#00f0ff]">
@@ -297,7 +297,7 @@ export function DashboardTab() {
           </div>
 
           {/* Layer 3 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#00f0ff]">
@@ -326,7 +326,7 @@ export function DashboardTab() {
           </div>
 
           {/* Layer 4 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#facc15]">
@@ -355,7 +355,7 @@ export function DashboardTab() {
           </div>
 
           {/* Layer 5 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#a855f7]">
@@ -384,7 +384,7 @@ export function DashboardTab() {
           </div>
 
           {/* Layer 6 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#ff00f0]">
@@ -413,7 +413,7 @@ export function DashboardTab() {
           </div>
 
           {/* Layer 7 */}
-          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-[140px]">
+          <div className="bg-[#0a0a0a] border border-[#1a1a1a] p-3 rounded-sm flex flex-col justify-between min-h-35">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-bold text-[#e11d48]">
@@ -444,7 +444,7 @@ export function DashboardTab() {
       </div>
 
       {/* Middle Row: PORTFOLIO | LIVE CHART | AI PANEL */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[350px]">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-87.5">
         {/* Portfolio (1 col) */}
         <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col justify-between">
           <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 mb-4">
@@ -518,7 +518,7 @@ export function DashboardTab() {
 
         {/* Live Chart (2 col) */}
         <div className="lg:col-span-2 bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 flex flex-col relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:20px_20px] opacity-10"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] bg-size-[20px_20px] opacity-10"></div>
           <div className="relative z-10 flex justify-between items-center mb-4">
             <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-white" />
@@ -544,7 +544,7 @@ export function DashboardTab() {
         </div>
 
         {/* Insights Panel (1 col) */}
-        <div className="lg:col-span-1 flex flex-col h-full max-h-[350px] overflow-y-auto no-scrollbar">
+        <div className="lg:col-span-1 flex flex-col h-full max-h-87.5 overflow-y-auto no-scrollbar">
           <InsightsPanel />
         </div>
       </div>
@@ -643,7 +643,7 @@ export function DashboardTab() {
         </div>
 
         {/* Agent Activity Feed -> Recent Trades Performance */}
-        <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col flex-1 h-[200px] overflow-hidden">
+        <div className="lg:col-span-1 bg-[#050505] border border-[#1a1a1a] rounded-sm p-4 flex flex-col flex-1 h-50 overflow-hidden">
           <h3 className="text-gray-400 font-bold text-[10px] uppercase tracking-widest flex items-center gap-2 mb-4 shrink-0 border-b border-[#1a1a1a] pb-3">
             <PlayCircle className="w-4 h-4 text-[#ff00f0]" />
             Recent Trade Performance

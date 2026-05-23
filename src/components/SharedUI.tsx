@@ -17,7 +17,7 @@ export function TelemetryBadge({ icon, label, value, bg, border }: { icon: React
 export function ActionChip({ icon, label }: { icon: React.ReactNode, label: string }) {
   return (
     <button className="relative group overflow-hidden px-4 py-2 rounded-full bg-[#0d0d0d] border border-[#222] hover:border-[#ff4500]/50 flex items-center gap-2 text-[13px] text-gray-400 hover:text-[#ff4500] transition-all cursor-pointer">
-      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#ff4500]/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+      <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-[#ff4500]/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
       <div className="absolute -top-4 -right-4 w-8 h-8 bg-[#ff4500]/10 rounded-full blur-md group-hover:bg-[#ff4500]/20 transition-colors"></div>
       <span className="relative z-10">{label}</span>
       <span className="relative z-10 opacity-70 ml-1">{icon}</span>
@@ -38,7 +38,7 @@ export function FeatureCard({ icon, title, desc, badgeText, status }: { icon: Re
   return (
     <div className="relative group overflow-hidden bg-[#0d0d0d] rounded-2xl border border-[#1a1a1a] p-5 hover:border-[#333] transition-all duration-300 cursor-pointer flex flex-col justify-between">
       {/* Subtle glow on top edge */}
-      <div className="absolute top-0 right-4 w-24 h-[1px] bg-gradient-to-r from-transparent via-[#ff4500]/80 to-transparent"></div>
+      <div className="absolute top-0 right-4 w-24 h-px bg-linear-to-r from-transparent via-[#ff4500]/80 to-transparent"></div>
       
       {/* subtle radial glow top right */}
       <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#ff4500]/10 rounded-full blur-2xl group-hover:bg-[#ff4500]/20 transition-colors duration-500"></div>
@@ -78,7 +78,7 @@ export function ArchNode({ icon, title, desc, color, active }: { icon: React.Rea
   const theme = colorMap[color];
 
   return (
-    <div className={`flex flex-col items-center w-[180px] p-4 rounded-2xl bg-[#0f0f0f] border ${active ? 'border-gray-700' : 'border-[#1a1a1a]'} hover:border-gray-500 transition-colors z-10`}>
+    <div className={`flex flex-col items-center w-45 p-4 rounded-2xl bg-[#0f0f0f] border ${active ? 'border-gray-700' : 'border-[#1a1a1a]'} hover:border-gray-500 transition-colors z-10`}>
       <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-3 border ${theme.bg} ${theme.border} ${theme.shadow}`}>
         <span className={theme.text}>{icon}</span>
       </div>
@@ -90,8 +90,8 @@ export function ArchNode({ icon, title, desc, color, active }: { icon: React.Rea
 
 export function ArchConnector() {
   return (
-    <div className="flex-1 h-[2px] bg-gradient-to-r from-gray-800 via-gray-600 to-gray-800 w-full min-w-[20px] md:min-w-[40px] relative">
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ff4500]/30 to-transparent w-full h-full"></div>
+    <div className="flex-1 h-0.5 bg-linear-to-r from-gray-800 via-gray-600 to-gray-800 w-full min-w-[20px] md:min-w-[40px] relative">
+      <div className="absolute inset-0 bg-linear-to-r from-transparent via-[#ff4500]/30 to-transparent w-full h-full"></div>
       <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 rotate-45 border-t-2 border-r-2 border-gray-500"></div>
     </div>
   );

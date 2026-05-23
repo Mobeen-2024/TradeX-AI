@@ -66,7 +66,7 @@ export function MarketResearchTab() {
         <div className="xl:col-span-2 flex flex-col gap-6">
           {/* Intelligence Banner */}
           <div className="bg-[#050505] border border-[#1a1a1a] rounded-sm p-5 relative overflow-hidden flex items-start gap-5">
-            <div className="w-12 h-12 bg-[#0ea5e9]/10 rounded border border-[#0ea5e9]/20 flex items-center justify-center flex-shrink-0">
+            <div className="w-12 h-12 bg-[#0ea5e9]/10 rounded border border-[#0ea5e9]/20 flex items-center justify-center shrink-0">
               <Globe className="w-6 h-6 text-[#0ea5e9]" />
             </div>
             <div>

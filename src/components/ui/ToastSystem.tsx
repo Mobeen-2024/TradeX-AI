@@ -54,14 +54,14 @@ export function ToastSystem() {
               exit={{ opacity: 0, scale: 0.85, y: -20, transition: { duration: 0.2 } }}
               className={`p-4 border ${styles.border} ${styles.bg} rounded backdrop-blur-md shadow-2xl flex items-start gap-3 pointer-events-auto w-full`}
             >
-              <div className="flex-shrink-0 mt-0.5">{styles.icon}</div>
+              <div className="shrink-0 mt-0.5">{styles.icon}</div>
               <div className="flex-1 text-xs font-mono font-medium leading-relaxed uppercase tracking-wider text-white">
                 {toast.message}
               </div>
               <button
                 id={`dismiss-toast-${toast.id}`}
                 onClick={() => removeToast(toast.id)}
-                className="text-gray-400 hover:text-white transition-colors cursor-pointer flex-shrink-0"
+                className="text-gray-400 hover:text-white transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>

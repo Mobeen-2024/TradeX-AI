@@ -133,7 +133,7 @@ export function MobileApp() {
                     <span className="text-[#facc15] text-sm font-mono font-bold">64%</span>
                  </div>
                  <div className="h-2 bg-[#111] rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-[#facc15] to-[#ff4500]" style={{ width: '64%' }}></div>
+                    <div className="h-full bg-linear-to-r from-[#facc15] to-[#ff4500]" style={{ width: '64%' }}></div>
                  </div>
                  <p className="text-[10px] text-gray-400 font-mono mt-3">High exposure detected. Consider reducing leverage on tech sector assets.</p>
               </div>

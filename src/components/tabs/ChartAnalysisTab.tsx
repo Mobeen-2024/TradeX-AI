@@ -274,7 +274,7 @@ export function ChartAnalysisTab() {
       candlestickSeriesRef.current.setData(formattedData as any);
 
       const computedSma = calculateSMA(formattedData, 20);
-      smaSeriesRef.current.setData(computedSma);
+      smaSeriesRef.current.setData(computedSma as any);
 
       if (formattedData.length > 0) {
         setLastCandle(formattedData[formattedData.length - 1]);
@@ -321,7 +321,7 @@ export function ChartAnalysisTab() {
 
     const classNameSmaUpdate = (computedSma: any[]) => {
       if (smaSeriesRef.current) {
-        smaSeriesRef.current.setData(computedSma);
+        smaSeriesRef.current.setData(computedSma as any);
       }
     };
 
@@ -379,9 +379,9 @@ export function ChartAnalysisTab() {
         </div>
       </div>
 
-      <div className="flex-1 flex gap-4 min-h-[600px]">
+      <div className="flex-1 flex gap-4 min-h-150">
         {/* Toolbar */}
-        <div className="w-12 flex-shrink-0 flex flex-col gap-2 bg-[#050505] border border-[#1a1a1a] rounded-sm py-2 items-center">
+        <div className="w-12 shrink-0 flex flex-col gap-2 bg-[#050505] border border-[#1a1a1a] rounded-sm py-2 items-center">
           <button
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#1a1a1a] text-gray-500 hover:text-white transition-colors cursor-pointer"
             title="Select"
@@ -394,21 +394,21 @@ export function ChartAnalysisTab() {
           >
             <Crosshair className="w-4 h-4" />
           </button>
-          <div className="w-6 h-[1px] bg-[#1a1a1a] my-1"></div>
+          <div className="w-6 h-px bg-[#1a1a1a] my-1"></div>
           <button
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#1a1a1a] text-gray-500 hover:text-white transition-colors cursor-pointer"
             title="Trend Line"
           >
-            <div className="w-4 h-[2px] bg-current rotate-45"></div>
+            <div className="w-4 h-0.5 bg-current rotate-45"></div>
           </button>
           <button
             className="w-8 h-8 flex items-center justify-center rounded hover:bg-[#1a1a1a] text-gray-500 hover:text-white transition-colors cursor-pointer"
             title="Fibonacci"
           >
-            <div className="flex flex-col gap-[2px] w-4">
-              <div className="w-full h-[1px] bg-current"></div>
-              <div className="w-full h-[1px] bg-current"></div>
-              <div className="w-full h-[1px] bg-current"></div>
+            <div className="flex flex-col gap-0.5 w-4">
+              <div className="w-full h-px bg-current"></div>
+              <div className="w-full h-px bg-current"></div>
+              <div className="w-full h-px bg-current"></div>
             </div>
           </button>
           <button
@@ -444,7 +444,7 @@ export function ChartAnalysisTab() {
                 })}
               </div>
 
-              <div className="w-[1px] h-4 bg-[#222]"></div>
+              <div className="w-px h-4 bg-[#222]"></div>
 
               {/* 5. Timeframe Selector (Highlighted active button style) */}
               <div className="flex bg-black/60 rounded border border-white/5 p-0.5">
@@ -466,7 +466,7 @@ export function ChartAnalysisTab() {
                 })}
               </div>
 
-              <div className="w-[1px] h-4 bg-[#222]"></div>
+              <div className="w-px h-4 bg-[#222]"></div>
 
               {/* Dynamic O/H/L/C parameters display */}
               <div className="flex gap-4 text-[10px] items-center shrink-0">

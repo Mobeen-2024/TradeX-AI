@@ -210,7 +210,7 @@ const PipelineCard: React.FC<{ run: PipelineRun }> = ({ run }) => {
       {/* Stages Pipeline */}
       <div className="relative">
         {/* Connecting line */}
-        <div className="absolute top-5 left-6 right-6 h-[2px] bg-[#1a1a1a] -z-10 hidden md:block"></div>
+        <div className="absolute top-5 left-6 right-6 h-0.5 bg-[#1a1a1a] -z-10 hidden md:block"></div>
         <div className="flex flex-col md:flex-row justify-between gap-6 md:gap-4 relative z-10">
           {STAGES.map((stageName, index) => {
             const stage = run.stages[stageName] || { status: "pending" };

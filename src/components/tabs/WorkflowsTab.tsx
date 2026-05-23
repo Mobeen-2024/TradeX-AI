@@ -97,7 +97,7 @@ export function WorkflowsTab() {
                       key={s.portfolioId}
                       className={`bg-[#050505] border ${isActive ? "border-[#ff00f0]/30 hover:border-[#ff00f0]/50" : "border-[#1a1a1a] opacity-60 grayscale"} rounded-sm p-6 cursor-pointer transition-all group relative overflow-hidden flex flex-col`}
                     >
-                      <div className="absolute top-0 right-0 w-32 h-full bg-gradient-to-l from-[#ff00f0]/5 to-transparent pointer-events-none"></div>
+                      <div className="absolute top-0 right-0 w-32 h-full bg-linear-to-l from-[#ff00f0]/5 to-transparent pointer-events-none"></div>
                       <div className="flex justify-between items-start mb-4">
                         <div>
                           <h3
@@ -152,7 +152,7 @@ export function WorkflowsTab() {
                         </div>
                         <div className="h-2 bg-[#111] rounded-full overflow-hidden border border-[#222]">
                           <div
-                            className="h-full bg-gradient-to-r from-[#ff00f0] to-[#00f0ff]"
+                            className="h-full bg-linear-to-r from-[#ff00f0] to-[#00f0ff]"
                             style={{ width: `${s.baseScore * 100}%` }}
                           ></div>
                         </div>

@@ -35,7 +35,7 @@ export function AuthFlow({ onAuthenticate }: { onAuthenticate: () => void }) {
           className="bg-[#050505]/70 backdrop-blur-2xl border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden border-t-white/20"
         >
           {/* Subtle top glow */}
-          <div className="absolute top-0 left-1/4 right-1/4 h-[1px] bg-gradient-to-r from-transparent via-[#0ea5e9]/50 to-transparent"></div>
+          <div className="absolute top-0 left-1/4 right-1/4 h-px bg-linear-to-r from-transparent via-[#0ea5e9]/50 to-transparent"></div>
           
           <AnimatePresence mode="wait" initial={false}>
             {step === 'login' && <LoginForm setStep={setStep} onNext={() => setStep('2fa')} onAuthenticate={onAuthenticate} key="login" />}
@@ -101,7 +101,7 @@ function LoginForm({ setStep, onNext, onAuthenticate }: { setStep: (s: AuthStep)
         <button onClick={onNext} className="flex-1 bg-white hover:bg-gray-200 text-black font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer">
           Initialize <ArrowRight className="w-4 h-4" />
         </button>
-        <button onClick={onAuthenticate} className="w-12 h-12 border border-[#1a1a1a] bg-black/40 hover:bg-black/80 rounded-xl flex items-center justify-center text-[#39ff14] hover:border-[#39ff14]/50 transition-all flex-shrink-0 cursor-pointer shadow-[0_0_15px_rgba(57,255,20,0.15)] animate-[pulse_3s_ease-in-out_infinite]" title="Biometric Bypass">
+        <button onClick={onAuthenticate} className="w-12 h-12 border border-[#1a1a1a] bg-black/40 hover:bg-black/80 rounded-xl flex items-center justify-center text-[#39ff14] hover:border-[#39ff14]/50 transition-all shrink-0 cursor-pointer shadow-[0_0_15px_rgba(57,255,20,0.15)] animate-[pulse_3s_ease-in-out_infinite]" title="Biometric Bypass">
           <Fingerprint className="w-5 h-5" />
         </button>
       </div>
@@ -109,7 +109,7 @@ function LoginForm({ setStep, onNext, onAuthenticate }: { setStep: (s: AuthStep)
       <div className="flex flex-col gap-3 mt-2">
         <button
           onClick={onAuthenticate}
-          className="w-full bg-gradient-to-r from-[#0ea5e9]/10 to-[#39ff14]/10 hover:from-[#0ea5e9]/20 hover:to-[#39ff14]/20 text-[#0ea5e9] hover:text-[#39ff14] border border-white/5 hover:border-[#39ff14]/40 font-mono text-[10px] uppercase tracking-widest py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(14,165,233,0.03)]"
+          className="w-full bg-linear-to-r from-[#0ea5e9]/10 to-[#39ff14]/10 hover:from-[#0ea5e9]/20 hover:to-[#39ff14]/20 text-[#0ea5e9] hover:text-[#39ff14] border border-white/5 hover:border-[#39ff14]/40 font-mono text-[10px] uppercase tracking-widest py-3 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(14,165,233,0.03)]"
         >
           <ShieldCheck className="w-3.5 h-3.5" /> [Dev Mode] Quick Bypass
         </button>
