@@ -112,6 +112,12 @@ export function Sidebar({
           <ul className="space-y-0.5">
             <NavItem
               icon={<Wallet className="w-3.5 h-3.5" />}
+              label="Portfolio & Assets"
+              active={activeTab === "Portfolio & Assets"}
+              onClick={() => setActiveTab("Portfolio & Assets")}
+            />
+            <NavItem
+              icon={<Target className="w-3.5 h-3.5" />}
               label="Alpha Generation"
               active={activeTab === "Alpha Generation"}
               onClick={() => setActiveTab("Alpha Generation")}

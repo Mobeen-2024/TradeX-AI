@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "motion/react";
 import {
   Brain,
@@ -102,6 +102,132 @@ function TickerData() {
         </div>
       </div>
     </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Real-Time P&L Sparkline — driven by the live Binance WebSocket price stream
+// ─────────────────────────────────────────────────────────────────────────────
+function PnlSparkline() {
+  const { ticker } = useMarketStore();
+  const stream = ticker.dataStream; // rolling 50-point price array
+
+  const { points, isUp, firstPrice, lastPrice, pctChange } = useMemo(() => {
+    if (stream.length < 2)
+      return { points: "", isUp: true, firstPrice: 0, lastPrice: 0, pctChange: 0 };
+
+    const W = 300;
+    const H = 64;
+    const pad = 4;
+    const minP = Math.min(...stream);
+    const maxP = Math.max(...stream);
+    const range = maxP - minP || 1;
+
+    const pts = stream.map((p, i) => {
+      const x = pad + (i / (stream.length - 1)) * (W - pad * 2);
+      const y = H - pad - ((p - minP) / range) * (H - pad * 2);
+      return `${x.toFixed(2)},${y.toFixed(2)}`;
+    });
+
+    const first = stream[0];
+    const last = stream[stream.length - 1];
+    const pct = ((last - first) / first) * 100;
+
+    return {
+      points: pts.join(" "),
+      isUp: last >= first,
+      firstPrice: first,
+      lastPrice: last,
+      pctChange: pct,
+    };
+  }, [stream]);
+
+  const color = isUp ? "#39ff14" : "#ff4500";
+  const gradId = `pnl-grad-${isUp ? "up" : "dn"}`;
+
+  // Build closed fill path (line + bottom-right + bottom-left)
+  const fillPath = points
+    ? `M ${points.split(" ")[0]} L ${points.split(" ").slice(1).join(" L ")} L 296,68 L 4,68 Z`
+    : "";
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Stats row */}
+      <div className="flex justify-between items-center mb-3">
+        <div className="flex flex-col">
+          <span className="text-[9px] text-gray-500 uppercase tracking-widest">Live Price</span>
+          <span className="text-xl font-sans font-bold text-white">
+            ${lastPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+        <div className="flex flex-col items-end">
+          <span className="text-[9px] text-gray-500 uppercase tracking-widest">Session Δ</span>
+          <span className={`text-sm font-bold font-sans ${isUp ? "text-[#39ff14]" : "text-[#ff4500]"}`}>
+            {isUp ? "+" : ""}{pctChange.toFixed(3)}%
+          </span>
+        </div>
+        <div className="flex flex-col items-end">
+          <span className="text-[9px] text-gray-500 uppercase tracking-widest">Open</span>
+          <span className="text-sm font-mono text-gray-400">
+            ${firstPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+
+      {/* SVG Sparkline */}
+      <div className="flex-1 relative">
+        <svg
+          viewBox="0 0 300 68"
+          className="w-full h-full"
+          preserveAspectRatio="none"
+        >
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Fill area */}
+          {fillPath && (
+            <path d={fillPath} fill={`url(#${gradId})`} />
+          )}
+
+          {/* Sparkline stroke */}
+          {points && (
+            <polyline
+              points={points}
+              fill="none"
+              stroke={color}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Live dot at the end */}
+          {points && (() => {
+            const last = points.split(" ").at(-1)!;
+            const [cx, cy] = last.split(",").map(Number);
+            return (
+              <>
+                <circle cx={cx} cy={cy} r="3.5" fill={color} opacity="0.8" />
+                <circle cx={cx} cy={cy} r="6" fill={color} opacity="0.2">
+                  <animate attributeName="r" values="4;8;4" dur="1.5s" repeatCount="indefinite" />
+                  <animate attributeName="opacity" values="0.3;0;0.3" dur="1.5s" repeatCount="indefinite" />
+                </circle>
+              </>
+            );
+          })()}
+        </svg>
+
+        {/* Live badge */}
+        <div className="absolute top-1 right-1 flex items-center gap-1 bg-black/60 border border-[#1a1a1a] px-1.5 py-0.5 rounded">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#39ff14] animate-pulse" />
+          <span className="text-[8px] font-mono uppercase tracking-widest text-gray-400">Live WS</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -537,10 +663,8 @@ export function DashboardTab() {
             </div>
           </div>
 
-          <div className="flex-1 w-full bg-[#0a0a0a] border border-[#111] rounded-sm relative flex items-center justify-center p-4">
-            <span className="text-gray-500 text-xs font-mono">
-              Live chart data streamed via WebSocket...
-            </span>
+          <div className="flex-1 w-full bg-[#0a0a0a] border border-[#111] rounded-sm relative p-4">
+            <PnlSparkline />
           </div>
         </div>
 

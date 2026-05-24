@@ -10,6 +10,7 @@ import { ChartAnalysisTab } from "./tabs/ChartAnalysisTab";
 import { HistoryTab } from "./tabs/HistoryTab";
 import { LibraryTab } from "./tabs/LibraryTab";
 import { DashboardTab } from "./tabs/DashboardTab";
+import { PortfolioTab } from "./tabs/PortfolioTab";
 import { RiskCenterTab } from "./tabs/RiskCenterTab";
 import { SimulationEngineTab } from "./tabs/SimulationEngineTab";
 import { SystemTelemetryTab } from "./tabs/SystemTelemetryTab";
@@ -52,6 +53,8 @@ export function MainContent({ activeTab }: { activeTab: TabType }) {
               <DashboardTab />
             ) : activeTab === "Market Intelligence" ? (
               <LiveMarketsTab />
+            ) : activeTab === "Portfolio & Assets" ? (
+              <PortfolioTab />
             ) : activeTab === "Multi-Agent Protocol" ? (
               <AIAgentsTab />
             ) : activeTab === "Strategy Engine" ? (

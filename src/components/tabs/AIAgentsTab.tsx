@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Cpu,
@@ -50,8 +50,27 @@ const AGENT_DEFINITIONS = [
 
 export function AIAgentsTab() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>("Coordinator");
-  const { agentStates, telemetryFeed, setActiveCorrelationId } =
+  const { agentStates, updateAgentState, telemetryFeed, setActiveCorrelationId } =
     useSystemStore();
+
+  useEffect(() => {
+    // Fetch initial agent status from the live API endpoint
+    let isMounted = true;
+    fetch("/api/agents")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.agents) {
+          Object.entries(data.agents).forEach(([agentId, state]) => {
+            updateAgentState(agentId, state as any);
+          });
+        }
+      })
+      .catch((err) => console.warn("Failed to fetch initial agent states:", err));
+      
+    return () => {
+      isMounted = false;
+    };
+  }, [updateAgentState]);
 
   const isAgentStatesAllIdle = Object.values(agentStates).length === 0 || Object.values(agentStates).every((state) => state.status === "idle" || !state.status);
   const isInitializing = isAgentStatesAllIdle && telemetryFeed.length === 0;

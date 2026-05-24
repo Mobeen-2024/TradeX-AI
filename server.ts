@@ -26,6 +26,7 @@ import { eventsRouter } from "./src/api/routes/events";
 import { overridesRouter } from "./src/api/routes/overrides";
 import { systemRouter } from "./src/api/routes/system";
 import { backtestRouter } from "./src/api/routes/backtest";
+import { agentsRouter } from "./src/api/routes/agents";
 
 dotenv.config();
 
@@ -144,6 +145,7 @@ async function startServer() {
   apiRouter.use("/overrides", overridesRouter);
   apiRouter.use("/system", systemRouter);
   apiRouter.use("/backtest", backtestRouter);
+  apiRouter.use("/agents", agentsRouter);
 
   apiRouter.get("/health", async (req, res) => {
     try {

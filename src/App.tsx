@@ -32,7 +32,8 @@ export type TabType =
   | "System Telemetry"
   | "Audit & Governance"
   | "System Configuration"
-  | "Knowledge Graph";
+  | "Knowledge Graph"
+  | "Portfolio & Assets";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("PnL Dashboard");

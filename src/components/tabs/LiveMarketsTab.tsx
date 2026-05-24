@@ -1070,9 +1070,40 @@ function MarketChart({
                   timeStart: srTimeStart,
                   timeEnd: srTimeEnd,
                 };
-              }
 
-              // Removed adaptive prediction mock lines for true determinism
+                // AI Prediction and Confidence Cone
+                const predictionTimeStart = rtTime;
+                const predictionTimeEnd = srTimeEnd;
+
+                const predictionStartPrice = rtClose;
+                const predictionEndPrice = rtClose + (isUptrend ? (maxHigh - rtClose) * 0.5 : (minLow - rtClose) * 0.5);
+                const volatility = Math.abs(maxHigh - minLow) * 0.3;
+
+                predictionSeries.setData([
+                  { time: predictionTimeStart as any, value: predictionStartPrice },
+                  { time: predictionTimeEnd as any, value: predictionEndPrice },
+                ]);
+
+                coneUpperSeries.setData([
+                  { time: predictionTimeStart as any, value: predictionStartPrice },
+                  { time: predictionTimeEnd as any, value: predictionEndPrice + volatility },
+                ]);
+
+                coneLowerSeries.setData([
+                  { time: predictionTimeStart as any, value: predictionStartPrice },
+                  { time: predictionTimeEnd as any, value: predictionEndPrice - volatility },
+                ]);
+
+                altTargetSeries.setData([
+                  { time: predictionTimeStart as any, value: predictionStartPrice },
+                  { time: predictionTimeEnd as any, value: predictionEndPrice + (isUptrend ? volatility * 1.5 : -volatility * 1.5) },
+                ]);
+
+                highRiskSeries.setData([
+                  { time: predictionTimeStart as any, value: predictionStartPrice },
+                  { time: predictionTimeEnd as any, value: predictionEndPrice - (isUptrend ? volatility * 1.2 : -volatility * 1.2) },
+                ]);
+              }
 
               tickCount++;
             } catch (e) {
