@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "motion/react";
 import {
   Shield,
@@ -15,8 +15,11 @@ import {
   Terminal,
   Flame,
   Ban,
+  Loader2,
 } from "lucide-react";
 import { useSystemStore } from "../../store/systemStore";
+import { useToastStore } from "../../store/toastStore";
+import { authFetch } from "../../lib/authFetch";
 import { Skeleton } from "../ui/Skeleton";
 
 export function RiskCenterTab() {
@@ -28,12 +31,17 @@ export function RiskCenterTab() {
     systemInsights,
   } = useSystemStore();
 
+  const { addToast } = useToastStore();
+
   const activeRiskInsights = systemInsights.filter(
     (i) => i.affectedComponent === "RISK",
   );
 
   const [stressLevel, setStressLevel] = useState(68);
   const [loading, setLoading] = useState(false);
+  const [killSwitchLoading, setKillSwitchLoading] = useState(false);
+  const [lockdownLoading, setLockdownLoading] = useState(false);
+  const [liquidateLoading, setLiquidateLoading] = useState(false);
   const [positions, setPositions] = useState<any[]>([]);
   const [positionsLoading, setPositionsLoading] = useState(false);
 
@@ -78,17 +86,66 @@ export function RiskCenterTab() {
     if (!portfolio) return;
     setLoading(true);
     try {
-      await fetch("/api/intelligence/risk", {
+      await authFetch("/api/intelligence/risk", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ portfolioId: portfolio.id }),
       });
-      // The store will pick up telemetry updates via websocket
-    } catch (e) {
-      console.error(e);
+      addToast("info", "Risk check dispatched. Telemetry will update momentarily.");
+    } catch (e: any) {
+      addToast("error", `Risk check failed: ${e.message}`);
     } finally {
       setLoading(false);
     }
+  };
+
+  // FIX #8: Wire Kill Switch — disables trading via portfolio settings
+  const handleKillSwitch = async () => {
+    if (!portfolio || killSwitchLoading) return;
+    setKillSwitchLoading(true);
+    try {
+      await authFetch(`/api/portfolio/${portfolio.id}/settings`, {
+        method: "POST",
+        body: JSON.stringify({
+          is_trading_enabled: false,
+          emergency_halt: true,
+        }),
+      });
+      addToast("warning", "Kill Switch activated — all trading halted.", 8000);
+    } catch (e: any) {
+      addToast("error", `Kill Switch failed: ${e.message}`);
+    } finally {
+      setKillSwitchLoading(false);
+    }
+  };
+
+  // FIX #8: Wire Risk Lockdown — switches to SIMULATION mode
+  const handleRiskLockdown = async () => {
+    if (!portfolio || lockdownLoading) return;
+    setLockdownLoading(true);
+    try {
+      await authFetch(`/api/overrides/portfolio/${portfolio.id}/mode`, {
+        method: "PUT",
+        body: JSON.stringify({ mode: "SIMULATION" }),
+      });
+      addToast("warning", "Risk Lockdown: System switched to Simulation mode.", 6000);
+    } catch (e: any) {
+      addToast("error", `Risk Lockdown failed: ${e.message}`);
+    } finally {
+      setLockdownLoading(false);
+    }
+  };
+
+  // FIX #8 / Liquidate All — reserved; emits a warning toast since liquidation
+  // requires broker integration not yet implemented.
+  const handleLiquidateAll = async () => {
+    if (!portfolio || liquidateLoading) return;
+    setLiquidateLoading(true);
+    addToast(
+      "error",
+      "Liquidate All requires broker integration. Contact your administrator.",
+      6000,
+    );
+    setLiquidateLoading(false);
   };
 
   return (
@@ -129,7 +186,12 @@ export function RiskCenterTab() {
             <Activity className="w-3.5 h-3.5" />
             {loading ? "Analyzing..." : "Run Risk Check"}
           </button>
-          <button className="flex items-center gap-2 bg-[#ff4500]/10 border border-[#ff4500]/30 hover:bg-[#ff4500]/20 text-[#ff4500] px-4 py-2 rounded-sm text-xs font-bold transition-colors shadow-[0_0_15px_rgba(255,69,0,0.15)] uppercase tracking-widest">
+          {/* FIX #8: Liquidate All now has a handler */}
+          <button
+            onClick={handleLiquidateAll}
+            disabled={liquidateLoading}
+            className="flex items-center gap-2 bg-[#ff4500]/10 border border-[#ff4500]/30 hover:bg-[#ff4500]/20 text-[#ff4500] px-4 py-2 rounded-sm text-xs font-bold transition-colors shadow-[0_0_15px_rgba(255,69,0,0.15)] uppercase tracking-widest disabled:opacity-50"
+          >
             <Lock className="w-3.5 h-3.5" />
             Liquidate All
           </button>
@@ -425,32 +487,48 @@ export function RiskCenterTab() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-10">
-          {/* Kill Switch */}
-          <button className="group bg-black border border-[#ff4500]/40 hover:border-[#ff4500] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#ff4500]/5 relative overflow-hidden">
+          {/* FIX #8: Kill Switch is now wired with loading state */}
+          <button
+            onClick={handleKillSwitch}
+            disabled={killSwitchLoading}
+            className="group bg-black border border-[#ff4500]/40 hover:border-[#ff4500] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#ff4500]/5 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <div className="w-12 h-12 rounded-full border-2 border-[#ff4500]/50 group-hover:bg-[#ff4500]/20 flex items-center justify-center transition-all bg-[#111]">
-              <Power className="w-5 h-5 text-[#ff4500]" />
+              {killSwitchLoading ? (
+                <Loader2 className="w-5 h-5 text-[#ff4500] animate-spin" />
+              ) : (
+                <Power className="w-5 h-5 text-[#ff4500]" />
+              )}
             </div>
             <div className="text-center">
               <div className="text-white font-bold uppercase tracking-widest text-sm mb-1">
                 Kill Switch
               </div>
               <div className="text-[#ff4500] text-[10px] uppercase tracking-widest opacity-80">
-                Stop All Trading
+                {killSwitchLoading ? "Halting..." : "Stop All Trading"}
               </div>
             </div>
           </button>
 
-          {/* Risk Lockdown */}
-          <button className="group bg-black border border-[#facc15]/40 hover:border-[#facc15] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#facc15]/5 relative overflow-hidden">
+          {/* FIX #8: Risk Lockdown is now wired with loading state */}
+          <button
+            onClick={handleRiskLockdown}
+            disabled={lockdownLoading}
+            className="group bg-black border border-[#facc15]/40 hover:border-[#facc15] rounded p-4 flex flex-col items-center justify-center gap-4 transition-all hover:bg-[#facc15]/5 relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <div className="w-12 h-12 rounded-full border-2 border-[#facc15]/50 group-hover:bg-[#facc15]/20 flex items-center justify-center transition-all bg-[#111]">
-              <Ban className="w-5 h-5 text-[#facc15]" />
+              {lockdownLoading ? (
+                <Loader2 className="w-5 h-5 text-[#facc15] animate-spin" />
+              ) : (
+                <Ban className="w-5 h-5 text-[#facc15]" />
+              )}
             </div>
             <div className="text-center">
               <div className="text-white font-bold uppercase tracking-widest text-sm mb-1">
                 Risk Lockdown
               </div>
               <div className="text-[#facc15] text-[10px] uppercase tracking-widest opacity-80">
-                Close Open Positions
+                {lockdownLoading ? "Switching..." : "Switch to Simulation"}
               </div>
             </div>
           </button>

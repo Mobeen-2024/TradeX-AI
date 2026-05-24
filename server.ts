@@ -10,6 +10,9 @@ import { QuantWorker } from "./src/workers/quantWorker";
 import { RiskWorker } from "./src/workers/riskWorker";
 import { NewsWorker } from "./src/workers/newsWorker";
 import { EventRetryWorker } from "./src/workers/eventRetryWorker";
+import { MetricsWorker } from "./src/workers/metricsWorker";
+import { StrategyEvolutionWorker } from "./src/workers/strategyEvolutionWorker";
+import { AllocationWorker } from "./src/workers/allocationWorker";
 import { ExecutionAgent } from "./src/agents/executionAgent";
 import { TelemetryServer } from "./src/telemetry";
 
@@ -69,6 +72,9 @@ async function startServer() {
       NewsWorker.initialize();
       ExecutionAgent.initialize();
       EventRetryWorker.initialize();
+      MetricsWorker.initialize();
+      StrategyEvolutionWorker.initialize();
+      AllocationWorker.initialize();
     } catch (e) {
       console.error("[TradeX OS Daemon] Failed to initialize EventListener:", e);
     }
@@ -160,7 +166,7 @@ async function startServer() {
       }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-2.5-pro",
         contents: `You are the Quant Strategy Agent for TradeX OS. Analyze the following request and give institutional-grade insight. 
         Request: ${prompt}`,
       });

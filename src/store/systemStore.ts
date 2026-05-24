@@ -600,7 +600,9 @@ export const useSystemStore = create<SystemState>((set, get) => ({
         wsSocket = null;
         setTimeout(() => {
           const state = get();
-          if (!state.wsConnected) state.connectWebSocket();
+          if (!state.wsConnected && !wsSocket) {
+            state.connectWebSocket();
+          }
         }, 5000);
       };
     } catch (e) {

@@ -12,6 +12,7 @@ import { NewsWorker } from "./workers/newsWorker";
 import { EventRetryWorker } from "./workers/eventRetryWorker";
 import { MetricsWorker } from "./workers/metricsWorker";
 import { StrategyEvolutionWorker } from "./workers/strategyEvolutionWorker";
+import { AllocationWorker } from "./workers/allocationWorker";
 import { ExecutionAgent } from "./agents/executionAgent";
 import { TelemetryServer } from "./telemetry";
 
@@ -78,8 +79,6 @@ async function startServer() {
     MetricsWorker.initialize();
     EventRetryWorker.initialize();
     StrategyEvolutionWorker.initialize();
-
-    const { AllocationWorker } = require("./workers/allocationWorker");
     AllocationWorker.initialize();
   } catch (e) {
     console.error(

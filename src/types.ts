@@ -10,11 +10,23 @@ export interface GlobalMetrics {
 export interface PortfolioMetrics {
   id: string;
   name: string;
-  cashBalance: number;
-  totalValue: number;
-  unrealizedPnl: number;
-  realizedPnl: number;
+  cash?: number;
+  cashBalance?: number;
+  totalValue?: number;
+  unrealizedPnl?: number;
+  realizedPnl?: number;
+  totalUnrealizedPnl?: number;
+  totalRealizedPnl?: number;
+  maxDrawdown?: number;
+  winRate?: number;
+  sharpeRatio?: number;
+  profitFactor?: number;
+  expectancy?: number;
+  positions?: any[];
   execution_mode?: string;
+  is_trading_enabled?: boolean;
+  max_position_size?: number;
+  max_loss?: number;
 }
 
 export interface StrategyMetrics {

@@ -86,7 +86,7 @@ Return ONLY valid JSON in the exact format:
       try {
         const textResponse = await aiService.generateContent(
           prompt,
-          "gemini-3.5-flash",
+          "gemini-2.5-flash",
         );
         const responseText = textResponse
           .replace(/```json/g, "")

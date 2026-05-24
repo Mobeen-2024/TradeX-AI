@@ -457,17 +457,18 @@ export function DashboardTab() {
             </span>
             <span className="text-3xl text-white font-sans font-bold tracking-tight">
               $
-              {(portfolio?.totalValue || 0).toLocaleString(undefined, {
+              {((portfolio as any)?.totalValue || 0).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2,
               })}
             </span>
+            {/* FIX #4: Backend returns totalRealizedPnl (snake_case via service) */}
             <div className="flex items-center gap-2 mt-1">
               <span
-                className={`text-xs font-bold ${(portfolio?.realizedPnl || 0) >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                className={`text-xs font-bold ${((portfolio as any)?.totalRealizedPnl || 0) >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
               >
-                {(portfolio?.realizedPnl || 0) >= 0 ? "+" : ""}
-                {Number(portfolio?.realizedPnl || 0).toLocaleString(undefined, {
+                {((portfolio as any)?.totalRealizedPnl || 0) >= 0 ? "+" : ""}
+                {Number((portfolio as any)?.totalRealizedPnl || 0).toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                 })}
               </span>
@@ -477,10 +478,10 @@ export function DashboardTab() {
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span
-                className={`text-xs font-bold ${(portfolio?.unrealizedPnl || 0) >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
+                className={`text-xs font-bold ${((portfolio as any)?.totalUnrealizedPnl || 0) >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}
               >
-                {(portfolio?.unrealizedPnl || 0) >= 0 ? "+" : ""}
-                {Number(portfolio?.unrealizedPnl || 0).toLocaleString(
+                {((portfolio as any)?.totalUnrealizedPnl || 0) >= 0 ? "+" : ""}
+                {Number((portfolio as any)?.totalUnrealizedPnl || 0).toLocaleString(
                   undefined,
                   { minimumFractionDigits: 2 },
                 )}
@@ -615,8 +616,9 @@ export function DashboardTab() {
                         <td className="px-3 py-2.5 text-gray-400">
                           {Number(pos.avg_entry_price).toFixed(2)}
                         </td>
+                        {/* FIX #5: Backend returns current_price (snake_case) */}
                         <td className="px-3 py-2.5 text-gray-300">
-                          {Number(pos.currentPrice).toFixed(2)}
+                          {Number(pos.current_price ?? pos.currentPrice ?? 0).toFixed(2)}
                         </td>
                         <td
                           className={`px-3 py-2.5 font-bold text-right ${upnl >= 0 ? "text-[#39ff14]" : "text-[#ff4500]"}`}

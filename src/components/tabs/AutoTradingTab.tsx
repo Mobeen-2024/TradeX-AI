@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Zap,
@@ -12,11 +12,28 @@ import {
   CheckCircle,
   XCircle,
   HelpCircle,
-  ChevronRight,
   TrendingUp,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { useSystemStore } from "../../store/systemStore";
+import { useToastStore } from "../../store/toastStore";
+import { authFetch } from "../../lib/authFetch";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Simple debounce hook — returns a ref-stable debounced wrapper so async
+// mutations cannot be fired faster than `delay` ms.
+// ─────────────────────────────────────────────────────────────────────────────
+function useDebounce<T extends (...args: any[]) => any>(fn: T, delay: number): T {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  return useCallback(
+    (...args: Parameters<T>) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => fn(...args), delay);
+    },
+    [fn, delay],
+  ) as T;
+}
 
 interface DecisionOverride {
   id: string;
@@ -39,6 +56,8 @@ export function AutoTradingTab() {
     setActiveCorrelationId,
   } = useSystemStore();
 
+  const { addToast } = useToastStore();
+
   const [executionMode, setExecutionMode] = useState<"AUTO" | "SEMI_AUTO" | "SIMULATION">("AUTO");
   const [limits, setLimits] = useState({
     maxPositionSize: 0,
@@ -46,15 +65,19 @@ export function AutoTradingTab() {
     isTradingEnabled: false,
   });
 
+  // Per-action loading guards — prevents double-submit for every async op
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [changingMode, setChangingMode] = useState(false);
+  const [haltingSystem, setHaltingSystem] = useState(false);
+  const [executingOverride, setExecutingOverride] = useState<string | null>(null);
+
   const [pendingOverrides, setPendingOverrides] = useState<DecisionOverride[]>([]);
   const [loadingOverrides, setLoadingOverrides] = useState(false);
-  
-  // Custom manual override form state for a selected override
   const [selectedOverrideId, setSelectedOverrideId] = useState<string | null>(null);
   const [customAction, setCustomAction] = useState<"BUY" | "SELL">("BUY");
   const [customSize, setCustomSize] = useState<number>(0);
 
-  // Sync state when portfolio from store changes
+  // ── Sync local form from portfolio store ─────────────────────────────────
   useEffect(() => {
     if (portfolio) {
       setLimits({
@@ -62,99 +85,144 @@ export function AutoTradingTab() {
         maxLoss: (portfolio as any).max_loss || 0,
         isTradingEnabled: (portfolio as any).is_trading_enabled || false,
       });
-      // Map database execution mode
       const dbMode = (portfolio as any).execution_mode || "AUTO";
       setExecutionMode(dbMode as any);
     }
   }, [portfolio]);
 
-  // Fetch pending overrides for SEMI_AUTO HITL reviewer
-  const fetchPendingOverrides = async () => {
+  // ── Fetch pending overrides ───────────────────────────────────────────────
+  const fetchPendingOverrides = useCallback(async () => {
     if (!portfolio) return;
     setLoadingOverrides(true);
     try {
-      const res = await fetch(`/api/overrides/pending?portfolioId=${portfolio.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPendingOverrides(data);
-      }
-    } catch (e) {
+      const res = await authFetch(`/api/overrides/pending?portfolioId=${portfolio.id}`);
+      const data = await res.json();
+      setPendingOverrides(data);
+    } catch (e: any) {
+      // Silently suppress — polling failures should not spam the user
       console.error("Failed to fetch pending overrides:", e);
     } finally {
       setLoadingOverrides(false);
     }
-  };
+  }, [portfolio]);
 
   useEffect(() => {
     fetchPendingOverrides();
-    // Poll pending overrides every 5 seconds for live HITL updates
     const timer = setInterval(fetchPendingOverrides, 5000);
     return () => clearInterval(timer);
-  }, [portfolio?.id]);
+  }, [fetchPendingOverrides]);
 
-  const saveSettings = async (override?: any) => {
-    if (!portfolio) return;
-    const toSave = override || limits;
+  // ── Save constraints ──────────────────────────────────────────────────────
+  // FIX #1 / #6 / #7: Uses authFetch, has a loading guard, and resolves the
+  // stale-closure race by accepting the exact values to persist as a parameter
+  // rather than reading from state that may not have flushed yet.
+  const saveSettings = async (overrideLimits?: typeof limits) => {
+    if (!portfolio || savingSettings) return;
+    const toSave = overrideLimits ?? limits;
+    setSavingSettings(true);
     try {
-      await fetch(`/api/portfolio/${portfolio.id}/settings`, {
+      await authFetch(`/api/portfolio/${portfolio.id}/settings`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           is_trading_enabled: toSave.isTradingEnabled,
           max_position_size: toSave.maxPositionSize,
           max_loss: toSave.maxLoss,
         }),
       });
-    } catch (e) {
-      console.error("Failed to save limits", e);
+      addToast("success", "Constraints saved successfully.");
+    } catch (e: any) {
+      addToast("error", `Failed to save settings: ${e.message}`);
+    } finally {
+      setSavingSettings(false);
     }
   };
 
+  // ── Emergency halt ────────────────────────────────────────────────────────
+  // FIX #3: Replaces browser-blocking `alert()` with a toast + Zustand state.
+  // FIX #1: Passes the exact next-state object to saveSettings so there is no
+  // async closure capturing stale `limits` value.
   const handleEmergencyHalt = async () => {
-    setLimits((prev) => ({ ...prev, isTradingEnabled: false }));
-    await saveSettings({ ...limits, isTradingEnabled: false });
-    // Also set mode to SIMULATION for risk isolation
-    await handleModeChange("SIMULATION");
-    alert("CRITICAL WARNING: Emergency halt triggered. System switched to SIMULATION mode, all live executions revoked.");
+    if (!portfolio || haltingSystem) return;
+    setHaltingSystem(true);
+    try {
+      const haltedLimits = { ...limits, isTradingEnabled: false };
+      setLimits(haltedLimits);
+      // Both calls sequentially — mode first, then persist settings
+      await handleModeChange("SIMULATION", true /* skipSettingsSave */);
+      await saveSettings(haltedLimits);
+      addToast(
+        "warning",
+        "EMERGENCY HALT: System switched to SIMULATION mode. All live executions revoked.",
+        8000,
+      );
+    } catch (e: any) {
+      addToast("error", `Emergency halt partially failed: ${e.message}`);
+    } finally {
+      setHaltingSystem(false);
+    }
   };
 
-  const handleModeChange = async (mode: "AUTO" | "SEMI_AUTO" | "SIMULATION") => {
-    if (!portfolio) return;
+  // ── Mode change ───────────────────────────────────────────────────────────
+  // FIX #2: Debounced at 400 ms so rapid clicks cannot fire parallel PUTs.
+  // FIX #7: `changingMode` guard disables the mode buttons while in-flight.
+  // FIX #10: `isTradingEnabled` is set correctly for all three modes.
+  const _handleModeChange = async (
+    mode: "AUTO" | "SEMI_AUTO" | "SIMULATION",
+    skipSettingsSave = false,
+  ) => {
+    if (!portfolio || changingMode) return;
+    setChangingMode(true);
     try {
-      const res = await fetch(`/api/overrides/portfolio/${portfolio.id}/mode`, {
+      await authFetch(`/api/overrides/portfolio/${portfolio.id}/mode`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
       });
-      if (res.ok) {
-        setExecutionMode(mode);
-        // Toggle global trading status as needed
-        const enabled = mode === "AUTO";
-        setLimits((prev) => ({ ...prev, isTradingEnabled: enabled }));
-        await saveSettings({ ...limits, isTradingEnabled: enabled });
+      setExecutionMode(mode);
+
+      // Determine the correct trading-enabled state for each mode
+      const enabled = mode === "AUTO";
+      const nextLimits = { ...limits, isTradingEnabled: enabled };
+      setLimits(nextLimits);
+
+      if (!skipSettingsSave) {
+        await saveSettings(nextLimits);
       }
-    } catch (e) {
-      console.error("Failed to update execution mode:", e);
+
+      addToast(
+        "info",
+        `Execution mode switched to ${mode}.`,
+      );
+    } catch (e: any) {
+      addToast("error", `Failed to update mode: ${e.message}`);
+    } finally {
+      setChangingMode(false);
     }
   };
 
-  const submitOverrideAction = async (id: string, action: "BUY" | "SELL" | "DISCARD", size: number) => {
+  // FIX #2: Debounce wrapper — 400 ms cooldown between mode changes
+  const handleModeChange = useDebounce(_handleModeChange, 400);
+
+  // ── Submit override action ─────────────────────────────────────────────────
+  // FIX #7: Per-override loading state prevents double-submission.
+  const submitOverrideAction = async (
+    id: string,
+    action: "BUY" | "SELL" | "DISCARD",
+    size: number,
+  ) => {
+    if (executingOverride) return;
+    setExecutingOverride(id);
     try {
-      const res = await fetch(`/api/overrides/${id}/execute`, {
+      await authFetch(`/api/overrides/${id}/execute`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, size }),
       });
-      if (res.ok) {
-        // Refresh local list
-        fetchPendingOverrides();
-        setSelectedOverrideId(null);
-      } else {
-        const err = await res.json();
-        alert(`Error executing override: ${err.error}`);
-      }
-    } catch (e) {
-      console.error("Failed to submit override action:", e);
+      addToast("success", `Override ${action === "DISCARD" ? "discarded" : "executed"}.`);
+      fetchPendingOverrides();
+      setSelectedOverrideId(null);
+    } catch (e: any) {
+      addToast("error", `Override failed: ${e.message}`);
+    } finally {
+      setExecutingOverride(null);
     }
   };
 
@@ -232,12 +300,18 @@ export function AutoTradingTab() {
               {executionMode}
             </span>
           </div>
+          {/* FIX #3: replaced alert() with toast; FIX #7: disabled during halt */}
           <button
             onClick={handleEmergencyHalt}
-            className="flex items-center gap-2 bg-[#ff4500]/10 text-[#ff4500] hover:bg-[#ff4500]/20 border border-[#ff4500]/30 px-3 py-1.5 rounded-sm text-xs font-bold transition-all hover:scale-102"
+            disabled={haltingSystem}
+            className="flex items-center gap-2 bg-[#ff4500]/10 text-[#ff4500] hover:bg-[#ff4500]/20 border border-[#ff4500]/30 px-3 py-1.5 rounded-sm text-xs font-bold transition-all hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Power className="w-3.5 h-3.5" />
-            Emergency Halt
+            {haltingSystem ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Power className="w-3.5 h-3.5" />
+            )}
+            {haltingSystem ? "Halting..." : "Emergency Halt"}
           </button>
         </div>
       </div>
@@ -257,18 +331,24 @@ export function AutoTradingTab() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {modes.map((mode) => {
             const isActive = executionMode === mode.id;
+            // FIX #2 + #7: disabled while any mode change is in flight
             return (
               <button
                 key={mode.id}
                 onClick={() => handleModeChange(mode.id)}
-                className={`flex flex-col items-center justify-center p-6 rounded border transition-all ${
+                disabled={changingMode}
+                className={`flex flex-col items-center justify-center p-6 rounded border transition-all disabled:opacity-60 disabled:cursor-wait ${
                   isActive
                     ? mode.glowColor
                     : "bg-[#0a0a0a] border-[#222] text-gray-500 hover:border-[#444] hover:text-gray-300"
                 }`}
               >
                 <div className={`mb-3 ${isActive ? mode.activeColor : "text-gray-600"}`}>
-                  {mode.icon}
+                  {changingMode && isActive ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    mode.icon
+                  )}
                 </div>
                 <div className={`text-sm font-bold uppercase tracking-widest mb-1 ${
                   isActive ? "text-white" : "text-gray-500"
@@ -293,9 +373,10 @@ export function AutoTradingTab() {
               Human-in-the-Loop Override blotter
             </h3>
           </div>
-          <button 
+          <button
             onClick={fetchPendingOverrides}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+            disabled={loadingOverrides}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-white transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loadingOverrides ? "animate-spin" : ""}`} />
             Refresh
@@ -306,103 +387,113 @@ export function AutoTradingTab() {
           <div className="text-center py-8 border border-dashed border-[#1f1f1f] rounded">
             <HelpCircle className="w-8 h-8 text-gray-600 mx-auto mb-2" />
             <p className="text-xs text-gray-500 font-mono">No paused decisions currently awaiting human approval.</p>
-            <p className="text-[10px] text-gray-600 mt-1">Set mode to SEMI-AUTO to pause & review decisions before execution.</p>
+            <p className="text-[10px] text-gray-600 mt-1">Set mode to SEMI-AUTO to pause &amp; review decisions before execution.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {pendingOverrides.map((ov) => (
-              <div 
-                key={ov.id}
-                className="bg-[#090909] border border-[#222] rounded p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[#333] transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
-                      ov.original_action === "BUY" ? "bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30" : "bg-[#ff4500]/10 text-[#ff4500] border border-[#ff4500]/30"
-                    }`}>
-                      {ov.original_action} {ov.asset_id}
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-mono">Size: {ov.original_size}</span>
-                    <span className="text-[9px] text-gray-600 font-mono">Pausing event: {new Date(ov.created_at).toLocaleTimeString()}</span>
-                  </div>
-                  <p className="text-xs text-gray-400 italic">"Rationale: {ov.original_rationale}"</p>
-                  
-                  {selectedOverrideId === ov.id && (
-                    <div className="mt-4 p-3 bg-[#111] border border-[#222] rounded flex flex-col gap-3 max-w-sm">
-                      <h4 className="text-[10px] uppercase font-bold text-gray-400">Modify Intended Trade</h4>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => setCustomAction("BUY")}
-                          className={`flex-1 text-center py-1 text-xs uppercase font-bold rounded ${
-                            customAction === "BUY" ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]" : "bg-transparent text-gray-400 border border-[#222]"
-                          }`}
-                        >
-                          BUY
-                        </button>
-                        <button 
-                          onClick={() => setCustomAction("SELL")}
-                          className={`flex-1 text-center py-1 text-xs uppercase font-bold rounded ${
-                            customAction === "SELL" ? "bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]" : "bg-transparent text-gray-400 border border-[#222]"
-                          }`}
-                        >
-                          SELL
-                        </button>
-                      </div>
-                      <div>
-                        <label className="text-[9px] uppercase text-gray-500 block mb-1">Override Size</label>
-                        <input 
-                          type="number" 
-                          value={customSize}
-                          onChange={(e) => setCustomSize(Number(e.target.value))}
-                          className="w-full bg-[#050505] border border-[#222] text-xs font-mono p-1 text-white rounded"
-                        />
-                      </div>
-                      <div className="flex gap-2 mt-1">
-                        <button 
-                          onClick={() => submitOverrideAction(ov.id, customAction, customSize)}
-                          className="flex-1 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 text-xs py-1 rounded font-bold hover:bg-[#00f0ff]/30 transition-all"
-                        >
-                          Apply Override
-                        </button>
-                        <button 
-                          onClick={() => setSelectedOverrideId(null)}
-                          className="px-2 bg-transparent text-gray-500 hover:text-white text-xs border border-transparent hover:border-[#333] rounded"
-                        >
-                          Cancel
-                        </button>
-                      </div>
+            {pendingOverrides.map((ov) => {
+              const isExecuting = executingOverride === ov.id;
+              return (
+                <div
+                  key={ov.id}
+                  className="bg-[#090909] border border-[#222] rounded p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[#333] transition-colors"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${
+                        ov.original_action === "BUY" ? "bg-[#39ff14]/10 text-[#39ff14] border border-[#39ff14]/30" : "bg-[#ff4500]/10 text-[#ff4500] border border-[#ff4500]/30"
+                      }`}>
+                        {ov.original_action} {ov.asset_id}
+                      </span>
+                      <span className="text-[10px] text-gray-500 font-mono">Size: {ov.original_size}</span>
+                      <span className="text-[9px] text-gray-600 font-mono">Pausing event: {new Date(ov.created_at).toLocaleTimeString()}</span>
                     </div>
-                  )}
-                </div>
+                    <p className="text-xs text-gray-400 italic">"Rationale: {ov.original_rationale}"</p>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <button 
-                    onClick={() => submitOverrideAction(ov.id, ov.original_action as any, ov.original_size)}
-                    className="flex items-center gap-1.5 bg-[#39ff14]/10 text-[#39ff14] hover:bg-[#39ff14]/20 border border-[#39ff14]/30 px-3 py-1.5 rounded text-xs font-bold transition-all"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Approve
-                  </button>
-                  
-                  {selectedOverrideId !== ov.id && (
-                    <button 
-                      onClick={() => startCustomOverride(ov)}
-                      className="flex items-center gap-1.5 bg-[#00f0ff]/10 text-[#00f0ff] hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 px-3 py-1.5 rounded text-xs font-bold transition-all"
+                    {selectedOverrideId === ov.id && (
+                      <div className="mt-4 p-3 bg-[#111] border border-[#222] rounded flex flex-col gap-3 max-w-sm">
+                        <h4 className="text-[10px] uppercase font-bold text-gray-400">Modify Intended Trade</h4>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setCustomAction("BUY")}
+                            className={`flex-1 text-center py-1 text-xs uppercase font-bold rounded ${
+                              customAction === "BUY" ? "bg-[#39ff14]/20 text-[#39ff14] border border-[#39ff14]" : "bg-transparent text-gray-400 border border-[#222]"
+                            }`}
+                          >
+                            BUY
+                          </button>
+                          <button
+                            onClick={() => setCustomAction("SELL")}
+                            className={`flex-1 text-center py-1 text-xs uppercase font-bold rounded ${
+                              customAction === "SELL" ? "bg-[#ff4500]/20 text-[#ff4500] border border-[#ff4500]" : "bg-transparent text-gray-400 border border-[#222]"
+                            }`}
+                          >
+                            SELL
+                          </button>
+                        </div>
+                        <div>
+                          <label className="text-[9px] uppercase text-gray-500 block mb-1">Override Size</label>
+                          <input
+                            type="number"
+                            value={customSize}
+                            min={0}
+                            onChange={(e) => setCustomSize(Number(e.target.value))}
+                            className="w-full bg-[#050505] border border-[#222] text-xs font-mono p-1 text-white rounded"
+                          />
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                          {/* FIX #7: disabled + spinner while executing */}
+                          <button
+                            onClick={() => submitOverrideAction(ov.id, customAction, customSize)}
+                            disabled={isExecuting}
+                            className="flex-1 bg-[#00f0ff]/20 text-[#00f0ff] border border-[#00f0ff]/40 text-xs py-1 rounded font-bold hover:bg-[#00f0ff]/30 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                          >
+                            {isExecuting && <Loader2 className="w-3 h-3 animate-spin" />}
+                            Apply Override
+                          </button>
+                          <button
+                            onClick={() => setSelectedOverrideId(null)}
+                            className="px-2 bg-transparent text-gray-500 hover:text-white text-xs border border-transparent hover:border-[#333] rounded"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => submitOverrideAction(ov.id, ov.original_action as any, ov.original_size)}
+                      disabled={!!executingOverride}
+                      className="flex items-center gap-1.5 bg-[#39ff14]/10 text-[#39ff14] hover:bg-[#39ff14]/20 border border-[#39ff14]/30 px-3 py-1.5 rounded text-xs font-bold transition-all disabled:opacity-50"
                     >
-                      Override
+                      {isExecuting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                      Approve
                     </button>
-                  )}
 
-                  <button 
-                    onClick={() => submitOverrideAction(ov.id, "DISCARD", 0)}
-                    className="flex items-center gap-1.5 bg-[#ff4500]/10 text-[#ff4500] hover:bg-[#ff4500]/20 border border-[#ff4500]/30 px-3 py-1.5 rounded text-xs font-bold transition-all"
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    Discard
-                  </button>
+                    {selectedOverrideId !== ov.id && (
+                      <button
+                        onClick={() => startCustomOverride(ov)}
+                        disabled={!!executingOverride}
+                        className="flex items-center gap-1.5 bg-[#00f0ff]/10 text-[#00f0ff] hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 px-3 py-1.5 rounded text-xs font-bold transition-all disabled:opacity-50"
+                      >
+                        Override
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => submitOverrideAction(ov.id, "DISCARD", 0)}
+                      disabled={!!executingOverride}
+                      className="flex items-center gap-1.5 bg-[#ff4500]/10 text-[#ff4500] hover:bg-[#ff4500]/20 border border-[#ff4500]/30 px-3 py-1.5 rounded text-xs font-bold transition-all disabled:opacity-50"
+                    >
+                      {isExecuting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
+                      Discard
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -423,12 +514,7 @@ export function AutoTradingTab() {
                 type="number"
                 className="bg-[#111] border border-[#222] text-white p-2 rounded w-full text-sm font-mono focus:border-[#00f0ff] outline-none"
                 value={limits.maxPositionSize}
-                onChange={(e) =>
-                  setLimits({
-                    ...limits,
-                    maxPositionSize: Number(e.target.value),
-                  })
-                }
+                onChange={(e) => setLimits({ ...limits, maxPositionSize: Number(e.target.value) })}
               />
             </div>
             <div>
@@ -439,18 +525,22 @@ export function AutoTradingTab() {
                 type="number"
                 className="bg-[#111] border border-[#222] text-white p-2 rounded w-full text-sm font-mono focus:border-[#00f0ff] outline-none"
                 value={limits.maxLoss}
-                onChange={(e) =>
-                  setLimits({ ...limits, maxLoss: Number(e.target.value) })
-                }
+                onChange={(e) => setLimits({ ...limits, maxLoss: Number(e.target.value) })}
               />
             </div>
           </div>
+          {/* FIX #7: disabled + spinner while saving */}
           <button
             onClick={() => saveSettings()}
-            className="mt-4 flex items-center gap-2 bg-[#00f0ff]/10 text-[#00f0ff] hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 px-4 py-2 rounded-sm text-xs font-bold transition-all hover:scale-102"
+            disabled={savingSettings}
+            className="mt-4 flex items-center gap-2 bg-[#00f0ff]/10 text-[#00f0ff] hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 px-4 py-2 rounded-sm text-xs font-bold transition-all hover:scale-102 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
-            Apply Constraints
+            {savingSettings ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            {savingSettings ? "Saving..." : "Apply Constraints"}
           </button>
         </div>
 
